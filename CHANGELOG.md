@@ -81,6 +81,8 @@ This project follows a simple changelog format and semantic versioning intent:
   - `scripts/oscal_gap_map.py` supports direct `SBS-*` control IDs from collector outputs.
   - `docs/oscal-salesforce-poc/examples/gap-analysis-salesforce-collector-mock.json` adds full 45-control mock run data.
   - Smoke test now uses collector-style mock dataset by default.
+- UK Salesforce partial copy exception record added for data classification and data masking gaps:
+  - `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.md`
 
 ## [0.1.0] - 2026-02-23
 
