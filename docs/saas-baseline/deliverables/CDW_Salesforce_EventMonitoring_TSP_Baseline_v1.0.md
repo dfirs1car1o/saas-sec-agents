@@ -8,16 +8,21 @@
 **Classification:** Internal Use Only
 
 ## 1. Executive Context
-This baseline defines minimum required Salesforce security configuration for Event Monitoring and Transaction Security Policies (TSP) across CDW US, Canada, and UK orgs.
+This document defines the minimum Salesforce security baseline for Event Monitoring and Transaction Security Policies (TSP) across CDW US, Canada, and UK orgs.
 
-Common operating model:
-- baseline controls are defined per control ID,
-- control telemetry is continuously monitored through enterprise data pipelines,
-- drift from baseline is detected and triaged,
-- status is reported through dashboards for operational and governance decisions.
+Executive outcomes:
+- Detect and contain high-risk access and data movement behavior quickly.
+- Keep control settings consistent by control ID across regions.
+- Surface drift and response status in dashboards for operational and governance decisions.
+
+Operating model:
+- Define expected control values by control ID.
+- Continuously monitor control and event telemetry through enterprise pipelines.
+- Detect and triage baseline drift.
+- Report status through role-based dashboards.
 
 ## 2. SaaS Security Pillars (Primary Anchor)
-This baseline is designed around SaaS security pillars, with CSA SSCF as the foundational control framework.
+This baseline is organized around SaaS security pillars, with CSA SSCF as the foundational control framework.
 
 | SaaS Security Pillar | What It Means in This Baseline | CSA SSCF Alignment |
 |---|---|---|
@@ -42,15 +47,15 @@ This baseline is designed around SaaS security pillars, with CSA SSCF as the fou
 | Control / Setting | Required Value | Risk | Evidence |
 |---|---|---|---|
 | Salesforce Shield / Event Monitoring | Enabled in all production orgs | Critical | License + setup evidence |
-| Event log retention | Minimum 30 days in platform; target 365 days in monitoring storage | High | Retention policy + storage evidence |
+| Event log retention | Minimum 30 days in platform; target 365 days in monitoring storage | High | Retention policy and storage evidence |
 | Real-Time Event Monitoring | Enabled | High | RTEM policy inventory |
-| SIEM/data forwarding | Enabled to central monitoring and control pipeline | Critical | Pipeline health + dashboard status |
+| SIEM/data forwarding | Enabled to central monitoring and control pipeline | Critical | Pipeline health and dashboard status |
 | Event Monitoring Analytics | Enabled for security/admin workflows | Medium | Deployment evidence |
 
 ### 4.2 Required Event Types and Thresholds
 | Event Type | Security Use Case | Priority | Baseline Threshold |
 |---|---|---|---|
-| LoginEvent | Credential abuse, brute force, impossible travel | Critical | 5 failed logins / 10 min / source |
+| LoginEvent | Credential abuse, brute force, impossible travel | Critical | 5 failed logins per 10 minutes per source |
 | LoginAsEvent | Unauthorized impersonation | Critical | Any occurrence |
 | ReportEvent | Mass data access | High | >5,000 rows/session |
 | ReportExportEvent | Data exfiltration via export | Critical | Any export by non-approved role |
@@ -76,15 +81,15 @@ This baseline is designed around SaaS security pillars, with CSA SSCF as the fou
 ### 5.2 TSP Operational Requirements
 | Control | Required Value |
 |---|---|
-| TSP state | Enabled in production; no disabled policy without approved exception |
-| Critical policy action | Block, not notify-only |
-| Alert destination | Security monitoring channel + incident queue |
-| Deployment process | Sandbox test, peer review, change approval |
-| Log retention | TSP execution/audit logs retained minimum 1 year |
-| Exception window | Maximum 90 days with compensating controls |
+| TSP state | Keep enabled in production; do not disable without approved exception |
+| Critical policy action | Enforce block action (not notify-only) |
+| Alert destination | Route to security monitoring channel and incident queue |
+| Deployment process | Require sandbox test, peer review, and change approval |
+| Log retention | Retain TSP execution and audit logs for at least 1 year |
+| Exception window | Limit to 90 days maximum with compensating controls |
 
 ## 6. UK and Canada Regulatory Overlay
-This section maps UK/CAN regulatory requirements into baseline operation.
+This section maps UK and Canada regulatory requirements into baseline operations.
 
 | Jurisdiction | Regulatory Requirement | Baseline Implementation | Dashboard/KPI Evidence |
 |---|---|---|---|
@@ -97,20 +102,20 @@ This section maps UK/CAN regulatory requirements into baseline operation.
 ## 7. Continuous Monitoring, Drift, and Dashboard Reporting
 | Capability | Requirement |
 |---|---|
-| Baseline state model | Expected control values per control ID and region (US/CAN/UK) |
-| Drift detection | Detect non-compliant values, disabled controls, missing telemetry |
-| Severity model | Critical/High/Medium/Low with remediation SLA |
-| Dashboard views | Executive summary, control owner view, regional compliance view |
-| Reporting cadence | Daily operational, weekly tactical, monthly governance, quarterly formal review |
+| Baseline state model | Define expected control values by control ID and region (US/CAN/UK) |
+| Drift detection | Detect non-compliant values, disabled controls, and missing telemetry |
+| Severity model | Use Critical/High/Medium/Low with remediation SLA targets |
+| Dashboard views | Provide executive summary, control owner, and regional compliance views |
+| Reporting cadence | Run daily operational, weekly tactical, monthly governance, and quarterly formal reviews |
 
 ## 8. Operational Cadence
 | Frequency | Activity | Owner |
 |---|---|---|
-| Daily | Verify ingestion freshness, drift detections, alerting health | Security Operations Monitoring + Data Engineering |
+| Daily | Verify ingestion freshness, drift detections, and alerting health | Security Operations Monitoring + Data Engineering |
 | Weekly | Review dashboard metrics and tune thresholds | Business Security Services + Salesforce Admin |
-| Monthly | Validate conformance and evidence package | Salesforce Admin + GRC |
-| Quarterly | Formal baseline review including UK/CAN overlay | Business Security Services + GRC |
-| Post-Incident | Gap analysis and baseline hardening update | Incident stakeholders |
+| Monthly | Validate conformance and evidence package readiness | Salesforce Admin + GRC |
+| Quarterly | Complete formal baseline review, including UK/CAN overlay | Business Security Services + GRC |
+| Post-Incident | Perform gap analysis and baseline hardening updates | Incident stakeholders |
 
 ## 9. Minimum Evidence Artifacts
 - Event Monitoring enablement evidence
