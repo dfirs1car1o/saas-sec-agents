@@ -1,0 +1,105 @@
+{
+  "assessment_id": "CDW-SF-GAP-2026-02-24",
+  "generated_at_utc": "2026-02-24T18:11:47.555222+00:00",
+  "catalog_version": "0.4.0",
+  "framework": "CSA_SSCF",
+  "summary": {
+    "catalog_controls": 45,
+    "findings_total": 3,
+    "mapped_findings": 3,
+    "unmapped_findings": 0,
+    "invalid_mapping_entries": 0,
+    "status_counts": {
+      "pass": 0,
+      "fail": 1,
+      "partial": 2,
+      "not_applicable": 0
+    },
+    "mapping_confidence_counts": {
+      "medium": 3
+    }
+  },
+  "mapped_items": [
+    {
+      "legacy_control_id": "SF-EM-RULE-001",
+      "sbs_control_id": "SBS-AUTH-001",
+      "sbs_title": "Enable Organization-Wide SSO Enforcement Setting",
+      "status": "partial",
+      "severity": "high",
+      "owner": "Salesforce Platform Owner",
+      "due_date": "2026-03-31",
+      "remediation": "",
+      "evidence_ref": "gap-analysis://SF-EM-RULE-001",
+      "mapping_notes": "Draft mapping: failed login monitoring and centralized auth hardening.",
+      "mapping_confidence": "medium",
+      "sscf_mappings": [
+        {
+          "sscf_domain": "identity_access_management",
+          "sscf_control_id": "SSCF-IAM-003",
+          "mapping_strength": "direct",
+          "rationale": "Org-wide SSO enforcement maps directly to federation and SSO assurance."
+        }
+      ],
+      "sscf_control_ids": [
+        "SSCF-IAM-003"
+      ]
+    },
+    {
+      "legacy_control_id": "SF-TSP-001",
+      "sbs_control_id": "SBS-AUTH-003",
+      "sbs_title": "Prohibit Broad or Unrestricted Profile Login IP Ranges",
+      "status": "fail",
+      "severity": "critical",
+      "owner": "Business Security Services",
+      "due_date": "2026-03-15",
+      "remediation": "",
+      "evidence_ref": "gap-analysis://SF-TSP-001",
+      "mapping_notes": "Draft mapping: risky auth/location controls.",
+      "mapping_confidence": "medium",
+      "sscf_mappings": [
+        {
+          "sscf_domain": "identity_access_management",
+          "sscf_control_id": "SSCF-IAM-001",
+          "mapping_strength": "direct",
+          "rationale": "Login IP hardening reduces unauthorized auth attempts and account compromise risk."
+        }
+      ],
+      "sscf_control_ids": [
+        "SSCF-IAM-001"
+      ]
+    },
+    {
+      "legacy_control_id": "SF-TSP-004",
+      "sbs_control_id": "SBS-DEP-003",
+      "sbs_title": "Monitor and Alert on Unauthorized Modifications to High-Risk Metadata",
+      "status": "partial",
+      "severity": "high",
+      "owner": "Security Operations Monitoring Team",
+      "due_date": "2026-03-22",
+      "remediation": "",
+      "evidence_ref": "gap-analysis://SF-TSP-004",
+      "mapping_notes": "Draft mapping: monitoring unauthorized high-risk configuration changes.",
+      "mapping_confidence": "medium",
+      "sscf_mappings": [
+        {
+          "sscf_domain": "logging_monitoring",
+          "sscf_control_id": "SSCF-LOG-002",
+          "mapping_strength": "direct",
+          "rationale": "Unauthorized metadata change detection maps to admin/config audit logging and monitoring."
+        },
+        {
+          "sscf_domain": "configuration_hardening",
+          "sscf_control_id": "SSCF-CON-002",
+          "mapping_strength": "direct",
+          "rationale": "Unauthorized changes are a baseline drift management use case."
+        }
+      ],
+      "sscf_control_ids": [
+        "SSCF-LOG-002",
+        "SSCF-CON-002"
+      ]
+    }
+  ],
+  "unmapped_items": [],
+  "invalid_mapping_entries": []
+}
