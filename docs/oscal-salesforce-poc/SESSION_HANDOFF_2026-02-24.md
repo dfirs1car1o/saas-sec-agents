@@ -18,6 +18,8 @@
 - `docs/oscal-salesforce-poc/generated/salesforce_oscal_gap_matrix.md`
 - `config/oscal-salesforce/sbs_to_sscf_mapping.yaml`
 - `docs/reviews/2026-02-24-brutal-critic-backlog.md`
+- `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.md`
+- `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.docx`
 
 ## Pending Decision
 - Decision resolved: security workflow is now strict.

@@ -10,6 +10,9 @@
 
 ## What Is Completed
 - Salesforce baseline v1.0 deliverable updated (MD + DOCX).
+- UK partial-copy formal exception created (MD + DOCX):
+  - `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.md`
+  - `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.docx`
 - OSCAL scaffold implemented:
   - `config/oscal-salesforce/*`
   - `scripts/oscal_import_sbs.py`
@@ -56,6 +59,14 @@ Save under scripts/ and docs/oscal-salesforce-poc/.
 ```text
 Use docs/reviews/2026-02-24-brutal-critic-backlog.md as the source of truth.
 Start with BC-001, BC-002, BC-003 in order, with minimal safe increments and verification after each.
+```
+
+## Prompt 5: Continue UK Exception Governance
+```text
+Resume UK Salesforce partial-copy exception governance from:
+- docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.md
+- docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.docx
+Prepare closure checklist evidence requirements and renewal criteria if remediation is not complete by expiry.
 ```
 
 ## First Commands To Run Next Session

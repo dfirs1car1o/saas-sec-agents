@@ -83,6 +83,7 @@ This project follows a simple changelog format and semantic versioning intent:
   - Smoke test now uses collector-style mock dataset by default.
 - UK Salesforce partial copy exception record added for data classification and data masking gaps:
   - `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.md`
+  - `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.docx`
 
 ## [0.1.0] - 2026-02-23
 
