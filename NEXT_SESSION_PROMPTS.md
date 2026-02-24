@@ -4,8 +4,9 @@
 - Repo: `/Users/jerijuar/multiagent-azure`
 - Branch: `main`
 - Remote: `git@github.com-443:SiCar10mw/multiagent-azure.git`
-- Git state: synced except one local workflow edit currently unstaged.
+- Git state: `main...origin/main` (fully synced).
 - Primary workstream: `OSCAL POC for Salesforce` with SBS + CSA SSCF mapping.
+- GitHub CLI auth: restored and working for `gh run` commands.
 
 ## What Is Completed
 - Salesforce baseline v1.0 deliverable updated (MD + DOCX).
@@ -16,25 +17,23 @@
   - `scripts/oscal_smoke_test.sh`
   - `docs/oscal-salesforce-poc/*`
 - Collector-style mock run generated and committed:
+  - mock input: `docs/oscal-salesforce-poc/examples/gap-analysis-salesforce-collector-mock.json`
   - `docs/oscal-salesforce-poc/generated/sbs_controls.json`
   - `docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog.json`
   - `docs/oscal-salesforce-poc/generated/salesforce_oscal_gap_matrix.md`
 - Brutal-critic remediation backlog created:
   - `docs/reviews/2026-02-24-brutal-critic-backlog.md`
-
-## Open Item (Local Only Right Now)
-- `.github/workflows/security-checks.yml` is edited locally to enforce:
-  - tfsec `--minimum-severity HIGH`
-  - checkov `hard_fail_on: HIGH,CRITICAL`
-  - checkov `soft_fail_on: LOW,MEDIUM`
-- This change is not committed/pushed yet.
+- Security checks are now strict:
+  - tfsec fails on `HIGH+` findings.
+  - checkov hard-fails on `HIGH,CRITICAL`; soft-fails on `LOW,MEDIUM`.
 
 ## Prompt 1: Resume Exactly Where We Left Off
 ```text
 Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION_PROMPTS.md.
-First, inspect git status and handle the pending local workflow change in .github/workflows/security-checks.yml:
-- either commit/push it, or revert it if we decide to keep report-only mode.
-Then confirm latest security-checks workflow behavior on GitHub Actions.
+First, confirm current GitHub Actions security-checks behavior after commit d5f3aa7:
+- tfsec minimum severity HIGH
+- checkov hard_fail_on HIGH,CRITICAL
+Then check for any HIGH/CRITICAL findings and propose remediation PRs.
 ```
 
 ## Prompt 2: Run OSCAL Pipeline with Real Gap Data
@@ -63,6 +62,5 @@ Start with BC-001, BC-002, BC-003 in order, with minimal safe increments and ver
 ```bash
 git -C /Users/jerijuar/multiagent-azure status -sb
 git -C /Users/jerijuar/multiagent-azure log --oneline -n 8
-git -C /Users/jerijuar/multiagent-azure diff -- .github/workflows/security-checks.yml
+cd /Users/jerijuar/multiagent-azure && unset GITHUB_TOKEN; gh run list --workflow security-checks.yml --limit 8
 ```
-
