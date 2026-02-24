@@ -63,6 +63,7 @@ This project follows a simple changelog format and semantic versioning intent:
 - Brutal-critic audit workflow additions:
   - `docs/agents/tasks/brutal-critic-audit-task.md`
   - `docs/reviews/2026-02-24-brutal-critic-audit.md`
+  - `docs/reviews/2026-02-24-brutal-critic-backlog.md`
 - OSCAL POC for Salesforce assets:
   - `docs/oscal-salesforce-poc/README.md`
   - `docs/oscal-salesforce-poc/WIKI_UPDATE_2026-02-24.md`
