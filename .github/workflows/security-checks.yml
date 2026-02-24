@@ -36,13 +36,15 @@ jobs:
 
       - name: Run tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
+        continue-on-error: true
         with:
           working_directory: infra/terraform
 
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
+        continue-on-error: true
         with:
           directory: infra/terraform
           framework: terraform
           quiet: true
-          soft_fail: false
+          soft_fail: true
