@@ -80,6 +80,18 @@ sfdc-connect CLI built with simple-salesforce + Tooling API. GitHub org partiall
    - Needs a sandbox org to test against
    - Can stub with `--dry-run` if no org available
 
+### Phase 3 Plan — Agentic Loop + Memory
+
+Architecture reference: DevPulseAI (https://github.com/Shubhamsaboo/awesome-llm-apps)
+Key principle: sfdc-connect CLI = utility (no LLM), assessor/nist-reviewer = agents (LLM reasoning)
+
+- `harness/loop.py` — orchestrator loop using Anthropic SDK
+- Memory: Mem0 + Qdrant for org-specific assessment history
+  - mem0ai + qdrant-client added to pyproject.toml at Phase 3
+  - memory key = org alias (e.g. "myorg.salesforce.com")
+  - enables: "compare to last assessment", "show new failures since last run"
+  - reference: awesome-llm-apps/advanced_llm_apps/llm_apps_with_memory_tutorials/
+
 ### Resume Command
 
 ```bash
