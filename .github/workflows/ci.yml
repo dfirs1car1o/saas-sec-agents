@@ -1,0 +1,101 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install ruff
+      - run: ruff check skills/ scripts/
+      - run: ruff format --check skills/ scripts/
+
+  sast:
+    name: bandit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install bandit[toml]
+      - name: Run Bandit (fail on HIGH+)
+        run: bandit -r skills/ scripts/ -ll -ii --exit-zero-on-skipped
+
+  dependency-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install pip-audit
+      - name: Audit dependencies
+        run: pip-audit --requirement <(grep -v '^\[' pyproject.toml | grep '==' || echo "") || pip-audit --desc on
+
+  validate-env:
+    name: validate_env.py (CI mode)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install uv
+      - run: uv pip install --system -e . 2>/dev/null || pip install -e .
+
+      - name: Run pre-flight check (skip .env / credential checks)
+        run: |
+          python3 scripts/validate_env.py --ci 2>&1 | grep -v "FAIL.*SF_\|FAIL.*ANTHROPIC\|FAIL.*\.env\|WARN.*SF_\|WARN.*ANTHROPIC" || true
+          # Only fail CI on non-credential FAILures
+          python3 scripts/validate_env.py --ci --json 2>/dev/null \
+            | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+cred_keys = {'SF_USERNAME','SF_PASSWORD','SF_SECURITY_TOKEN','ANTHROPIC_API_KEY','.env','anthropic-key-format'}
+failures = [r for r in data if r['status']=='fail' and r['hard'] and r['name'] not in cred_keys]
+if failures:
+    print('FAIL (non-credential):', [r['name'] for r in failures])
+    sys.exit(1)
+print('OK — all non-credential checks pass')
+"
+
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install uv
+      - run: uv pip install --system -e ".[dev]" 2>/dev/null || uv pip install --system -e .
+      - name: Run tests (if any exist)
+        run: |
+          if [ -d tests/ ]; then
+            pytest tests/ -v
+          else
+            echo "No tests directory yet — skipping"
+          fi

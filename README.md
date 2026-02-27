@@ -1,116 +1,116 @@
-# multiagent-azure
+# saas-sec-agents
 
-Azure-first multi-agent DFIR/malware analysis architecture scaffold using:
-- Python orchestrator (LangGraph-ready)
-- Terraform for Azure infrastructure
-- GitHub Actions with OIDC for CI/CD
+SaaS Security multi-agent AI system for OSCAL and CSA SSCF assessments across Salesforce orgs. Produces governance-grade evidence packages for application owners and GIS review cycles.
 
-## What This Includes
-- `app/`: Python API + provider adapter interfaces
-- `infra/terraform/`: Azure baseline (resource group, log analytics, container apps, APIM, key vault, storage, service bus)
-- `.github/workflows/`: Terraform plan/apply workflows using Azure OIDC
-- `.github/workflows/security-checks.yml`: baseline security CI checks
-- `.github/workflows/pr-inline-review.yml`: inline PR review comments for Terraform/Python
-- `.github/pull_request_template.md`: required risk/RV/rollback fields
-- `.github/CODEOWNERS`: required human reviewer routing
-- `config/role_model_policy.yaml`: role-scoped model pool policy
-- `config/role_tool_policy.yaml`: role-scoped tool allowlist policy
-- `config/saas_baseline_controls/*.yaml`: SaaS baseline controls with CSA SSCF mapping
-- `config/saas_baseline_profiles/*.yaml`: platform baseline profiles for implementation
-- `config/sscf_control_index.yaml`: canonical SSCF control reference index
-- `docs/architecture.md`: reference architecture and execution model
-- `docs/cloud-mcp-architecture.md`: cloud-hosted MCP architecture (no local Docker dependency)
-- `docs/azure-tenant-bootstrap.md`: secure tenant/subscription bootstrap checklist
-- `docs/secure-coding-standard.md`: required secure coding controls
-- `docs/rollout-phases.md`: phased rollout with config, RV, and backout
-- `docs/change-control.md`: release/change management runbook
-- `docs/sift-worker-runbook.md`: SIFT image and worker lifecycle runbook
-- `docs/sample-data-catalog.md`: approved evidence/sample data model and handling rules
-- `docs/agents/brutal-critic-agent.md`: hardline review agent spec for plan critiques
-- `docs/agents/tasks/brutal-critic-audit-task.md`: repeatable task for adversarial repository audits
-- `docs/templates/brutal-critic-review-template.md`: standard report format for critique results
-- `docs/reviews/`: timestamped brutal-critic audit outputs
-- `docs/saas-baseline/`: SSCF-aligned SaaS baseline method and guidance
-- `docs/saas-baseline/intake-template.md`: requirements intake form for baseline design
-- `docs/saas-baseline/salesforce-em-tsp-baseline-v1.md`: first Salesforce baseline configuration
-- `docs/oscal-salesforce-poc/`: OSCAL POC for Salesforce (SBS ingestion + gap mapping workflow)
-- `schemas/baseline_assessment_schema.json`: machine-readable assessment result schema
-- `CHANGELOG.md`: required ledger for all notable changes
+## What This Is
 
-## If You Do Not Have an Azure Tenant Yet
-1. Follow `docs/azure-tenant-bootstrap.md`.
-2. Do not deploy production workloads until identity, policy, and logging baselines are in place.
-3. Use `workload-dev` only until baseline controls are validated.
+A read-only assessment pipeline that:
+1. Connects to Salesforce orgs via the `sfdc-connect` CLI and extracts security-relevant configuration
+2. Maps findings to the Security Benchmark for Salesforce (SBS), OSCAL control catalogs, and CSA SSCF
+3. Generates structured evidence artifacts (JSON, Markdown, DOCX) for governance review
+4. Validates all AI-assisted outputs against NIST AI RMF 1.0 before delivery
+
+This system never writes to any Salesforce org. All evidence stays in `docs/oscal-salesforce-poc/generated/`.
+
+## Multi-Agent Architecture
+
+```
+Human ──► Orchestrator (claude-opus-4-6)
+               │
+               ├──► Collector (claude-sonnet-4-6)    ← sfdc-connect CLI
+               │         ↓
+               ├──► Assessor (claude-sonnet-4-6)     ← oscal-assess + sscf-benchmark CLIs
+               │         ↓
+               ├──► NIST Reviewer (claude-sonnet-4-6) ← AI auditing / output validation
+               │         ↓
+               └──► Reporter (claude-haiku-4-5)      ← report-gen CLI
+                          ↓
+             Orchestrator QA gate ──► Human
+```
+
+Pattern: **Orchestrator-workers** (not a swarm, not peer-to-peer). Agents communicate through JSON evidence files. The NIST Reviewer is the AI auditing layer — it validates every output for bias, evidence completeness, and confidence calibration before the Reporter finalizes anything.
+
+See `AGENTS.md` for full agent definitions, model assignments, and escalation rules.
+
+## Skills (CLIs)
+
+All tools in this system are CLI-based. Call with `--help` if uncertain.
+
+| Skill | Location | What It Does |
+|---|---|---|
+| `sfdc-connect` | `skills/sfdc_connect/` | Authenticates + queries Salesforce org (REST + Tooling API). Read-only. |
+| `oscal-assess` | `skills/oscal-assess/` | Runs OSCAL gap mapping against SBS control catalog |
+| `sscf-benchmark` | `skills/sscf-benchmark/` | Benchmarks findings against CSA SSCF control index |
+| `report-gen` | `skills/report-gen/` | Generates DOCX, Markdown, and JSON governance outputs |
 
 ## Quick Start
-1. Create Azure service principal/federated credentials for GitHub OIDC.
-2. Set GitHub repo variables/secrets:
-   - Variables: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `TF_STATE_RG`, `TF_STATE_SA`, `TF_STATE_CONTAINER`, `TF_STATE_KEY`
-   - Secrets: provider API keys (later in Key Vault)
-3. Copy and edit `infra/terraform/envs/dev.tfvars.example` -> `dev.tfvars`.
-4. Run locally:
+
+**Prerequisites:** Python 3.11+, `uv`
 
 ```bash
-cd infra/terraform
-terraform init \
-  -backend-config="resource_group_name=<TF_STATE_RG>" \
-  -backend-config="storage_account_name=<TF_STATE_SA>" \
-  -backend-config="container_name=<TF_STATE_CONTAINER>" \
-  -backend-config="key=<TF_STATE_KEY>"
-terraform plan -var-file=envs/dev.tfvars
+git clone git@github.com:SiCar10mw/saas-sec-agents.git
+cd saas-sec-agents
+./setup.sh
 ```
 
-## Repo Structure
-```text
-app/
-  main.py
-  orchestrator.py
-  providers/
-scripts/
-  sift-install.sh
-  sift-hardening.sh
-  upload-sample-data.sh
-  oscal_import_sbs.py
-  oscal_gap_map.py
-  oscal_smoke_test.sh
-config/
-  role_model_policy.yaml
-  role_tool_policy.yaml
-  saas_baseline_controls/
-  oscal-salesforce/
-infra/terraform/
-  versions.tf
-  providers.tf
-  main.tf
-  variables.tf
-  outputs.tf
-  sift-image-factory/
-  cloud-mcp/
-.github/workflows/
-  terraform-plan.yml
-  terraform-apply.yml
+Fill in `.env` with your Salesforce credentials (see `.env.example`).
+
+**Test connection:**
+```bash
+source .venv/bin/activate
+python3 -m skills.sfdc_connect.sfdc_connect auth --dry-run
+```
+
+**Run an assessment (auth scope):**
+```bash
+python3 -m skills.sfdc_connect.sfdc_connect collect \
+  --scope auth \
+  --env dev \
+  --out docs/oscal-salesforce-poc/generated/auth_findings.json
+```
+
+## Control Frameworks
+
+| Framework | Version | Source |
+|---|---|---|
+| Security Benchmark for Salesforce (SBS) | v0.4.1 | `config/oscal-salesforce/sbs_source.yaml` |
+| CSA SSCF | current | `config/sscf_control_index.yaml` |
+| OSCAL gap mapping | — | `config/oscal-salesforce/control_mapping.yaml` |
+| NIST AI RMF | 1.0 | Applied by nist-reviewer agent |
+
+## Repository Layout
+
+```
+agents/                   ← Agent definitions (YAML frontmatter + role docs)
+config/                   ← Control framework configs and mappings
+contexts/                 ← System prompts for assess/review/research modes
 docs/
-  architecture.md
-  sift-worker-runbook.md
-  sample-data-catalog.md
-  cloud-mcp-architecture.md
-  saas-baseline/
-  oscal-salesforce-poc/
+  oscal-salesforce-poc/   ← Generated evidence, deliverables, runbooks
+  saas-baseline/          ← Exception process, RACI, meeting packs
+hooks/                    ← Session lifecycle scripts (start/end/compact)
+mission.md                ← Agent identity and authorized scope (read every session)
+prompts/                  ← Prompting playbook and anti-patterns
+schemas/                  ← Output schema definitions
+scripts/                  ← Standalone Python CLIs for ingestion and gap mapping
+skills/                   ← Skill CLIs (sfdc-connect, oscal-assess, etc.)
 ```
 
-## Next Build Steps
-1. Implement LangGraph workflow (`ingest -> triage -> tool exec -> summarize -> approval`).
-2. Add APIM policies (JWT, rate limit, schema validation).
-3. Build and publish SIFT image via `infra/terraform/sift-image-factory`.
-4. Deploy isolated worker pool for malware detonation.
-5. Connect Copilot Studio actions to APIM endpoints.
-6. Load approved sample datasets using `scripts/upload-sample-data.sh`.
-7. Deploy cloud MCP gateway stack (`infra/terraform/cloud-mcp`) and route tools through APIM.
+## Security
 
-## Change Management Requirements
-1. Every PR must update `CHANGELOG.md` (`[Unreleased]`).
-2. Follow `docs/rollout-phases.md` for phase gates and rollback.
-3. Follow `docs/change-control.md` for release validation (RV) and backout.
-4. Follow `docs/secure-coding-standard.md` and complete PR template fields.
-5. Require status checks: `security-checks` and `pr-inline-review`.
-6. For architecture/phase changes, attach brutal-critic review output.
+- Read-only against all Salesforce orgs by default. No writes without explicit human approval.
+- Credentials sourced from environment only. Never passed as CLI flags. Never logged.
+- All generated evidence written to `docs/oscal-salesforce-poc/generated/` — never to `/tmp`.
+- CI: ruff (lint), bandit (SAST), pip-audit (dependency CVEs), CodeQL (semantic analysis).
+- AI outputs validated by nist-reviewer agent before delivery.
+
+## Development
+
+```bash
+source .venv/bin/activate
+ruff check skills/          # lint
+bandit -r skills/           # SAST
+pip-audit                   # dependency CVEs
+pytest tests/               # unit tests (Phase 3)
+```
+
+All PRs require one reviewer approval. Branch protection enforces no force pushes to main.

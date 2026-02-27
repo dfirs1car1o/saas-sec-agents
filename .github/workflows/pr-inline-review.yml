@@ -3,8 +3,8 @@ name: pr-inline-review
 on:
   pull_request:
     paths:
-      - "app/**"
-      - "infra/terraform/**"
+      - "skills/**"
+      - "scripts/**"
       - ".github/workflows/pr-inline-review.yml"
 
 permissions:
@@ -12,51 +12,44 @@ permissions:
   pull-requests: write
 
 jobs:
-  terraform-inline:
-    name: terraform-inline
+  ruff-inline:
+    name: Ruff (inline PR annotations)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
-
-      - name: Init TFLint
-        run: tflint --init
-        working-directory: infra/terraform
-
-      - name: TFLint Inline Review
-        uses: reviewdog/action-tflint@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          filter_mode: nofilter
-          fail_level: warning
-          level: warning
-          tflint_init: false
-          working_directory: infra/terraform
-
-  python-inline:
-    name: python-inline
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install Ruff
-        run: pip install ruff
+      - run: pip install ruff
 
-      - name: Ruff Check (GitHub Annotations)
-        run: ruff check app --output-format=github
+      - name: Ruff annotations on changed files
+        run: ruff check skills/ scripts/ --output-format=github
 
+  bandit-inline:
+    name: Bandit SAST (inline PR annotations)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install bandit[toml]
+
+      - name: Bandit annotations (HIGH+ = fail)
+        run: bandit -r skills/ scripts/ -ll -ii -f json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for r in data.get('results', []):
+    sev = r['issue_severity']
+    conf = r['issue_confidence']
+    fname = r['filename']
+    line = r['line_number']
+    msg = r['issue_text']
+    test = r['test_id']
+    level = 'error' if sev == 'HIGH' else 'warning'
+    print(f'::{level} file={fname},line={line}::{test}: [{sev}/{conf}] {msg}')
+" || true

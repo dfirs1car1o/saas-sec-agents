@@ -3,49 +3,53 @@ name: security-checks
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  python-and-terraform-security:
+  bandit:
+    name: Bandit SAST
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install Bandit
-        run: pip install bandit
+      - run: pip install bandit[toml]
 
-      - name: Run Bandit
-        run: bandit -q -r app
+      - name: Run Bandit (HIGH severity = fail)
+        run: bandit -r skills/ scripts/ -ll -ii
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+  pip-audit:
+    name: pip-audit (dependency CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Terraform fmt check
-        run: terraform fmt -check -recursive infra/terraform
-
-      - name: Run tfsec
-        uses: aquasecurity/tfsec-action@v1.0.3
+      - uses: actions/setup-python@v5
         with:
-          working_directory: infra/terraform
-          additional_args: --minimum-severity HIGH
+          python-version: "3.11"
 
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
+      - run: pip install pip-audit uv
+      - run: uv pip install --system -e . 2>/dev/null || pip install -e .
+
+      - name: Audit installed packages
+        run: pip-audit --desc on
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
-          directory: infra/terraform
-          framework: terraform
-          quiet: true
-          soft_fail: false
-          soft_fail_on: LOW,MEDIUM
-          hard_fail_on: HIGH,CRITICAL
+          fetch-depth: 0   # full history for leak detection
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

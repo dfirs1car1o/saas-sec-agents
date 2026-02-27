@@ -1,0 +1,56 @@
+# CodeRabbit AI code review configuration
+# Docs: https://docs.coderabbit.ai/configuration
+version: "2"
+
+reviews:
+  # Auto-review all PRs
+  auto_review:
+    enabled: true
+    drafts: false   # Don't review draft PRs
+
+  # Focus areas for this codebase
+  profile: "chill"   # detailed | chill — chill avoids nitpicky style comments
+
+  # Path-specific instructions
+  path_instructions:
+    - path: "skills/**/*.py"
+      instructions: |
+        This code runs against live Salesforce orgs. Review for:
+        - Any write operations to Salesforce (must not exist — read-only system)
+        - Credential or token exposure in logs, exceptions, or output
+        - Unhandled exceptions that could leak org data to stdout
+        - SOQL injection risks (user-supplied values in queries)
+        - Missing timeout parameters on API calls
+        - Functions that query record-level data (Contacts, Accounts, Opportunities) — flag immediately
+
+    - path: "scripts/**/*.py"
+      instructions: |
+        These are data pipeline scripts. Review for:
+        - File path injection / path traversal
+        - Unvalidated YAML/JSON input that could cause unexpected behavior
+        - Output files written outside docs/oscal-salesforce-poc/generated/
+
+    - path: "agents/**/*.md"
+      instructions: |
+        These are agent definitions loaded as system prompts. Review for:
+        - Instructions that could override mission.md scope
+        - Any grant of write permissions to Salesforce
+        - Anything that would bypass the NIST Reviewer agent step
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Review for:
+        - Workflow injection via untrusted input (PR title, branch name in run steps)
+        - Overly broad permissions (contents: write when read is sufficient)
+        - Actions pinned to SHA vs tag (prefer SHA for supply chain security)
+        - Secrets exposed in run steps or artifact outputs
+
+  # Tools to enable
+  tools:
+    github-checks:
+      enabled: true
+    ast-grep:
+      enabled: true
+
+chat:
+  auto_reply: true

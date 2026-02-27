@@ -7,85 +7,60 @@ This project follows a simple changelog format and semantic versioning intent:
 - `Changed` for changes in existing behavior
 - `Fixed` for bug fixes
 - `Security` for hardening and security controls
-- `Deprecated` for soon-to-be removed features
 - `Removed` for now removed features
 
 ## [Unreleased]
 
 ### Added
-- Initial Azure-first scaffold:
-  - Python orchestrator API and provider adapter interface
-  - Terraform baseline for RG, Log Analytics, Service Bus, Storage, Key Vault, Container Apps, APIM
-  - GitHub Actions OIDC workflows for Terraform plan/apply
-  - Architecture documentation
-- Phased rollout runbook with rollback and release-validation (RV) gates.
-- Change control runbook for safe rollout and backout.
-- Azure tenant bootstrap runbook for secure setup before first deployment.
-- Secure coding standard aligned to Well-Architected pillars.
-- GitHub PR template enforcing risk, RV, and rollback fields.
-- Security CI workflow with Bandit + Terraform format checks.
-- CODEOWNERS policy for required reviewer routing by path.
-- Inline PR reviewer workflow for Terraform (`tflint`) and Python (`ruff`) feedback.
-- SIFT image factory scaffold:
-  - `infra/terraform/sift-image-factory` stack
-  - `scripts/sift-install.sh` and `scripts/sift-hardening.sh`
-  - `docs/sift-worker-runbook.md`
-- Rollout phase split into `Phase 4A (SIFT Image Factory)` and `Phase 4B (Sandbox Workers)`.
-- Evidence/sample storage model expanded with dedicated private containers:
-  - `samples-quarantine`, `memory-captures`, `disk-images`, `pcaps`, `case-artifacts`, `manifests`, `evidence`
-- Sample data tooling and governance:
-  - `scripts/upload-sample-data.sh`
-  - `docs/sample-data-catalog.md`
-- Cloud-only MCP capability added:
-  - `infra/terraform/cloud-mcp` scaffold
-  - `docs/cloud-mcp-architecture.md`
-  - role-scoped policy files (`config/role_model_policy.yaml`, `config/role_tool_policy.yaml`)
-  - orchestrator policy enforcement for model routing and tool authorization
-- Brutal-critic governance assets added:
-  - `docs/agents/brutal-critic-agent.md`
-  - `docs/templates/brutal-critic-review-template.md`
-  - change-control requirement to run brutal-critic for phase/architecture changes
-- CSA SSCF-aligned SaaS baseline foundation added:
-  - `docs/saas-baseline/README.md`
-  - `docs/saas-baseline/sscf-mapping-method.md`
-  - platform control catalogs:
-    - `config/saas_baseline_controls/salesforce.yaml`
-    - `config/saas_baseline_controls/servicenow.yaml`
-    - `config/saas_baseline_controls/workday.yaml`
-- Program operating artifacts added:
-  - `config/sscf_control_index.yaml`
-  - `schemas/baseline_assessment_schema.json`
-  - `docs/saas-baseline/raci.md`
-  - `docs/saas-baseline/exception-process.md`
-  - `docs/saas-baseline/quarterly-report-template.md`
-- SaaS baseline intake template added:
-  - `docs/saas-baseline/intake-template.md`
-- Brutal-critic audit workflow additions:
-  - `docs/agents/tasks/brutal-critic-audit-task.md`
-  - `docs/reviews/2026-02-24-brutal-critic-audit.md`
-  - `docs/reviews/2026-02-24-brutal-critic-backlog.md`
-- OSCAL POC for Salesforce assets:
-  - `docs/oscal-salesforce-poc/README.md`
-  - `docs/oscal-salesforce-poc/WIKI_UPDATE_2026-02-24.md`
-  - `config/oscal-salesforce/sbs_source.yaml`
-  - `config/oscal-salesforce/control_mapping.yaml`
-  - `config/oscal-salesforce/sbs_to_sscf_mapping.yaml`
-  - `scripts/oscal_import_sbs.py`
-  - `scripts/oscal_gap_map.py`
-- Security hardening and QA/QC improvements:
-  - `app/main.py` adds strict request model (`extra='forbid'`) and HTTP request size guard.
-  - `scripts/oscal_gap_map.py` adds `mapping_confidence` in mapped artifacts and summary counts.
-  - `scripts/oscal_smoke_test.sh` adds one-command import/map smoke test.
-  - `.github/workflows/security-checks.yml` adds `tfsec` and `checkov` scans for Terraform.
-- OSCAL collector-mock test data and direct SBS control mapping:
-  - `scripts/oscal_gap_map.py` supports direct `SBS-*` control IDs from collector outputs.
-  - `docs/oscal-salesforce-poc/examples/gap-analysis-salesforce-collector-mock.json` adds full 45-control mock run data.
-  - Smoke test now uses collector-style mock dataset by default.
-- UK Salesforce partial copy exception record added for data classification and data masking gaps:
-  - `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.md`
-  - `docs/saas-baseline/exceptions/UK-SF-PARTIALCOPY-EXC-2026-02-24.docx`
+- OpenClaw agent framework: mission.md, AGENTS.md, 5 agent definitions, 4 skill SKILL.md files
+- `skills/sfdc_connect/sfdc_connect.py` — read-only Salesforce collector CLI (7 scopes, Tooling API)
+- Agent architecture: orchestrator-workers pattern with NIST AI RMF auditing layer
+- `contexts/` — system prompts for assess/review/research modes
+- `hooks/hooks.json` — session lifecycle (start/end/compact)
+- `prompts/README.md` — prompting playbook and anti-patterns
+- `docs/architecture-blueprint.md` — full agent/skill/model breakdown with system diagram
+- `scripts/validate_env.py` — pre-flight check script for local system requirements
+- `.coderabbit.yaml` — AI code review with Salesforce-specific security instructions
+- `.github/dependabot.yml` — weekly pip + Actions dependency updates
+- `.github/workflows/ci.yml` — ruff, bandit, pip-audit, pytest
+- `.github/workflows/codeql.yml` — weekly + PR CodeQL semantic analysis
+- `.github/workflows/dependency-review.yml` — block PRs introducing HIGH/CRITICAL CVEs
+- `.env.example` and `setup.sh` for colleague onboarding
+
+### Changed
+- `pyproject.toml`: removed Azure/FastAPI deps, added anthropic + simple-salesforce + click
+- `README.md`: full rewrite for saas-sec-agents identity and architecture
+- `.github/workflows/security-checks.yml`: replaced Terraform checks with bandit + pip-audit + gitleaks
+- `.github/workflows/pr-inline-review.yml`: replaced tflint with ruff + bandit inline annotations
+- `CODEOWNERS`: updated with agents/, mission.md, skills/, config/, generated/ ownership
+
+### Removed
+- `app/` — FastAPI model router (Azure/DFIR scaffold, not relevant to OSCAL/SSCF system)
+- `infra/terraform/` — Azure infrastructure (not relevant to this system)
+- `.github/workflows/terraform-plan.yml` — Terraform CI
+- `.github/workflows/terraform-apply.yml` — Terraform CI
+- `.github/workflows/cloud-mcp-plan.yml` — Azure MCP CI
+- `docs/architecture.md` — Azure + Copilot Studio architecture doc
+- `docs/azure-tenant-bootstrap.md` — Azure tenant setup doc
+- `docs/cloud-mcp-architecture.md` — Azure cloud MCP architecture
+- `docs/sift-worker-runbook.md` — SIFT/DFIR worker runbook
+- `docs/sample-data-catalog.md` — Azure evidence plane catalog
+
+### Security
+- Branch protection on main: 1 PR review required, no force push, stale review dismissal
+- Secret scanning and push protection: enabled org-wide
+- Dependabot alerts and auto-fix: enabled
+- CodeQL analysis: weekly + PR trigger, scoped to skills/ and scripts/
+- Dependency review: blocks HIGH/CRITICAL CVE introductions at PR time
+- Gitleaks: full-history secret scanning on every push and PR
 
 ## [0.1.0] - 2026-02-23
 
 ### Added
-- First project bootstrap release.
+- CSA SSCF-aligned SaaS baseline controls for Salesforce, ServiceNow, and Workday
+- `config/sscf_control_index.yaml` and `schemas/baseline_assessment_schema.json`
+- `docs/saas-baseline/` — exception process, RACI, intake template, meeting pack
+- OSCAL pipeline scripts: `scripts/oscal_gap_map.py`, `scripts/oscal_import_sbs.py`
+- OSCAL control mappings: `config/oscal-salesforce/`
+- End-to-end OSCAL example outputs in `docs/oscal-salesforce-poc/generated/`
+- UK Salesforce partial copy exception record

@@ -1,35 +1,28 @@
-# Next Session Prompts (Current Restart Pack)
+# Next Session Prompts — saas-sec-agents
 
-## Current State Snapshot
-- Repo: `/Users/jerijuar/multiagent-azure`
+## Current State
+- Repo: `https://github.com/SiCar10mw/saas-sec-agents`
 - Branch: `main`
-- Remote: `git@github.com-443:SiCar10mw/multiagent-azure.git`
-- Git state: `main...origin/main` (fully synced).
-- Primary workstream: `OSCAL POC for Salesforce` with business-facing deliverable outputs.
-- GitHub CLI auth: restored and validated via `gh run rerun/watch/list`.
+- Local path: `/Users/jerijuar/multiagent-azure`
 
-## What Is Completed
-- Terraform tfsec blocker fixed:
-  - commit `b50a447`
-  - change: Key Vault deny-by-default network ACL in `infra/terraform/main.tf`
-  - result: `Run tfsec` passes in CI.
-- Security checks are strict and active:
-  - tfsec fails on `HIGH+`
-  - checkov hard-fails on `HIGH,CRITICAL`; soft-fails on `LOW,MEDIUM`
-- OSCAL end-to-end example outputs generated and committed:
-  - commit `929dec9`
-  - `docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json`
-  - `docs/oscal-salesforce-poc/generated/salesforce_oscal_gap_matrix_latest.md`
-  - `docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_Example_Output_2026-02-25.md`
-  - `docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_Example_Output_2026-02-25.docx`
-- Example run summary (collector-style SFDC gap file):
-  - controls/findings: `45`
-  - mapped: `45`
-  - unmapped: `0`
-  - invalid mappings: `0`
-  - status: `24 pass / 12 partial / 9 fail`
+## What Is Complete
+- Phase 1: OpenClaw agent framework, sfdc-connect CLI, CI/CD security stack
+- Architecture blueprint: `docs/architecture-blueprint.md`
+- Pre-flight validation script: `scripts/validate_env.py`
+- All Azure/DFIR/Terraform content removed
+- Security CI: bandit, pip-audit, gitleaks, CodeQL, dependency-review, ruff
+- CodeRabbit: `.coderabbit.yaml` (activate at https://coderabbit.ai)
+- Dependabot: weekly pip + Actions updates
 
-## Prompt 1: OSCAL With Real Business Unit Gap File
+## Prompt 1: Phase 2 — OSCAL Assessment Pipeline
+```text
+Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
+Phase 1 is complete. Repo is SiCar10mw/saas-sec-agents.
+Build Phase 2: skills/oscal_assess/oscal_assess.py and skills/sscf_benchmark/sscf_benchmark.py
+wrapping the existing scripts/oscal_gap_map.py. End-to-end: sfdc-connect → oscal-assess → backlog.json.
+```
+
+## Prompt 2: OSCAL With Real Business Unit Gap File
 ```text
 Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION_PROMPTS.md.
 Use the OSCAL pipeline with my real Salesforce gap-analysis JSON and regenerate:
@@ -38,24 +31,16 @@ Use the OSCAL pipeline with my real Salesforce gap-analysis JSON and regenerate:
 Then refresh the business-unit deliverable DOCX with run-specific metrics and top remediation priorities.
 ```
 
-## Prompt 2: Publish Business Unit Pack
+## Prompt 3: GitHub Org Setup
 ```text
-Create a client-facing package from the latest OSCAL output:
-1) update docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_Example_Output_2026-02-25.md
-2) regenerate DOCX from reference template
-3) add an appendix table of all fail/partial controls with owner + due date
-Keep wording executive-friendly and audit-ready.
+My GitHub org is SiCar10mw. I need to:
+1. Enable 2FA requirement for all members (requires admin:org scope — do manually in GitHub org settings)
+2. Set Actions permissions to read-only
+3. Add my colleague's GitHub username to CODEOWNERS and flip enforce_admins=true on branch protection
+4. Activate CodeRabbit at https://coderabbit.ai (requires manual GitHub App install)
 ```
 
-## Prompt 3: Continue Security Hardening After OSCAL Pack
-```text
-Use the latest failed security-checks run and remediate checkov HIGH/CRITICAL findings in small safe increments.
-Start with storage + service bus + APIM findings and rerun CI after each increment.
-```
-
-## First Commands To Run Next Session
-```bash
-git -C /Users/jerijuar/multiagent-azure status -sb
-git -C /Users/jerijuar/multiagent-azure log --oneline -n 10
-cd /Users/jerijuar/multiagent-azure && unset GITHUB_TOKEN GH_TOKEN; gh run list --workflow security-checks.yml --limit 8
-```
+## Last Known OSCAL Run Metrics
+- controls/findings: 45
+- mapped: 45 / unmapped: 0 / invalid: 0
+- status: 24 pass / 12 partial / 9 fail
