@@ -456,6 +456,12 @@ Examples:
 
     suite = CheckSuite()
 
+    # When --json is set, route human-readable output to stderr so stdout is
+    # clean JSON that callers (e.g. CI scripts) can parse with json.load().
+    _real_stdout = None
+    if args.json:
+        _real_stdout, sys.stdout = sys.stdout, sys.stderr
+
     print(header("saas-sec-agents — Environment Pre-flight Check"))
     print(f"  Repo root: {repo_root}")
     print(f"  Python:    {sys.executable}")
@@ -484,13 +490,16 @@ Examples:
     if args.fix:
         attempt_fix(suite)
 
-    if args.json:
+    if args.json and _real_stdout is not None:
+        rc = 1 if suite.hard_failures else 0
+        sys.stdout = _real_stdout
         print(
             json.dumps(
                 [{"name": r.name, "status": r.status, "message": r.message, "hard": r.hard} for r in suite.results],
                 indent=2,
             )
         )
+        return rc
 
     return print_summary(suite, args.ci)
 
