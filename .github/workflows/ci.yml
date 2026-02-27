@@ -67,7 +67,7 @@ jobs:
 
       - name: Run pre-flight check (non-credential checks only)
         run: |
-          python3 scripts/validate_env.py --ci --json > /tmp/preflight.json 2>&1 || true
+          python3 scripts/validate_env.py --ci --json > /tmp/preflight.json 2>/dev/null || true
           python3 - <<'PYEOF'
           import json, sys
           with open("/tmp/preflight.json") as f:

@@ -3,12 +3,13 @@ sfdc-connect — Salesforce org configuration collector for OSCAL/SBS/SSCF asses
 
 Read-only. Never writes to any Salesforce org. Credentials sourced from environment only.
 """
+
 from __future__ import annotations
 
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import click
@@ -27,8 +28,7 @@ def _check_env() -> None:
     missing = [k for k in REQUIRED_ENV if not os.getenv(k)]
     if missing:
         click.echo(
-            f"ERROR: Missing required env vars: {', '.join(missing)}\n"
-            "Copy .env.example to .env and fill in values.",
+            f"ERROR: Missing required env vars: {', '.join(missing)}\nCopy .env.example to .env and fill in values.",
             err=True,
         )
         sys.exit(1)
@@ -56,7 +56,7 @@ def _result_envelope(org: str, env: str, scope: str, data: Any) -> dict:
     return {
         "org": org,
         "env": env,
-        "collected_at_utc": datetime.now(timezone.utc).isoformat(),
+        "collected_at_utc": datetime.now(UTC).isoformat(),
         "scope": scope,
         "raw": data,
     }
@@ -76,6 +76,7 @@ def _write_output(result: dict, out: str | None) -> None:
 # Scope collectors
 # ---------------------------------------------------------------------------
 
+
 def collect_auth(sf: Any) -> dict:
     """Auth: SSO, MFA, login IP ranges, session settings."""
     data: dict[str, Any] = {}
@@ -84,7 +85,10 @@ def collect_auth(sf: Any) -> dict:
     try:
         tooling_result = sf.restful(
             "tooling/query",
-            params={"q": "SELECT SessionTimeout, RequireHttps, ForceLogoutOnSessionTimeout, LockSessionsToDomain FROM SecuritySettings LIMIT 1"},
+            params={
+                "q": "SELECT SessionTimeout, RequireHttps, ForceLogoutOnSessionTimeout,"
+                " LockSessionsToDomain FROM SecuritySettings LIMIT 1"
+            },
         )
         data["session_settings"] = tooling_result
     except Exception as exc:
@@ -94,7 +98,10 @@ def collect_auth(sf: Any) -> dict:
     try:
         mfa_result = sf.restful(
             "tooling/query",
-            params={"q": "SELECT MultiFactorAuthenticationForUserUI, MultiFactorAuthenticationForUserUIBlock FROM OrganizationSettings LIMIT 1"},
+            params={
+                "q": "SELECT MultiFactorAuthenticationForUserUI, MultiFactorAuthenticationForUserUIBlock"
+                " FROM OrganizationSettings LIMIT 1"
+            },
         )
         data["mfa_org_settings"] = mfa_result
     except Exception as exc:
@@ -102,17 +109,13 @@ def collect_auth(sf: Any) -> dict:
 
     # Identity providers (SSO config)
     try:
-        data["sso_providers"] = sf.query_all(
-            "SELECT Id, Name, SamlVersion, IsEnabled FROM SamlSsoConfig"
-        )
+        data["sso_providers"] = sf.query_all("SELECT Id, Name, SamlVersion, IsEnabled FROM SamlSsoConfig")
     except Exception:
         data["sso_providers"] = {"totalSize": 0, "records": []}
 
     # Login IP ranges (trusted IPs)
     try:
-        data["login_ip_ranges"] = sf.query_all(
-            "SELECT Id, ProfileId, StartAddress, EndAddress FROM LoginIpRange"
-        )
+        data["login_ip_ranges"] = sf.query_all("SELECT Id, ProfileId, StartAddress, EndAddress FROM LoginIpRange")
     except Exception:
         data["login_ip_ranges"] = {"totalSize": 0, "records": []}
 
@@ -214,9 +217,7 @@ def collect_oauth(sf: Any) -> dict:
 def collect_secconf(sf: Any) -> dict:
     """Security health check baseline score."""
     try:
-        data = sf.query_all(
-            "SELECT Score, LastModifiedDate FROM SecurityHealthCheck LIMIT 1"
-        )
+        data = sf.query_all("SELECT Score, LastModifiedDate FROM SecurityHealthCheck LIMIT 1")
     except Exception:
         data = {"note": "SecurityHealthCheck not available via SOQL — check Setup > Security Health Check in UI"}
     return {"health_check": data}
@@ -238,6 +239,7 @@ VALID_SCOPES = list(SCOPE_COLLECTORS.keys()) + ["all"]
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 @click.group()
 def cli() -> None:

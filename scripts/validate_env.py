@@ -10,6 +10,7 @@ Usage:
     python3 scripts/validate_env.py --ci       # no color, strict exit code
     python3 scripts/validate_env.py --fix      # attempt to auto-install missing Python deps
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,8 +22,6 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
-
 
 # ---------------------------------------------------------------------------
 # Output helpers
@@ -55,12 +54,13 @@ def header(msg: str) -> str:
 # Check result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CheckResult:
     name: str
-    status: str          # "pass" | "warn" | "fail"
+    status: str  # "pass" | "warn" | "fail"
     message: str
-    hard: bool = True    # hard=True means failure blocks the pipeline
+    hard: bool = True  # hard=True means failure blocks the pipeline
 
 
 @dataclass
@@ -89,15 +89,19 @@ class CheckSuite:
 # Checks
 # ---------------------------------------------------------------------------
 
+
 def check_python_version(suite: CheckSuite) -> None:
     v = sys.version_info
     if v >= (3, 11):
         suite.add(CheckResult("python", "pass", f"Python {v.major}.{v.minor}.{v.micro}"))
     else:
-        suite.add(CheckResult(
-            "python", "fail",
-            f"Python {v.major}.{v.minor} found — 3.11+ required. Install via pyenv or homebrew.",
-        ))
+        suite.add(
+            CheckResult(
+                "python",
+                "fail",
+                f"Python {v.major}.{v.minor} found — 3.11+ required. Install via pyenv or homebrew.",
+            )
+        )
 
 
 def check_uv(suite: CheckSuite) -> None:
@@ -106,11 +110,14 @@ def check_uv(suite: CheckSuite) -> None:
         result = subprocess.run(["uv", "--version"], capture_output=True, text=True)
         suite.add(CheckResult("uv", "pass", result.stdout.strip()))
     else:
-        suite.add(CheckResult(
-            "uv", "warn",
-            "uv not found. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh",
-            hard=False,
-        ))
+        suite.add(
+            CheckResult(
+                "uv",
+                "warn",
+                "uv not found. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh",
+                hard=False,
+            )
+        )
 
 
 def check_git(suite: CheckSuite) -> None:
@@ -128,11 +135,14 @@ def check_gh_cli(suite: CheckSuite) -> None:
         result = subprocess.run(["gh", "--version"], capture_output=True, text=True)
         suite.add(CheckResult("gh-cli", "pass", result.stdout.splitlines()[0].strip(), hard=False))
     else:
-        suite.add(CheckResult(
-            "gh-cli", "warn",
-            "gh CLI not found (optional). Install: https://cli.github.com",
-            hard=False,
-        ))
+        suite.add(
+            CheckResult(
+                "gh-cli",
+                "warn",
+                "gh CLI not found (optional). Install: https://cli.github.com",
+                hard=False,
+            )
+        )
 
 
 def check_env_file(suite: CheckSuite) -> None:
@@ -140,10 +150,13 @@ def check_env_file(suite: CheckSuite) -> None:
     example_path = Path(".env.example")
     if not env_path.exists():
         if example_path.exists():
-            suite.add(CheckResult(
-                ".env", "fail",
-                ".env not found. Copy .env.example to .env and fill in values.",
-            ))
+            suite.add(
+                CheckResult(
+                    ".env",
+                    "fail",
+                    ".env not found. Copy .env.example to .env and fill in values.",
+                )
+            )
         else:
             suite.add(CheckResult(".env", "fail", "Neither .env nor .env.example found."))
         return
@@ -166,12 +179,12 @@ def check_env_vars(suite: CheckSuite) -> None:
         env_values.setdefault(k, v)
 
     checks = [
-        ("SF_USERNAME",        "Salesforce username",         True),
-        ("SF_PASSWORD",        "Salesforce password",         True),
-        ("SF_SECURITY_TOKEN",  "Salesforce security token",   True),
-        ("ANTHROPIC_API_KEY",  "Anthropic API key",           True),
-        ("SF_DOMAIN",          "Salesforce domain (optional)", False),
-        ("SF_INSTANCE_URL",    "Salesforce instance URL (optional)", False),
+        ("SF_USERNAME", "Salesforce username", True),
+        ("SF_PASSWORD", "Salesforce password", True),
+        ("SF_SECURITY_TOKEN", "Salesforce security token", True),
+        ("ANTHROPIC_API_KEY", "Anthropic API key", True),
+        ("SF_DOMAIN", "Salesforce domain (optional)", False),
+        ("SF_INSTANCE_URL", "Salesforce instance URL (optional)", False),
     ]
 
     for key, description, hard in checks:
@@ -180,30 +193,38 @@ def check_env_vars(suite: CheckSuite) -> None:
             masked = val[:4] + "****" if len(val) > 4 else "****"
             suite.add(CheckResult(key, "pass", f"{description} — set ({masked})", hard=hard))
         elif hard:
-            suite.add(CheckResult(
-                key, "fail",
-                f"{description} — not set. Add to .env.",
-                hard=True,
-            ))
+            suite.add(
+                CheckResult(
+                    key,
+                    "fail",
+                    f"{description} — not set. Add to .env.",
+                    hard=True,
+                )
+            )
         else:
             suite.add(CheckResult(key, "warn", f"{description} — not set (optional)", hard=False))
 
 
-def check_python_package(suite: CheckSuite, package: str, import_name: str | None,
-                          min_version: str | None, hard: bool = True) -> None:
+def check_python_package(
+    suite: CheckSuite, package: str, import_name: str | None, min_version: str | None, hard: bool = True
+) -> None:
     imp = import_name or package.replace("-", "_")
     spec = importlib.util.find_spec(imp)
     if spec is None:
-        suite.add(CheckResult(
-            package, "fail" if hard else "warn",
-            f"Not installed. Run: pip install {package}",
-            hard=hard,
-        ))
+        suite.add(
+            CheckResult(
+                package,
+                "fail" if hard else "warn",
+                f"Not installed. Run: pip install {package}",
+                hard=hard,
+            )
+        )
         return
 
     # Try to get version
     try:
         from importlib.metadata import version as _pkg_version
+
         installed_version = _pkg_version(package)
     except Exception:
         installed_version = "unknown"
@@ -213,11 +234,14 @@ def check_python_package(suite: CheckSuite, package: str, import_name: str | Non
             installed_parts = tuple(int(x) for x in installed_version.split(".")[:3])
             required_parts = tuple(int(x) for x in min_version.split(".")[:3])
             if installed_parts < required_parts:
-                suite.add(CheckResult(
-                    package, "warn",
-                    f"v{installed_version} installed, v{min_version}+ recommended",
-                    hard=False,
-                ))
+                suite.add(
+                    CheckResult(
+                        package,
+                        "warn",
+                        f"v{installed_version} installed, v{min_version}+ recommended",
+                        hard=False,
+                    )
+                )
                 return
         except Exception:
             pass
@@ -227,18 +251,18 @@ def check_python_package(suite: CheckSuite, package: str, import_name: str | Non
 
 def check_python_packages(suite: CheckSuite) -> None:
     hard_packages = [
-        ("anthropic",          "anthropic",          "0.40.0", True),
-        ("simple-salesforce",  "simple_salesforce",  "1.12.6", True),
-        ("click",              "click",              "8.1.0",  True),
-        ("pydantic",           "pydantic",           "2.8.0",  True),
-        ("PyYAML",             "yaml",               "6.0.2",  True),
-        ("python-dotenv",      "dotenv",             "1.0.0",  True),
+        ("anthropic", "anthropic", "0.40.0", True),
+        ("simple-salesforce", "simple_salesforce", "1.12.6", True),
+        ("click", "click", "8.1.0", True),
+        ("pydantic", "pydantic", "2.8.0", True),
+        ("PyYAML", "yaml", "6.0.2", True),
+        ("python-dotenv", "dotenv", "1.0.0", True),
     ]
     soft_packages = [
-        ("ruff",      "ruff",     None, False),
-        ("bandit",    "bandit",   None, False),
+        ("ruff", "ruff", None, False),
+        ("bandit", "bandit", None, False),
         ("pip-audit", "pip_audit", None, False),
-        ("pytest",    "pytest",   None, False),
+        ("pytest", "pytest", None, False),
     ]
     for pkg, imp, min_v, hard in hard_packages + soft_packages:
         check_python_package(suite, pkg, imp, min_v, hard=hard)
@@ -257,10 +281,13 @@ def check_repo_layout(suite: CheckSuite) -> None:
     ]
     missing = [str(p) for p in required if not p.exists()]
     if missing:
-        suite.add(CheckResult(
-            "repo-layout", "fail",
-            f"Missing required files: {', '.join(missing)}",
-        ))
+        suite.add(
+            CheckResult(
+                "repo-layout",
+                "fail",
+                f"Missing required files: {', '.join(missing)}",
+            )
+        )
     else:
         suite.add(CheckResult("repo-layout", "pass", "All required repo files present"))
 
@@ -269,32 +296,43 @@ def check_sfdc_connect_importable(suite: CheckSuite) -> None:
     # Try running via subprocess first (works regardless of install state)
     result = subprocess.run(
         [sys.executable, "-m", "skills.sfdc_connect.sfdc_connect", "--help"],
-        capture_output=True, text=True, cwd=Path.cwd(),
+        capture_output=True,
+        text=True,
+        cwd=Path.cwd(),
     )
     if result.returncode == 0:
         suite.add(CheckResult("sfdc-connect-module", "pass", "sfdc-connect --help OK"))
     else:
-        suite.add(CheckResult(
-            "sfdc-connect-module", "fail",
-            "skills.sfdc_connect not importable. Run: ./setup.sh or: pip install -e .",
-        ))
+        suite.add(
+            CheckResult(
+                "sfdc-connect-module",
+                "fail",
+                "skills.sfdc_connect not importable. Run: ./setup.sh or: pip install -e .",
+            )
+        )
 
 
 def check_docs_generated_dir(suite: CheckSuite) -> None:
     path = Path("docs/oscal-salesforce-poc/generated")
     if path.exists():
         count = len(list(path.glob("*")))
-        suite.add(CheckResult(
-            "generated-dir", "pass",
-            f"docs/.../generated/ exists ({count} files)",
-            hard=False,
-        ))
+        suite.add(
+            CheckResult(
+                "generated-dir",
+                "pass",
+                f"docs/.../generated/ exists ({count} files)",
+                hard=False,
+            )
+        )
     else:
-        suite.add(CheckResult(
-            "generated-dir", "warn",
-            "docs/oscal-salesforce-poc/generated/ does not exist — will be created on first run",
-            hard=False,
-        ))
+        suite.add(
+            CheckResult(
+                "generated-dir",
+                "warn",
+                "docs/oscal-salesforce-poc/generated/ does not exist — will be created on first run",
+                hard=False,
+            )
+        )
 
 
 def check_anthropic_api_key_format(suite: CheckSuite) -> None:
@@ -305,22 +343,38 @@ def check_anthropic_api_key_format(suite: CheckSuite) -> None:
     if key.startswith("sk-ant-"):
         suite.add(CheckResult("anthropic-key-format", "pass", "API key format looks correct"))
     else:
-        suite.add(CheckResult(
-            "anthropic-key-format", "warn",
-            "ANTHROPIC_API_KEY doesn't start with 'sk-ant-' — double-check it's a valid key",
-            hard=False,
-        ))
+        suite.add(
+            CheckResult(
+                "anthropic-key-format",
+                "warn",
+                "ANTHROPIC_API_KEY doesn't start with 'sk-ant-' — double-check it's a valid key",
+                hard=False,
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
 # Auto-fix
 # ---------------------------------------------------------------------------
 
+
 def attempt_fix(suite: CheckSuite) -> None:
-    failures = [r for r in suite.results if r.status == "fail" and r.name not in (
-        "python", "git", ".env", "SF_USERNAME", "SF_PASSWORD",
-        "SF_SECURITY_TOKEN", "ANTHROPIC_API_KEY", "repo-layout",
-    )]
+    failures = [
+        r
+        for r in suite.results
+        if r.status == "fail"
+        and r.name
+        not in (
+            "python",
+            "git",
+            ".env",
+            "SF_USERNAME",
+            "SF_PASSWORD",
+            "SF_SECURITY_TOKEN",
+            "ANTHROPIC_API_KEY",
+            "repo-layout",
+        )
+    ]
     if not failures:
         print("\nNothing auto-fixable found.")
         return
@@ -339,6 +393,7 @@ def attempt_fix(suite: CheckSuite) -> None:
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
+
 
 def print_summary(suite: CheckSuite, ci_mode: bool) -> int:
     total = len(suite.results)
@@ -363,6 +418,7 @@ def print_summary(suite: CheckSuite, ci_mode: bool) -> int:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -400,6 +456,12 @@ Examples:
 
     suite = CheckSuite()
 
+    # When --json is set, route human-readable output to stderr so stdout is
+    # clean JSON that callers (e.g. CI scripts) can parse with json.load().
+    _real_stdout = None
+    if args.json:
+        _real_stdout, sys.stdout = sys.stdout, sys.stderr
+
     print(header("saas-sec-agents — Environment Pre-flight Check"))
     print(f"  Repo root: {repo_root}")
     print(f"  Python:    {sys.executable}")
@@ -428,11 +490,16 @@ Examples:
     if args.fix:
         attempt_fix(suite)
 
-    if args.json:
-        print(json.dumps([
-            {"name": r.name, "status": r.status, "message": r.message, "hard": r.hard}
-            for r in suite.results
-        ], indent=2))
+    if args.json and _real_stdout is not None:
+        rc = 1 if suite.hard_failures else 0
+        sys.stdout = _real_stdout
+        print(
+            json.dumps(
+                [{"name": r.name, "status": r.status, "message": r.message, "hard": r.hard} for r in suite.results],
+                indent=2,
+            )
+        )
+        return rc
 
     return print_summary(suite, args.ci)
 

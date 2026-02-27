@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
-def _load_json(path: Path) -> Dict[str, Any]:
+def _load_json(path: Path) -> dict[str, Any]:
     data = json.loads(path.read_text())
     if not isinstance(data, dict):
         raise ValueError(f"Expected JSON object at {path}")
     return data
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
+def _load_yaml(path: Path) -> dict[str, Any]:
     try:
         import yaml  # type: ignore
     except ModuleNotFoundError as exc:
@@ -26,14 +26,14 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     return data
 
 
-def _findings(gap: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _findings(gap: dict[str, Any]) -> list[dict[str, Any]]:
     findings = gap.get("findings", [])
     if not isinstance(findings, list):
         raise ValueError("gap-analysis JSON must include findings[]")
     return [f for f in findings if isinstance(f, dict)]
 
 
-def _status_summary(items: List[Dict[str, Any]]) -> Dict[str, int]:
+def _status_summary(items: list[dict[str, Any]]) -> dict[str, int]:
     summary = {"pass": 0, "fail": 0, "partial": 0, "not_applicable": 0}
     for item in items:
         status = str(item.get("status", "")).strip()
@@ -45,16 +45,16 @@ def _status_summary(items: List[Dict[str, Any]]) -> Dict[str, int]:
 def _to_markdown(
     assessment_id: str,
     control_count: int,
-    mapped_items: List[Dict[str, Any]],
-    unmapped_items: List[Dict[str, Any]],
-    invalid_mapping_entries: List[str],
+    mapped_items: list[dict[str, Any]],
+    unmapped_items: list[dict[str, Any]],
+    invalid_mapping_entries: list[str],
 ) -> str:
     summary = _status_summary(mapped_items)
     lines = [
         "# Salesforce OSCAL Gap Matrix (POC)",
         "",
         f"- Assessment ID: `{assessment_id}`",
-        f"- Generated UTC: `{datetime.now(timezone.utc).isoformat()}`",
+        f"- Generated UTC: `{datetime.now(UTC).isoformat()}`",
         f"- SBS controls in catalog: `{control_count}`",
         f"- Mapped findings: `{len(mapped_items)}`",
         f"- Unmapped findings: `{len(unmapped_items)}`",
@@ -66,7 +66,8 @@ def _to_markdown(
         f"- not_applicable: `{summary['not_applicable']}`",
         "",
         "## Control Mapping Table",
-        "| Legacy Control ID | SBS Control ID | SBS Title | Mapping Confidence | SSCF Controls | Status | Severity | Owner | Due Date |",
+        "| Legacy Control ID | SBS Control ID | SBS Title | Mapping Confidence"
+        " | SSCF Controls | Status | Severity | Owner | Due Date |",
         "|---|---|---|---|---|---|---|---|---|",
     ]
 
@@ -91,7 +92,8 @@ def _to_markdown(
         lines.append("- None")
     else:
         for item in unmapped_items:
-            lines.append(f"- `{item.get('legacy_control_id', '')}` ({item.get('status', '')}, {item.get('severity', '')})")
+            cid = item.get("legacy_control_id", "")
+            lines.append(f"- `{cid}` ({item.get('status', '')}, {item.get('severity', '')})")
 
     lines += ["", "## Invalid Mapping Entries"]
     if not invalid_mapping_entries:
@@ -136,7 +138,7 @@ def main() -> int:
 
     mapping_cfg = _load_yaml(mapping_path)
     mappings = mapping_cfg.get("mappings", [])
-    map_by_legacy: Dict[str, Dict[str, Any]] = {}
+    map_by_legacy: dict[str, dict[str, Any]] = {}
     for row in mappings:
         if isinstance(row, dict):
             legacy = str(row.get("legacy_control_id", "")).strip()
@@ -147,9 +149,9 @@ def main() -> int:
     sscf_defaults_by_category = sscf_map_cfg.get("defaults_by_category", {})
     sscf_overrides = sscf_map_cfg.get("control_overrides", {})
 
-    mapped_items: List[Dict[str, Any]] = []
-    unmapped_items: List[Dict[str, Any]] = []
-    invalid_mapping_entries: List[str] = []
+    mapped_items: list[dict[str, Any]] = []
+    unmapped_items: list[dict[str, Any]] = []
+    invalid_mapping_entries: list[str] = []
 
     for finding in findings:
         legacy_control_id = str(finding.get("control_id", "")).strip()
@@ -228,7 +230,7 @@ def main() -> int:
 
     backlog_payload = {
         "assessment_id": assessment_id,
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
         "catalog_version": controls_payload.get("catalog", {}).get("version"),
         "framework": "CSA_SSCF",
         "summary": {

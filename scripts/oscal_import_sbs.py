@@ -5,12 +5,12 @@ import argparse
 import json
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import defusedxml.ElementTree as ET  # safer XML parsing (prevents XXE/entity expansion)
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
+def _load_yaml(path: Path) -> dict[str, Any]:
     try:
         import yaml  # type: ignore
     except ModuleNotFoundError as exc:
@@ -21,7 +21,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     return data
 
 
-def _read_xml_bytes(source_cfg: Dict[str, Any], base_dir: Path) -> bytes:
+def _read_xml_bytes(source_cfg: dict[str, Any], base_dir: Path) -> bytes:
     local_xml = source_cfg.get("local_xml_path")
     if isinstance(local_xml, str) and local_xml.strip():
         local_path = (base_dir / local_xml).resolve()
@@ -39,12 +39,12 @@ def _read_xml_bytes(source_cfg: Dict[str, Any], base_dir: Path) -> bytes:
         return response.read()
 
 
-def _text(parent: ET.Element, name: str, ns: Dict[str, str]) -> str:
+def _text(parent: ET.Element, name: str, ns: dict[str, str]) -> str:
     value = parent.findtext(f"s:{name}", default="", namespaces=ns)
     return value.strip()
 
 
-def _parse_controls(xml_bytes: bytes) -> Dict[str, Any]:
+def _parse_controls(xml_bytes: bytes) -> dict[str, Any]:
     root = ET.fromstring(xml_bytes)
     ns = {"s": "https://securitybenchmark.dev/sbs/v1"}
 
@@ -53,7 +53,7 @@ def _parse_controls(xml_bytes: bytes) -> Dict[str, Any]:
     title = _text(metadata, "title", ns) if metadata is not None else ""
     total_controls = _text(metadata, "total_controls", ns) if metadata is not None else ""
 
-    controls: List[Dict[str, Any]] = []
+    controls: list[dict[str, Any]] = []
     for category in root.findall("s:controls/s:category", ns):
         category_name = _text(category, "name", ns)
         category_description = _text(category, "description", ns)
@@ -83,9 +83,7 @@ def _parse_controls(xml_bytes: bytes) -> Dict[str, Any]:
                         if remediation_scope_node is not None
                         else "",
                     },
-                    "task": {
-                        "title_template": _text(task_node, "title_template", ns) if task_node is not None else ""
-                    },
+                    "task": {"title_template": _text(task_node, "title_template", ns) if task_node is not None else ""},
                 }
             )
 

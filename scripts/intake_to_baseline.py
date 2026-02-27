@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     import yaml  # type: ignore
@@ -13,16 +13,16 @@ except Exception:  # pragma: no cover
     yaml = None
 
 
-def parse_event_types(value: str) -> List[str]:
+def parse_event_types(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def parse_outcomes(value: str) -> List[str]:
+def parse_outcomes(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def build_profile(data: Dict[str, Any]) -> Dict[str, Any]:
-    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def build_profile(data: dict[str, Any]) -> dict[str, Any]:
+    generated = datetime.now(UTC).strftime("%Y-%m-%d")
     events = parse_event_types(data.get("event_types", ""))
     outcomes = parse_outcomes(data.get("top_3_outcomes", ""))
 
@@ -119,7 +119,7 @@ def build_profile(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_markdown(profile: Dict[str, Any]) -> str:
+def build_markdown(profile: dict[str, Any]) -> str:
     lines = [
         "# Generated Salesforce Baseline Configuration",
         "",
@@ -169,7 +169,7 @@ def main() -> int:
 
     profile = build_profile(data)
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out_dir = (root / args.out_dir).resolve()
     docs_out_dir = (root / args.docs_out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)

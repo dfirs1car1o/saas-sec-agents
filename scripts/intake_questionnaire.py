@@ -4,9 +4,8 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import List
 
 
 @dataclass
@@ -16,7 +15,7 @@ class PromptItem:
     multiline: bool = False
 
 
-PROMPTS: List[PromptItem] = [
+PROMPTS: list[PromptItem] = [
     PromptItem("program_name", "Program name:"),
     PromptItem("business_owner", "Business owner:"),
     PromptItem("security_owner", "Security owner:"),
@@ -63,7 +62,7 @@ def ask_question(item: PromptItem) -> str:
         return input("> ").strip()
 
     print("(Enter multiple lines. Submit an empty line to finish.)")
-    lines: List[str] = []
+    lines: list[str] = []
     while True:
         line = input()
         if line == "":
@@ -160,8 +159,8 @@ def main() -> int:
         result[item.key] = ask_question(item)
         print()
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    result["generated_at_utc"] = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    result["generated_at_utc"] = datetime.now(UTC).isoformat()
 
     json_path = out_dir / f"intake-{timestamp}.json"
     md_path = out_dir / f"intake-{timestamp}.md"
@@ -177,4 +176,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

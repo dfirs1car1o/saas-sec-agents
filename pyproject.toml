@@ -17,6 +17,9 @@ dependencies = [
 [project.scripts]
 sfdc-connect = "skills.sfdc_connect.sfdc_connect:cli"
 
+[tool.setuptools.packages.find]
+include = ["skills*"]
+
 [tool.uv]
 dev-dependencies = [
   "ruff>=0.6.0",
@@ -25,7 +28,7 @@ dev-dependencies = [
 ]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
