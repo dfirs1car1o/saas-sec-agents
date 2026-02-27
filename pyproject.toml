@@ -16,6 +16,8 @@ dependencies = [
 
 [project.scripts]
 sfdc-connect = "skills.sfdc_connect.sfdc_connect:cli"
+oscal-assess = "skills.oscal_assess.oscal_assess:cli"
+sscf-benchmark = "skills.sscf_benchmark.sscf_benchmark:cli"
 
 [tool.setuptools.packages.find]
 include = ["skills*"]
