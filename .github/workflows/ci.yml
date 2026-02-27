@@ -97,7 +97,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install -e ".[dev]" 2>/dev/null || pip install -e .
+      - run: pip install -e . && pip install pytest pytest-mock PyYAML click
       - name: Run tests (if any exist)
         run: |
           if [ -d tests/ ]; then
