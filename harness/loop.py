@@ -108,11 +108,14 @@ def _handle_tool_error(
     Signature: (tool_name: str, tool_input: dict, error: Exception) -> str
     The return value is a JSON string fed to the orchestrator as the tool result.
     """
-    # ── YOUR CODE HERE ──────────────────────────────────────────────────────
-    # Replace this placeholder with your chosen strategy.
-    # The orchestrator will see your return value and decide how to continue.
-    raise NotImplementedError(f"_handle_tool_error not implemented. Tool '{tool_name}' failed: {error}")
-    # ────────────────────────────────────────────────────────────────────────
+    # Critical pipeline stages: halt immediately.
+    # A hidden collector or assessor failure produces zero findings → false-pass assessment.
+    _CRITICAL_TOOLS = {"sfdc_connect_collect", "oscal_assess_assess"}
+    if tool_name in _CRITICAL_TOOLS:
+        raise RuntimeError(f"Critical tool '{tool_name}' failed — aborting to prevent false-pass assessment.\n{error}")
+    # Downstream stages (gap_map, benchmark): return structured error payload.
+    # The orchestrator can report partial results rather than aborting the whole run.
+    return json.dumps({"status": "error", "tool": tool_name, "message": str(error)})
 
 
 # ---------------------------------------------------------------------------
