@@ -1,124 +1,114 @@
-# Next Session Checkpoint — 2026-03-01 (Phase 3 DONE, PR #3 open)
+# Next Session Checkpoint — 2026-03-01 (All Phases Done, Ready for Dry Run)
 
 ## Session Summary
 
-Phase 3 complete. `harness/` package built: agentic `claude-opus-4-6` tool_use loop,
-Mem0+Qdrant session memory, `agent-loop run` CLI entry point, 3 new smoke tests.
-Corporate data scrub: CDW/BSS/GIS replaced across 33 files + file rename.
-CONTRIBUTING.md wiki written for colleague onboarding.
+This session completed Phase 4 and Phase 5:
+- **Phase 4** (PR #4 merged): `skills/report_gen/` — DOCX + Markdown governance output CLI, 3 smoke tests, harness tool wired
+- **Phase 5** (PR #5 merged): `scripts/gen_diagram.py` + `.github/workflows/diagram.yml` — auto-regenerating architecture diagram on every push to main; embedded in all future PR templates
+- Terminology fix: GIS → CorpIS throughout comments and CLI help text
+- Agent fixes: `reporter.md` CLI invocation corrected; `orchestrator.md` routing table updated to show exact tool call sequence; `harness/agents.py` `tool_names` updated to include `report_gen_generate`
 
 ---
 
 ## Phase Status
 
-| Phase | Status | PR | Notes |
+| Phase | Status | PR | Deliverable |
 |---|---|---|---|
-| Phase 1 | ✅ DONE | PR #1 merged | sfdc-connect + full CI stack |
+| Phase 1 | ✅ DONE | PR #1 merged | sfdc-connect CLI + full CI stack |
 | Phase 2 | ✅ DONE | PR #2 merged | oscal-assess + sscf-benchmark CLIs |
-| Phase 3 | ✅ DONE | PR #3 open → merge when CI green | harness/loop.py + Mem0 + Qdrant |
-| Phase 4 | 🔜 NEXT | — | report-gen DOCX pipeline |
+| Phase 3 | ✅ DONE | PR #3 merged | agent-loop harness + Mem0 + Qdrant |
+| Phase 4 | ✅ DONE | PR #4 merged | report-gen DOCX/MD governance skill |
+| Phase 5 | ✅ DONE | PR #5 merged | architecture diagram auto-generation |
+
+**The full pipeline is built. Only the ANTHROPIC_API_KEY is needed before a dry run.**
 
 ---
 
-## Open Items
+## What's Left Before Dry Run
 
-1. **Merge PR #3** — needs 1 approving review (branch protection rule)
-2. **Set `ANTHROPIC_API_KEY`** in `.env` and run `agent-loop run --dry-run --env dev --org test`
-3. **Colleague GitHub username** → add to CODEOWNERS, flip `enforce_admins=true`
-4. **Start Qdrant for full memory support**: `docker run -d -p 6333:6333 qdrant/qdrant`
-
----
-
-## CI Stack (All Green on main)
-
-| Check | Tool | Notes |
-|---|---|---|
-| Lint | ruff check + ruff format | line-length=120, select E/F/I/UP — now covers harness/ |
-| SAST | bandit -lll -ii | HIGH severity = hard fail — now covers harness/ |
-| Dependency CVEs | pip-audit | Runs after pip install -e . |
-| Secret scan | gitleaks CLI v8.21.2 | Free CLI, not paid gitleaks-action |
-| Tests | pytest tests/ -v | 6 smoke tests pass (3 pipeline + 3 harness) |
-| Pre-flight | validate_env.py --ci --json | Non-credential checks only in CI |
-| Static analysis | CodeQL Python | Weekly + PR scans |
-| AI code review | CodeRabbit Pro | .coderabbit.yaml with SF-specific rules |
-| Dependency review | dependency-review | Blocks HIGH/CRITICAL CVEs on PRs |
-
-### Key CI Config (do not revert)
-
-- `pytest` job installs: `pip install -e . && pip install pytest pytest-mock PyYAML click qdrant-client mem0ai`
-- `QDRANT_IN_MEMORY=1` set in pytest job env (no Docker in CI)
-- `[tool.setuptools.packages.find] include = ["skills*", "harness*"]`
-- `agent-loop = "harness.loop:cli"` entry point in pyproject.toml
-
----
-
-## Architecture (Current State)
-
-### Pipeline
-
-```
-sfdc-connect collect --scope all --out sfdc_raw.json
-    ↓
-oscal-assess assess --collector-output sfdc_raw.json --env dev --out gap_analysis.json
-    ↓
-scripts/oscal_gap_map.py → backlog.json + matrix.md
-    ↓
-sscf-benchmark benchmark --backlog backlog.json --out sscf_report.json
-    ↓ (Phase 4)
-report-gen generate --sscf-report sscf_report.json --backlog backlog.json --out governance.docx
-```
-
-Orchestrated via `agent-loop run` (claude-opus-4-6 + tool_use):
+### 1. Set the API key (5 minutes)
 ```bash
-agent-loop run --dry-run --env dev --org test-org        # no real org/credits for tools
-agent-loop run --env dev --org myorg.salesforce.com     # live run
+# Edit /Users/jerijuar/multiagent-azure/.env
+ANTHROPIC_API_KEY=sk-ant-...
 ```
+Create key at: https://console.anthropic.com/settings/keys
 
-### Harness Module
-
+### 2. Run the dry run (no Salesforce org needed)
+```bash
+cd /Users/jerijuar/multiagent-azure
+agent-loop run --dry-run --env dev --org test-org
 ```
-harness/
-├── agents.py     AgentConfig + ORCHESTRATOR (mission.md + orchestrator.md as system prompt)
-├── tools.py      4 Anthropic tool schemas + subprocess dispatchers
-├── memory.py     Mem0+Qdrant: build_client / load_memories / save_assessment
-└── loop.py       20-turn ReAct loop, critical/fail gate, agent-loop CLI
+Expected: orchestrator calls all 5 tools in sequence → writes outputs to
+`docs/oscal-salesforce-poc/generated/test-org/<date>/`
+
+### 3. Optional: Start Qdrant for full session memory
+```bash
+docker run -d -p 6333:6333 qdrant/qdrant
 ```
-
-### Error Handling (implemented)
-
-`_handle_tool_error` in `harness/loop.py`:
-- `sfdc_connect_collect`, `oscal_assess_assess` → **halt** (false-pass risk if silent)
-- `oscal_gap_map`, `sscf_benchmark_benchmark` → **structured error payload** (partial results ok)
+Without Qdrant, memory falls back silently (QDRANT_IN_MEMORY=1 also works).
 
 ---
 
-## Corporate Data (Scrubbed — Public Repo Safe)
+## Full Pipeline (Current State)
 
-All corporate identifiers replaced across 33 files:
-- CDW → Acme Corp
-- Business Security Services → SaaS Security Team
-- Global Information Security → Corporate Information Security
-- GIS (acronym) → CorpIS
-- Microsoft Sentinel → SIEM Platform
-- salesforce-prod → salesforce-production
+```
+agent-loop run --dry-run --env dev --org test-org
+   │
+   ├── sfdc_connect_collect  → sfdc_raw.json
+   ├── oscal_assess_assess   → gap_analysis.json    (45 controls, ~34% pass dry-run)
+   ├── oscal_gap_map         → backlog.json + matrix.md
+   ├── sscf_benchmark_benchmark → sscf_report.json  (7 domains, RED overall)
+   └── report_gen_generate   → app-owner .docx + CorpIS .md
+```
+
+All outputs land in: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
+Deliverables land in: `docs/oscal-salesforce-poc/deliverables/`
+
+---
+
+## CI Stack (9 tests, all green on main)
+
+| Check | Notes |
+|---|---|
+| ruff check + format | line-length=120, covers skills/ scripts/ harness/ |
+| bandit -lll -ii | HIGH severity = hard fail |
+| pip-audit | CVE scan after pip install -e . |
+| gitleaks CLI v8.21.2 | Full history secret scan |
+| pytest tests/ -v | 9 smoke tests: 3 harness + 3 pipeline + 3 report-gen |
+| validate_env --ci --json | Non-credential pre-flight checks only |
+| CodeQL Python | Weekly + PR |
+| CodeRabbit Pro | .coderabbit.yaml with SF-specific rules |
+| dependency-review | Blocks HIGH/CRITICAL CVEs on PRs |
+
+pytest CI install: `pip install -e . && pip install pytest pytest-mock PyYAML click qdrant-client mem0ai`
 
 ---
 
 ## Key Files
 
 ```
-mission.md                                   ← Read every session
-AGENTS.md                                    ← Agent roster
-docs/CONTRIBUTING.md                         ← New contributor wiki ✅ NEW
-harness/loop.py                              ← agent-loop CLI ✅ NEW
-harness/tools.py                             ← Tool schemas + dispatchers ✅ NEW
-harness/memory.py                            ← Mem0+Qdrant ✅ NEW
-tests/test_harness_dry_run.py                ← Harness smoke tests ✅ NEW
-pyproject.toml                               ← Entry points: sfdc-connect, oscal-assess,
-                                                sscf-benchmark, agent-loop
-config/sscf_control_index.yaml               ← Canonical SSCF control reference
-docs/oscal-salesforce-poc/generated/         ← All evidence outputs
+mission.md                                    ← Read every session
+AGENTS.md                                     ← Agent roster
+harness/loop.py                               ← agent-loop CLI (20-turn ReAct)
+harness/tools.py                              ← 5 tool schemas + dispatchers
+harness/memory.py                             ← Mem0+Qdrant session memory
+harness/agents.py                             ← ORCHESTRATOR config (5 tool_names)
+agents/orchestrator.md                        ← Routing table + quality gates
+agents/reporter.md                            ← report-gen tool call examples
+skills/report_gen/report_gen.py               ← DOCX/MD governance output CLI
+scripts/gen_diagram.py                        ← Architecture diagram generator
+docs/architecture.png                         ← Auto-regenerated reference diagram
+docs/oscal-salesforce-poc/generated/          ← All assessment outputs
+docs/oscal-salesforce-poc/deliverables/       ← Governance deliverables
 ```
+
+---
+
+## Open Items (Non-Blocking)
+
+1. **Colleague GitHub username** → add to CODEOWNERS, flip `enforce_admins=true`
+2. **NIST AI RMF pass** — run nist-reviewer context against dry-run sscf_report.json after first dry run
+3. **Live org assessment** — after dry run passes, run against real org in `.env`
 
 ---
 
@@ -127,15 +117,6 @@ docs/oscal-salesforce-poc/generated/         ← All evidence outputs
 ```bash
 cd /Users/jerijuar/multiagent-azure
 git checkout main && git pull
-git log --oneline -5
-pytest tests/ -v                             # should be 6/6
-agent-loop run --help
-```
-
-To start Phase 4:
-```
-Resume from NEXT_SESSION.md in /Users/jerijuar/multiagent-azure.
-Phase 3 DONE — PR #3 merged, all CI green.
-Build Phase 4: skills/report-gen/ DOCX + Markdown governance output generator.
-See NEXT_SESSION_PROMPTS.md Prompt 1 for full spec.
+pytest tests/ -v                    # should be 9/9
+agent-loop run --dry-run --env dev --org test-org
 ```

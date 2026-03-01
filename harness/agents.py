@@ -43,5 +43,6 @@ ORCHESTRATOR = AgentConfig(
         "oscal_assess_assess",
         "oscal_gap_map",
         "sscf_benchmark_benchmark",
+        "report_gen_generate",
     ],
 )

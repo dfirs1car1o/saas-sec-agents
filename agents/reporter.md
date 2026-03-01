@@ -37,23 +37,33 @@ You use the report-gen CLI. You do not write DOCX content manually.
 
 ## Calling report-gen
 
-```bash
-# Generate app-owner DOCX
-skills/report-gen/report-gen \
-  --backlog docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json \
-  --template docs/saas-baseline/deliverables/reference.docx \
-  --audience app-owner \
-  --out docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_$(date +%Y-%m-%d).docx
+Use the `report_gen_generate` tool. Do not invoke the CLI manually.
 
-# Generate CorpIS markdown
-skills/report-gen/report-gen \
-  --backlog docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json \
-  --audience gis \
-  --out docs/oscal-salesforce-poc/generated/salesforce_oscal_gap_matrix_latest.md
+The tool takes:
+- `backlog` — path to backlog.json from oscal_gap_map
+- `audience` — `app-owner` or `gis`
+- `out` — output path (.md or .docx)
+- `sscf_benchmark` — optional path to sscf_report.json (adds domain heatmap)
+- `org_alias` — org identifier for report headers
 
-# If unsure of flags
-skills/report-gen/report-gen --help
+Example tool calls:
+```json
+{
+  "backlog": "docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json",
+  "audience": "app-owner",
+  "out": "docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_2026-03-01_app-owner.docx"
+}
 ```
+```json
+{
+  "backlog": "docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json",
+  "audience": "gis",
+  "out": "docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_2026-03-01_corpis.md",
+  "sscf_benchmark": "docs/oscal-salesforce-poc/generated/sscf_report.json"
+}
+```
+
+If you need to verify flags: `report-gen generate --help`
 
 ## Required Fields In Every Report
 

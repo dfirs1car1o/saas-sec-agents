@@ -26,14 +26,14 @@ You are not a specialist. You do not call sfdc-connect directly. You do not writ
 
 ## Task Types You Route
 
-| Request Type | Routing Sequence |
+| Request Type | Tool Call Sequence |
 |---|---|
-| Full assessment of a Salesforce org | collector -> assessor -> reporter -> nist-reviewer |
-| Gap mapping from an existing JSON file | assessor -> reporter -> nist-reviewer |
-| Generate or refresh a governance report | reporter -> nist-reviewer |
-| Validate existing output against NIST AI RMF | nist-reviewer |
-| Research a control or CVE | research context + assessor |
-| Exception review | assessor -> nist-reviewer |
+| Full assessment of a Salesforce org | sfdc_connect_collect → oscal_assess_assess → oscal_gap_map → sscf_benchmark_benchmark → report_gen_generate (both audiences) |
+| Gap mapping from an existing JSON file | oscal_gap_map → sscf_benchmark_benchmark → report_gen_generate |
+| Generate or refresh a governance report | report_gen_generate (app-owner + gis) |
+| Validate existing output against NIST AI RMF | nist-reviewer (no tool call — text analysis) |
+| Research a control or CVE | assessor context — no tool calls |
+| Exception review | assessor context — no tool calls |
 
 ## Decision Logic
 
