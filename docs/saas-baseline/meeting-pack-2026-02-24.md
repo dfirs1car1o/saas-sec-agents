@@ -5,7 +5,7 @@ Establish a business-approved SaaS Security Configuration Baseline Program align
 
 ## Program Context
 - Program: SaaS Risk Program (new)
-- Function: Business Security Services under Global Information Security
+- Function: SaaS Security Team under Corporate Information Security
 - Driver: gap remediation identified security control deficiencies
 - Goal: standardize policy -> baseline -> operational enforcement -> evidence
 
@@ -66,8 +66,8 @@ Establish a business-approved SaaS Security Configuration Baseline Program align
    - Phase A: Salesforce only
    - Phase B: ServiceNow + Workday
 2. Confirm policy authority:
-   - GIS approves control requirements
-   - BSS runs assurance operations
+   - CorpIS approves control requirements
+   - SST runs assurance operations
 3. Confirm exception SLAs:
    - Critical 30 days, High 60 days, Medium/Low 90 days
 4. Confirm reporting cadence:

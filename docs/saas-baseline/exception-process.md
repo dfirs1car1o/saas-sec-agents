@@ -15,23 +15,23 @@ Use this process when a baseline control cannot be implemented on schedule or is
 5. Exception owner
 6. Expiration date (mandatory)
 7. Remediation target date and milestones
-8. Approver(s): GIS risk authority
+8. Approver(s): CorpIS risk authority
 
 ## Approval Workflow
 1. Submit exception request with evidence.
 2. BSS validates technical details and compensating controls.
-3. GIS reviews risk impact and approves/rejects.
+3. CorpIS reviews risk impact and approves/rejects.
 4. If approved, exception is time-bound and tracked.
 
 ## SLA and Expiry Rules
 - Critical control exceptions: max 30 days
 - High control exceptions: max 60 days
 - Medium/Low exceptions: max 90 days
-- Expired exceptions auto-escalate to GIS and platform owner
+- Expired exceptions auto-escalate to CorpIS and platform owner
 
 ## Monitoring
 - Weekly exception review by BSS
-- Monthly risk review with GIS governance
+- Monthly risk review with CorpIS governance
 - Automatic alerts for exceptions nearing expiry (T-14 days)
 
 ## Closure Criteria

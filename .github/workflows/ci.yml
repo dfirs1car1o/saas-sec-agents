@@ -20,8 +20,8 @@ jobs:
           python-version: "3.11"
 
       - run: pip install ruff
-      - run: ruff check skills/ scripts/
-      - run: ruff format --check skills/ scripts/
+      - run: ruff check skills/ scripts/ harness/
+      - run: ruff format --check skills/ scripts/ harness/
 
   sast:
     name: bandit
@@ -36,7 +36,7 @@ jobs:
       - run: pip install bandit[toml]
       - name: Run Bandit (HIGH severity = fail)
         # -lll = HIGH+ severity, -ii = MEDIUM+ confidence
-        run: bandit -r skills/ scripts/ -lll -ii
+        run: bandit -r skills/ scripts/ harness/ -lll -ii
 
   dependency-audit:
     name: pip-audit
@@ -97,8 +97,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install -e . && pip install pytest pytest-mock PyYAML click
+      - run: pip install -e . && pip install pytest pytest-mock PyYAML click qdrant-client mem0ai
       - name: Run tests (if any exist)
+        env:
+          QDRANT_IN_MEMORY: "1"
         run: |
           if [ -d tests/ ]; then
             pytest tests/ -v

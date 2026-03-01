@@ -8,7 +8,7 @@
 - Effective Date: `2026-02-24`
 - Expiration Date: `2026-04-25` (60 days, high-risk exception limit)
 - Exception Owner: `Salesforce Platform Owner (UK)`
-- Risk Owner: `Business Security Services`
+- Risk Owner: `SaaS Security Team`
 
 ## Scope (Strictly Limited)
 - In scope:
@@ -69,13 +69,13 @@ Without full classification and masking controls, UK non-production refreshes ma
 
 ## Monitoring and Reporting
 - Weekly: BSS + UK Salesforce owner review active refreshes, masking sample results, and anomalies.
-- Monthly: GIS/GRC governance checkpoint with DPO visibility.
-- T-14 days to expiry: automatic escalation to exception owner, GIS, and business sponsor.
+- Monthly: CorpIS/GRC governance checkpoint with DPO visibility.
+- T-14 days to expiry: automatic escalation to exception owner, CorpIS, and business sponsor.
 
 ## Approval
 - Business Owner (UK Salesforce): `____________________`
-- BSS Validation: `____________________`
-- GIS Risk Authority Approval: `____________________`
+- SST Validation: `____________________`
+- CorpIS Risk Authority Approval: `____________________`
 - UK Privacy/DPO Acknowledgement: `____________________`
 - Approval Date: `____________________`
 

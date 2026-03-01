@@ -1,8 +1,8 @@
 # SaaS Risk Program RACI (Baseline Operations)
 
 ## Teams
-- `GIS`: Global Information Security (corporate policy/standards owner)
-- `BSS`: Business Security Services (program operations owner)
+- `CorpIS`: Corporate Information Security (corporate policy/standards owner)
+- `BSS`: SaaS Security Team (program operations owner)
 - `SECOPS`: Security Operations / Cyber Defense team
 - `APP`: SaaS Application Owners (Salesforce/ServiceNow/Workday)
 - `PLAT`: Platform Engineering / IAM / Cloud Platform
@@ -10,7 +10,7 @@
 
 ## Responsibility Matrix
 
-| Activity | GIS | BSS | SECOPS | APP | PLAT | AUDIT |
+| Activity | CorpIS | BSS | SECOPS | APP | PLAT | AUDIT |
 |---|---|---|---|---|---|---|
 | Define policy and security standards | A | C | I | C | C | C |
 | Maintain SSCF control mapping index | A | R | C | C | C | I |
@@ -24,6 +24,6 @@
 | Quarterly governance reporting | A | R | C | I | I | C |
 
 ## Decision Rights
-- Baseline requirement changes: `GIS` final approval.
+- Baseline requirement changes: `CorpIS` final approval.
 - Remediation execution timing: `BSS` + `APP` joint planning.
-- Exception acceptance: `GIS` decision with documented risk owner sign-off.
+- Exception acceptance: `CorpIS` decision with documented risk owner sign-off.

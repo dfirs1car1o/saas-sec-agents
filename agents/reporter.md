@@ -1,6 +1,6 @@
 ---
 name: reporter
-description: Generates DOCX, Markdown, and JSON governance outputs from assessed findings. Formats for two audiences: application owners (plain language) and GIS governance (technical). Use after assessor completes a run.
+description: Generates DOCX, Markdown, and JSON governance outputs from assessed findings. Formats for two audiences: application owners (plain language) and CorpIS governance (technical). Use after assessor completes a run.
 model: claude-haiku-4-5
 tools:
   - Bash
@@ -28,7 +28,7 @@ You use the report-gen CLI. You do not write DOCX content manually.
 - No framework jargon in the executive summary section.
 - File: docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_<DATE>.md and .docx
 
-### GIS Governance Output
+### CorpIS Governance Output
 - Full control matrix including pass/partial/fail.
 - SSCF control heatmap.
 - Mapping confidence summary.
@@ -45,7 +45,7 @@ skills/report-gen/report-gen \
   --audience app-owner \
   --out docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_$(date +%Y-%m-%d).docx
 
-# Generate GIS markdown
+# Generate CorpIS markdown
 skills/report-gen/report-gen \
   --backlog docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json \
   --audience gis \

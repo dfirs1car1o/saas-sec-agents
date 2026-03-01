@@ -3,19 +3,19 @@
   "profile_id": "SF-BASELINE-EM-TSP-V1-GENERATED",
   "title": "Salesforce Event Monitoring and Transaction Security Baseline v1 (Generated)",
   "platform": "salesforce",
-  "owner_team": "Global Information Security Architecture",
+  "owner_team": "Corporate Information Security",
   "approver_team": "global_information_security",
   "effective_date": "2026-02-24",
   "intake_source": {
     "generated_at_utc": "2026-02-24T00:22:16.754966+00:00",
-    "program_name": "CDW SaaS Risk Program",
-    "business_owner": "Director, Business Security Services",
+    "program_name": "SaaS Risk Program",
+    "business_owner": "Director, SaaS Security Team",
     "go_live_date": "2026-04-30"
   },
   "scope": {
     "environments": [
-      "salesforce-prod",
-      "salesforce-sandbox"
+      "salesforce-production",
+      "salesforce-staging"
     ],
     "clouds": [
       "Sales Cloud",
@@ -43,7 +43,7 @@
     "required": true,
     "retention_target": "180 days",
     "export_to_siem_required": true,
-    "siem_destination": "Microsoft Sentinel",
+    "siem_destination": "SIEM Platform",
     "required_event_types": [
       "login",
       "logout",
@@ -59,8 +59,8 @@
     "required": true,
     "risk_scenarios_from_intake": "Impossible travel login patterns\nHigh-volume export anomalies\nSuspicious API token and integration usage\nPrivileged admin risky config changes",
     "approved_actions": "Block, challenge, notify, allow with audit",
-    "approval_owner": "GIS Change Advisory Board",
-    "exception_owner": "BSS Risk Exception Board",
+    "approval_owner": "CorpIS Change Advisory Board",
+    "exception_owner": "Security Risk Exception Board",
     "policies": [
       {
         "id": "SF-TSP-001",
@@ -113,9 +113,9 @@
     "data_residency": "UK and EU data residency for in-scope business data"
   },
   "operations": {
-    "assessment_owner": "BSS SaaS Assurance Team",
+    "assessment_owner": "SaaS Security Assurance Team",
     "remediation_sla": "Critical 30d, High 60d, Medium 90d, Low 90d",
-    "escalation_path": "Escalate to GIS governance and application owner after SLA breach",
+    "escalation_path": "Escalate to CorpIS governance and application owner after SLA breach",
     "evidence_format": "JSON findings + markdown executive summary + evidence links"
   }
 }

@@ -1,6 +1,6 @@
 ---
 name: report-gen
-description: Generates governance-ready DOCX, Markdown, and JSON outputs from an OSCAL backlog. Formats for two audiences: application owners (plain language) and GIS governance (technical).
+description: Generates governance-ready DOCX, Markdown, and JSON outputs from an OSCAL backlog. Formats for two audiences: application owners (plain language) and CorpIS governance (technical).
 cli: skills/report-gen/report-gen
 model_hint: haiku
 ---

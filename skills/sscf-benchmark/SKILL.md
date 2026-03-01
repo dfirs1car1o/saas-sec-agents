@@ -82,7 +82,7 @@ From config/sscf_control_index.yaml:
 
 ## Composing
 
-The heatmap output feeds directly into report-gen for the GIS governance report section:
+The heatmap output feeds directly into report-gen for the CorpIS governance report section:
 ```bash
 skills/sscf-benchmark/sscf-benchmark --backlog backlog.json --out sscf_benchmark.json
 skills/report-gen/report-gen --backlog backlog.json --sscf-benchmark sscf_benchmark.json --audience gis --out gap_matrix.md

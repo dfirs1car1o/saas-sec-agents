@@ -19,5 +19,9 @@ terraform.tfvars
 # Build artifacts
 *.egg-info/
 
+# Generated assessment outputs (real evidence committed intentionally, test artifacts excluded)
+docs/oscal-salesforce-poc/generated/*/
+!docs/oscal-salesforce-poc/generated/*.json
+
 # Claude Code session state
 .claude/

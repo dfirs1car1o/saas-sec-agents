@@ -1,6 +1,6 @@
 # saas-sec-agents
 
-SaaS Security multi-agent AI system for OSCAL and CSA SSCF assessments across Salesforce orgs. Produces governance-grade evidence packages for application owners and GIS review cycles.
+SaaS Security multi-agent AI system for OSCAL and CSA SSCF assessments across Salesforce orgs. Produces governance-grade evidence packages for application owners and CorpIS review cycles.
 
 ## What This Is
 

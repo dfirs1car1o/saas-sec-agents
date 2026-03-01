@@ -12,15 +12,18 @@ dependencies = [
   "python-dotenv>=1.0.0",
   "docxtpl>=0.18.0",
   "defusedxml>=0.7.1",
+  "mem0ai>=0.1.0",
+  "qdrant-client>=1.10.0",
 ]
 
 [project.scripts]
 sfdc-connect = "skills.sfdc_connect.sfdc_connect:cli"
 oscal-assess = "skills.oscal_assess.oscal_assess:cli"
 sscf-benchmark = "skills.sscf_benchmark.sscf_benchmark:cli"
+agent-loop = "harness.loop:cli"
 
 [tool.setuptools.packages.find]
-include = ["skills*"]
+include = ["skills*", "harness*"]
 
 [tool.uv]
 dev-dependencies = [

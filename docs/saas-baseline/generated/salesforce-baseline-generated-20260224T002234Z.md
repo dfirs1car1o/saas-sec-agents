@@ -2,15 +2,15 @@
 
 - Profile ID: `SF-BASELINE-EM-TSP-V1-GENERATED`
 - Effective date: `2026-02-24`
-- Program: `CDW SaaS Risk Program`
+- Program: `SaaS Risk Program`
 
 ## Scope
-- Environments: salesforce-prod, salesforce-sandbox
+- Environments: salesforce-productionuction, salesforce-staging
 - Clouds: Sales Cloud, Service Cloud, Experience Cloud
 
 ## Event Monitoring
 - Retention target: 180 days
-- SIEM: Microsoft Sentinel
+- SIEM: SIEM Platform
 - Event types: login, logout, api, report_export, uri, setup_audit_trail, apex_execution
 
 ## Transaction Security Policies

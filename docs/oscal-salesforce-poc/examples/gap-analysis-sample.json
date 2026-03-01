@@ -1,7 +1,7 @@
 {
-  "assessment_id": "CDW-SF-GAP-2026-02-24",
+  "assessment_id": "ACME-SF-GAP-2026-02-24",
   "assessment_time_utc": "2026-02-24T12:00:00Z",
-  "assessor": "BSS SaaS Assurance Team",
+  "assessor": "SaaS Security Assurance Team",
   "findings": [
     {
       "control_id": "SF-EM-RULE-001",
@@ -15,7 +15,7 @@
       "control_id": "SF-TSP-001",
       "status": "fail",
       "severity": "critical",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "due_date": "2026-03-15",
       "evidence_ref": "gap-analysis://SF-TSP-001"
     },

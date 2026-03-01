@@ -60,4 +60,4 @@ Return a structured review:
 
 ## Prompt Pattern For Deep Review
 
-"You are reviewing this assessment output as if you were the GIS governance lead seeing it for the first time. What would make you reject it? What would make you send it back for rework? Be specific."
+"You are reviewing this assessment output as if you were the CorpIS governance lead seeing it for the first time. What would make you reject it? What would make you send it back for rework? Be specific."
