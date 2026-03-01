@@ -211,10 +211,12 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         lines.append("")
 
         s = ctx["summary"]
-        lines.append(_md_table(
-            ["Total Controls", "Pass", "Fail", "Partial", "Not Applicable"],
-            [[s["total"], s["pass"], s["fail"], s["partial"], s["not_applicable"]]],
-        ))
+        lines.append(
+            _md_table(
+                ["Total Controls", "Pass", "Fail", "Partial", "Not Applicable"],
+                [[s["total"], s["pass"], s["fail"], s["partial"], s["not_applicable"]]],
+            )
+        )
         lines.append("")
 
         # ── Section 2: Critical and High Findings ───────────────────────────
@@ -271,16 +273,18 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         lines.append("")
         lines.append("# Assessment Metadata")
         lines.append("")
-        lines.append(_md_table(
-            ["Field", "Value"],
-            [
-                ["Assessment ID", ctx["assessment_id"]],
-                ["Generated (UTC)", ctx["generated_at_utc"]],
-                ["Org / Alias", ctx["org_alias"]],
-                ["Catalog Version", ctx.get("catalog_version", "")],
-                ["Framework", ctx.get("framework", "CSA_SSCF")],
-            ],
-        ))
+        lines.append(
+            _md_table(
+                ["Field", "Value"],
+                [
+                    ["Assessment ID", ctx["assessment_id"]],
+                    ["Generated (UTC)", ctx["generated_at_utc"]],
+                    ["Org / Alias", ctx["org_alias"]],
+                    ["Catalog Version", ctx.get("catalog_version", "")],
+                    ["Framework", ctx.get("framework", "CSA_SSCF")],
+                ],
+            )
+        )
         lines.append("")
 
         # ── Section 2: Summary Metrics ──────────────────────────────────────
@@ -306,19 +310,23 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         rows = []
         for f in ctx["all_findings"]:
             sscf_ids = ", ".join(f.get("sscf_control_ids", []))
-            rows.append([
-                f.get("sbs_control_id", ""),
-                f.get("sbs_title", ""),
-                f.get("status", ""),
-                f.get("severity", ""),
-                f.get("owner", ""),
-                f.get("due_date", ""),
-                sscf_ids,
-            ])
-        lines.append(_md_table(
-            ["SBS ID", "Title", "Status", "Severity", "Owner", "Due Date", "SSCF Controls"],
-            rows,
-        ))
+            rows.append(
+                [
+                    f.get("sbs_control_id", ""),
+                    f.get("sbs_title", ""),
+                    f.get("status", ""),
+                    f.get("severity", ""),
+                    f.get("owner", ""),
+                    f.get("due_date", ""),
+                    sscf_ids,
+                ]
+            )
+        lines.append(
+            _md_table(
+                ["SBS ID", "Title", "Status", "Severity", "Owner", "Due Date", "SSCF Controls"],
+                rows,
+            )
+        )
         lines.append("")
 
         # ── Section 4: SSCF Domain Heatmap ──────────────────────────────────
@@ -328,19 +336,23 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         if domains:
             d_rows = []
             for d in domains:
-                d_rows.append([
-                    d.get("domain_id", ""),
-                    d.get("domain_label", d.get("domain_id", "")),
-                    f"{d.get('score', 0):.0%}",
-                    (d.get("status") or "").upper(),
-                    str(d.get("fail", 0)),
-                    str(d.get("partial", 0)),
-                    str(d.get("pass", 0)),
-                ])
-            lines.append(_md_table(
-                ["Domain ID", "Domain", "Score", "Status", "Fail", "Partial", "Pass"],
-                d_rows,
-            ))
+                d_rows.append(
+                    [
+                        d.get("domain_id", ""),
+                        d.get("domain_label", d.get("domain_id", "")),
+                        f"{d.get('score', 0):.0%}",
+                        (d.get("status") or "").upper(),
+                        str(d.get("fail", 0)),
+                        str(d.get("partial", 0)),
+                        str(d.get("pass", 0)),
+                    ]
+                )
+            lines.append(
+                _md_table(
+                    ["Domain ID", "Domain", "Score", "Status", "Fail", "Partial", "Pass"],
+                    d_rows,
+                )
+            )
         else:
             lines.append("_SSCF benchmark not provided — run `sscf-benchmark` to generate domain heatmap._")
         lines.append("")
@@ -435,9 +447,7 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
     # Title
     doc.add_heading(ctx["title"], level=0)
     doc.add_paragraph(
-        f"Assessment ID: {ctx['assessment_id']}  |  "
-        f"Generated: {ctx['generated_at_utc']}  |  "
-        f"Org: {ctx['org_alias']}"
+        f"Assessment ID: {ctx['assessment_id']}  |  Generated: {ctx['generated_at_utc']}  |  Org: {ctx['org_alias']}"
     )
 
     if audience == "app-owner":
@@ -487,10 +497,7 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
 
         # Full Control Matrix
         doc.add_heading("Appendix: Full Control Matrix", level=1)
-        rows = [
-            [f.get("sbs_control_id", ""), f.get("sbs_title", ""), f.get("status", "")]
-            for f in ctx["all_findings"]
-        ]
+        rows = [[f.get("sbs_control_id", ""), f.get("sbs_title", ""), f.get("status", "")] for f in ctx["all_findings"]]
         # status is col index 2
         _docx_table(doc, ["Control ID", "Title", "Status"], rows, status_col=2)
 
@@ -529,15 +536,17 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         rows = []
         for f in ctx["all_findings"]:
             sscf_ids = ", ".join(f.get("sscf_control_ids", []))
-            rows.append([
-                f.get("sbs_control_id", ""),
-                f.get("sbs_title", ""),
-                f.get("status", ""),
-                f.get("severity", ""),
-                f.get("owner", ""),
-                f.get("due_date", ""),
-                sscf_ids,
-            ])
+            rows.append(
+                [
+                    f.get("sbs_control_id", ""),
+                    f.get("sbs_title", ""),
+                    f.get("status", ""),
+                    f.get("severity", ""),
+                    f.get("owner", ""),
+                    f.get("due_date", ""),
+                    sscf_ids,
+                ]
+            )
         _docx_table(
             doc,
             ["SBS ID", "Title", "Status", "Severity", "Owner", "Due Date", "SSCF Controls"],
