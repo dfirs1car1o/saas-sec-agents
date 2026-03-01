@@ -6,7 +6,7 @@
 
 ## 1. System Purpose
 
-`saas-sec-agents` is a read-only security assessment pipeline. It connects to Salesforce orgs, extracts configuration data, maps findings against OSCAL/SBS/SSCF control frameworks, and produces governance-grade evidence packages for GIS review cycles.
+`saas-sec-agents` is a read-only security assessment pipeline. It connects to Salesforce orgs, extracts configuration data, maps findings against OSCAL/SBS/SSCF control frameworks, and produces governance-grade evidence packages for CorpIS review cycles.
 
 **What it does not do:**
 - Write to any Salesforce org

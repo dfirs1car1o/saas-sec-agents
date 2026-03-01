@@ -2,7 +2,7 @@
 ## Event Monitoring + Transaction Security Policies
 
 ## 1. Purpose
-Define the first production-ready Salesforce security baseline for CDW's SaaS Risk Program, aligned to CSA SSCF and GIS governance.
+Define the first production-ready Salesforce security baseline for Acme Corp's SaaS Risk Program, aligned to CSA SSCF and CorpIS governance.
 
 ## 2. Scope
 - Platform: Salesforce
@@ -35,7 +35,7 @@ Required policy set:
 4. Privileged admin risky-action policy (High, Notify)
 
 Implementation rules:
-- Critical blocking policies require GIS approval.
+- Critical blocking policies require CorpIS approval.
 - All policies run in monitor mode before block mode in production.
 - Exceptions must follow `docs/saas-baseline/exception-process.md`.
 
@@ -49,8 +49,8 @@ Primary mappings:
 - `SSCF-CKM-001` API Credential and Token Lifecycle
 
 ## 6. Operating Requirements
-- Owner: Business Security Services
-- Approver: Global Information Security
+- Owner: SaaS Security Team
+- Approver: Corporate Information Security
 - Execution support: Salesforce platform owners and Security Operations
 - Monthly assessment cadence with schema output:
   - `schemas/baseline_assessment_schema.json`

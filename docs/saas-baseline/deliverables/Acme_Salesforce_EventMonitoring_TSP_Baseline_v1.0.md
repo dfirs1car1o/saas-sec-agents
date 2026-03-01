@@ -1,14 +1,14 @@
 # Security Configuration Baseline
 ## Salesforce Event Monitoring and Transaction Security Policies (TSP)
 
-**Organization:** CDW (US, Canada, UK)  
+**Organization:** Acme Corp  
 **Version:** 1.0  
 **Effective Date:** February 24, 2026  
-**Owner:** Business Security Services (Global Information Security - Corporate Business)  
+**Owner:** SaaS Security Team (Corporate Information Security - Corporate Business)  
 **Classification:** Internal Use Only
 
 ## 1. Executive Context
-This document defines the minimum Salesforce security baseline for Event Monitoring and Transaction Security Policies (TSP) across CDW US, Canada, and UK orgs.
+This document defines the minimum Salesforce security baseline for Event Monitoring and Transaction Security Policies (TSP) across Acme Corp US, Canada, and UK orgs.
 
 Executive outcomes:
 - Detect and contain high-risk access and data movement behavior quickly.
@@ -37,7 +37,7 @@ This baseline is organized around SaaS security pillars, with CSA SSCF as the fo
 |---|---|
 | Salesforce Platform Owner | Approves configuration changes and operating readiness |
 | Salesforce Administrator Team | Implements and maintains Event Monitoring and TSP settings |
-| Business Security Services | Owns baseline requirements, risk acceptance, and exception approvals |
+| SaaS Security Team | Owns baseline requirements, risk acceptance, and exception approvals |
 | Security Operations Monitoring Team | Monitors alerts, triages incidents, and drives remediation |
 | Data Engineering | Maintains pipeline reliability and dashboard data quality |
 | GRC and Audit | Validates evidence and compliance posture |
@@ -112,9 +112,9 @@ This section maps UK and Canada regulatory requirements into baseline operations
 | Frequency | Activity | Owner |
 |---|---|---|
 | Daily | Verify ingestion freshness, drift detections, and alerting health | Security Operations Monitoring + Data Engineering |
-| Weekly | Review dashboard metrics and tune thresholds | Business Security Services + Salesforce Admin |
+| Weekly | Review dashboard metrics and tune thresholds | SaaS Security Team + Salesforce Admin |
 | Monthly | Validate conformance and evidence package readiness | Salesforce Admin + GRC |
-| Quarterly | Complete formal baseline review, including UK/CAN overlay | Business Security Services + GRC |
+| Quarterly | Complete formal baseline review, including UK/CAN overlay | SaaS Security Team + GRC |
 | Post-Incident | Perform gap analysis and baseline hardening updates | Incident stakeholders |
 
 ## 9. Minimum Evidence Artifacts

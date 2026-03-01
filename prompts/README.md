@@ -13,7 +13,7 @@ Read mission.md and AGENTS.md first, then tell me the current state.
 ### Session Start (Live Assessment)
 ```
 I have a Salesforce org called [alias] in [env] environment.
-Run a full OSCAL/SSCF assessment and generate both the app-owner deliverable and the GIS gap matrix.
+Run a full OSCAL/SSCF assessment and generate both the app-owner deliverable and the CorpIS gap matrix.
 Which org connection method do you need from me?
 ```
 
@@ -103,7 +103,7 @@ against the current sscf_control_index.yaml and report any changes.
 ### Monthly Governance Pack Refresh
 ```
 Generate the monthly governance pack from the latest backlog.
-Produce: app-owner DOCX, GIS gap matrix MD, and NIST review section.
+Produce: app-owner DOCX, CorpIS gap matrix MD, and NIST review section.
 Use today's date in the filename. Commit and push when done.
 ```
 

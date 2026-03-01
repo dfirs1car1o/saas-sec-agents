@@ -85,6 +85,6 @@ Each collector result should include:
 
 ## Promotion Gate (Phase 3)
 Promote from sandbox to production only when:
-- False positive rate is accepted by BSS + GIS.
+- False positive rate is accepted by BSS + CorpIS.
 - Critical/High control checks have stable deterministic logic.
 - Exception workflow and SLA reporting are integrated into monthly SaaS Risk Program governance.

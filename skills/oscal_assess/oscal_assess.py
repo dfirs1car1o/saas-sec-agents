@@ -34,7 +34,7 @@ class Finding:
     severity: str
     observed_value: str
     remediation: str = ""
-    owner: str = "Business Security Services"
+    owner: str = "SaaS Security Team"
     due_date: str = ""
 
     def to_dict(self, org: str, env: str, date_str: str) -> dict[str, Any]:

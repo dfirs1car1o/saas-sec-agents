@@ -1,5 +1,5 @@
 {
-  "assessment_id": "CDW-SF-COLLECTOR-MOCK-2026-02-24",
+  "assessment_id": "ACME-SF-COLLECTOR-MOCK-2026-02-24",
   "platform": "salesforce",
   "assessment_time_utc": "2026-02-24T13:30:00+00:00",
   "environment": "prod",
@@ -25,7 +25,7 @@
       "control_id": "SBS-ACS-002",
       "status": "pass",
       "severity": "high",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-ACS-002/snapshot-2026-02-24"
     },
     {
@@ -55,7 +55,7 @@
       "control_id": "SBS-ACS-006",
       "status": "partial",
       "severity": "critical",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-ACS-006/snapshot-2026-02-24",
       "remediation": "Investigate non-compliance for SBS-ACS-006 and implement control hardening per runbook.",
       "due_date": "2026-03-20"
@@ -87,7 +87,7 @@
       "control_id": "SBS-ACS-010",
       "status": "pass",
       "severity": "medium",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-ACS-010/snapshot-2026-02-24"
     },
     {
@@ -117,7 +117,7 @@
       "control_id": "SBS-AUTH-002",
       "status": "fail",
       "severity": "medium",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-AUTH-002/snapshot-2026-02-24",
       "remediation": "Investigate non-compliance for SBS-AUTH-002 and implement control hardening per runbook.",
       "due_date": "2026-03-28"
@@ -151,7 +151,7 @@
       "control_id": "SBS-CODE-002",
       "status": "partial",
       "severity": "medium",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-CODE-002/snapshot-2026-02-24",
       "remediation": "Investigate non-compliance for SBS-CODE-002 and implement control hardening per runbook.",
       "due_date": "2026-04-01"
@@ -183,7 +183,7 @@
       "control_id": "SBS-CPORTAL-002",
       "status": "pass",
       "severity": "critical",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-CPORTAL-002/snapshot-2026-02-24"
     },
     {
@@ -213,7 +213,7 @@
       "control_id": "SBS-DATA-004",
       "status": "partial",
       "severity": "high",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-DATA-004/snapshot-2026-02-24",
       "remediation": "Investigate non-compliance for SBS-DATA-004 and implement control hardening per runbook.",
       "due_date": "2026-04-09"
@@ -245,7 +245,7 @@
       "control_id": "SBS-DEP-005",
       "status": "partial",
       "severity": "critical",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-DEP-005/snapshot-2026-02-24",
       "remediation": "Investigate non-compliance for SBS-DEP-005 and implement control hardening per runbook.",
       "due_date": "2026-03-16"
@@ -279,7 +279,7 @@
       "control_id": "SBS-FILE-003",
       "status": "pass",
       "severity": "low",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-FILE-003/snapshot-2026-02-24"
     },
     {
@@ -309,7 +309,7 @@
       "control_id": "SBS-INT-003",
       "status": "fail",
       "severity": "medium",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-INT-003/snapshot-2026-02-24",
       "remediation": "Investigate non-compliance for SBS-INT-003 and implement control hardening per runbook.",
       "due_date": "2026-03-24"
@@ -341,7 +341,7 @@
       "control_id": "SBS-OAUTH-003",
       "status": "pass",
       "severity": "high",
-      "owner": "Business Security Services",
+      "owner": "SaaS Security Team",
       "evidence_ref": "collector://salesforce/prod/SBS-OAUTH-003/snapshot-2026-02-24"
     },
     {

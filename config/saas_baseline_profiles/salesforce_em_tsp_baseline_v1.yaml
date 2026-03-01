@@ -112,6 +112,6 @@ release_validation:
     - "All mandatory transaction security policies active in monitor mode"
     - "Critical blocking policies tested in controlled pre-prod simulation"
   go_live_gate:
-    - "GIS approval recorded"
+    - "CorpIS approval recorded"
     - "BSS operational readiness confirmed"
 

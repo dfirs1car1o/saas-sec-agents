@@ -15,7 +15,7 @@ You are operating in assessment mode. Your job is to connect to a Salesforce org
 2. Collector extracts org configuration (or use provided gap JSON).
 3. Assessor maps findings to SBS controls.
 4. Assessor runs SSCF benchmark.
-5. Reporter generates app-owner and GIS outputs.
+5. Reporter generates app-owner and CorpIS outputs.
 6. NIST reviewer validates. If block, return to human. If clear/flag, deliver.
 
 ## Control Catalog

@@ -2,45 +2,61 @@
 
 ## Current State
 - Repo: `https://github.com/dfirs1car1o/saas-sec-agents`
-- Branch: `main`
+- Branch: `main` (Phase 3 PR #3 open, pending merge)
 - Local path: `/Users/jerijuar/multiagent-azure`
 
 ## What Is Complete
-- Phase 1: OpenClaw agent framework, sfdc-connect CLI, CI/CD security stack
-- Architecture blueprint: `docs/architecture-blueprint.md`
-- Pre-flight validation script: `scripts/validate_env.py`
-- All Azure/DFIR/Terraform content removed
-- Security CI: bandit, pip-audit, gitleaks, CodeQL, dependency-review, ruff
-- CodeRabbit: `.coderabbit.yaml` (activate at https://coderabbit.ai)
-- Dependabot: weekly pip + Actions updates
+- Phase 1: sfdc-connect CLI + full CI/CD security stack
+- Phase 2: oscal-assess + sscf-benchmark CLIs (full pipeline)
+- Phase 3: agent-loop harness + Mem0+Qdrant session memory (PR #3 open)
+- Corporate data scrub: CDW → Acme Corp, BSS → SaaS Security Team, GIS → CorpIS
+- CONTRIBUTING.md wiki: setup guide, Docker deps, env vars, pipeline, CI docs
 
-## Prompt 1: Phase 2 — OSCAL Assessment Pipeline
+## Open Items Before Phase 4
+1. Set `ANTHROPIC_API_KEY` in `.env` and test `agent-loop run --dry-run`
+2. Merge PR #3 once CI is green
+3. Add colleague GitHub username to CODEOWNERS + flip `enforce_admins=true`
+
+---
+
+## Prompt 1: Phase 4 — report-gen DOCX Pipeline
 ```text
 Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
-Phase 1 is complete. Repo is dfirs1car1o/saas-sec-agents.
-Build Phase 2: skills/oscal_assess/oscal_assess.py and skills/sscf_benchmark/sscf_benchmark.py
-wrapping the existing scripts/oscal_gap_map.py. End-to-end: sfdc-connect → oscal-assess → backlog.json.
+Phase 3 is complete — PR #3 merged. Repo is dfirs1car1o/saas-sec-agents.
+Build Phase 4: skills/report-gen/ — a DOCX + Markdown governance output generator.
+Input: sscf_report.json + backlog.json
+Output: app-owner DOCX, GIS Markdown summary, evidence package
+Use docxtpl (already in deps) against a Word template in docs/templates/.
+Wire it as a 5th tool call in harness/tools.py (tool name: report_gen_generate).
 ```
 
-## Prompt 2: OSCAL With Real Business Unit Gap File
+## Prompt 2: Live Org Assessment
 ```text
-Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION_PROMPTS.md.
-Use the OSCAL pipeline with my real Salesforce gap-analysis JSON and regenerate:
-- docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json
-- docs/oscal-salesforce-poc/generated/salesforce_oscal_gap_matrix_latest.md
-Then refresh the business-unit deliverable DOCX with run-specific metrics and top remediation priorities.
+Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
+Run a live assessment against the Salesforce org in .env.
+Start Qdrant: docker run -d -p 6333:6333 qdrant/qdrant
+Then: agent-loop run --env dev --org <alias>
+Review the sscf_report.json output and compare to the dry-run weak-org baseline.
 ```
 
-## Prompt 3: GitHub Org Setup
+## Prompt 3: Colleague Onboarding
 ```text
-My GitHub org is dfirs1car1o. I need to:
-1. Enable 2FA requirement for all members (requires admin:org scope — do manually in GitHub org settings)
-2. Set Actions permissions to read-only
-3. Add my colleague's GitHub username to CODEOWNERS and flip enforce_admins=true on branch protection
-4. Activate CodeRabbit at https://coderabbit.ai (requires manual GitHub App install)
+Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
+A new contributor needs onboarding. Review docs/CONTRIBUTING.md.
+Add their GitHub username to CODEOWNERS and enable enforce_admins on branch protection.
+Walk through: git clone → pip install -e . → docker run qdrant → pytest tests/ -v
 ```
 
-## Last Known OSCAL Run Metrics
+## Prompt 4: NIST AI RMF Validation Pass
+```text
+Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
+Run the nist-reviewer agent context against the latest sscf_report.json output.
+Check that all AI-assisted findings include uncertainty flags and human-review gates.
+Update any agent outputs that are missing NIST AI RMF MAP/MEASURE/MANAGE annotations.
+```
+
+## Last Known Pipeline Run Metrics (dry-run weak-org)
 - controls/findings: 45
-- mapped: 45 / unmapped: 0 / invalid: 0
-- status: 24 pass / 12 partial / 9 fail
+- status breakdown: ~18 fail, ~16 partial, ~11 not_applicable
+- overall_score: ~0.34, overall_status: RED
+- SSCF domains scored: 7
