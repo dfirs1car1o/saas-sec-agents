@@ -54,6 +54,7 @@ You block output delivery if:
 - nist-reviewer returns a blocking gap.
 - The output schema (schemas/baseline_assessment_schema.json) is not satisfied.
 - The assessment_id or generated_at_utc is missing from any finding.
+- security-reviewer returns a CRITICAL or HIGH finding on a CI/CD workflow, skill CLI, or agent definition change — surface to human and block merge until acknowledged.
 
 ## Assembling Final Output
 

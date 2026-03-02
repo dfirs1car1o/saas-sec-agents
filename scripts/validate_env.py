@@ -318,10 +318,10 @@ def check_qdrant_config(suite: CheckSuite) -> None:
     QDRANT_IN_MEMORY=1 is the default for local dev and CI — no container needed.
     QDRANT_HOST should only be set when running a persistent Qdrant container.
     """
-    in_memory = os.getenv("QDRANT_IN_MEMORY", "")
+    in_memory = os.getenv("QDRANT_IN_MEMORY", "").strip().strip('"').strip("'").lower()
     qdrant_host = os.getenv("QDRANT_HOST", "")
 
-    if in_memory == "1":
+    if in_memory in {"1", "true", "yes", "on"}:
         suite.add(
             CheckResult(
                 "qdrant",

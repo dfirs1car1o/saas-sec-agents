@@ -13,9 +13,9 @@ jobs:
     name: zizmor (workflow injection + permissions)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
           python-version: "3.11"
 
@@ -63,15 +63,22 @@ jobs:
     name: actionlint (workflow syntax)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Install actionlint
         run: |
           version="1.7.3"
+          checksum="e7f28eb5857d8df1e86db560e57d56fb9152c9c31c2dd0eca19e33cdd75cf4a4"
           curl -sSfL \
             "https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_linux_amd64.tar.gz" \
-            | tar -xz actionlint
+            -o /tmp/actionlint.tar.gz
+          echo "${checksum}  /tmp/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tar.gz actionlint
           sudo mv actionlint /usr/local/bin/
 
       - name: Run actionlint on workflow files
-        run: actionlint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}{{end}}' .github/workflows/*.yml
+        # SC2016 false positive: Go template syntax {{$var}} in format string looks
+        # like an unexpanded shell variable to shellcheck — it is not.
+        run: |
+          # shellcheck disable=SC2016
+          actionlint -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}{{end}}' .github/workflows/*.yml

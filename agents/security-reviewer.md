@@ -82,7 +82,7 @@ For every workflow file, check:
 
 1. **Version ranges** — overly broad ranges (`>=1.0.0` with no upper bound) on packages with frequent breaking security changes (e.g., `anthropic`, `cryptography`) should be tightened.
 
-2. **License conflicts** — GPL/AGPL/LGPL in a closed-source repo is a compliance finding. LGPL is acceptable only if the package is dynamically linked (Python imports are dynamic — LGPL is generally safe for Python packages, but flag for human review).
+2. **License conflicts** — GPL, AGPL, and LGPL are all blocked by this repo's license policy (enforced by the `pip-licenses` CI gate). Flag any of these as a compliance finding that must be resolved before merge — either by replacing the dependency or obtaining a written exception from the project owner.
 
 3. **Deprecated packages** — packages with known deprecated maintainership or recent CVEs should be flagged with remediation advice.
 

@@ -8,9 +8,6 @@ reviews:
     enabled: true
     drafts: false   # Don't review draft PRs
 
-  # Continue reviewing after one approval is received
-  finish_on_review: false
-
   # Focus areas for this codebase
   profile: "chill"   # detailed | chill — chill avoids nitpicky style comments
 
@@ -81,13 +78,6 @@ reviews:
       enabled: true
     ast-grep:
       enabled: true
-      packages:
-        - id: "workflow-expression-injection"
-          language: yaml
-          rule:
-            pattern: "${{ github.event.$$$FIELD }}"
-          message: "Potential expression injection: untrusted GitHub event data used directly. Assign to env var first."
-          severity: ERROR
 
 chat:
   auto_reply: true

@@ -8,7 +8,7 @@ This guide covers everything a new contributor needs to get the repo running loc
 
 ### Bare Minimum (run the full pipeline)
 
-```
+```text
 Python 3.11+  +  git  +  pip install -e .  +  .env with API keys
 ```
 
