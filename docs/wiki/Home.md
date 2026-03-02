@@ -8,7 +8,8 @@ Welcome to the **SaaS Security Multi-Agent System** wiki. This is a fully automa
 
 | Page | What it covers |
 |---|---|
-| [Onboarding](Onboarding) | Get running in 10 minutes |
+| [Onboarding](Onboarding) | Get running in 10 minutes (Mac/Linux) |
+| [Windows Setup](Windows-Setup) | Corporate Windows machine with VS Code — step by step |
 | [Architecture Overview](Architecture-Overview) | How the system is designed |
 | [Agent Reference](Agent-Reference) | All 6 agents — roles, models, triggers |
 | [Skill Reference](Skill-Reference) | All 4 CLI tools — usage, inputs, outputs |
