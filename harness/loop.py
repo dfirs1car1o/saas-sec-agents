@@ -348,7 +348,8 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             f"3. Call oscal_gap_map (org='{org}') with the gap_analysis output to produce backlog.json.\n"
             f"4. Call sscf_benchmark_benchmark (org='{org}') with the backlog to produce the SSCF scorecard.\n"
             f"5. Call report_gen_generate twice: once with audience='app-owner' (out ending in .md) "
-            f"and once with audience='gis' (out ending in .md), both using the backlog and sscf_benchmark paths.\n\n"
+            f"and once with audience='gis' (out ending in .md). "
+            f"The gis call automatically also writes .docx and .pdf to the same directory.\n\n"
             "Return a final summary with: overall_score, overall_status (red/amber/green), "
             "count of critical/fail findings, and the top 3 remediation priorities."
         )

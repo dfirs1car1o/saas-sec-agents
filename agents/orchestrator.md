@@ -29,7 +29,7 @@ You are not a specialist. You do not call sfdc-connect directly. You do not writ
 
 | Request Type | Tool Call Sequence |
 |---|---|
-| Full assessment of a Salesforce org | sfdc_connect_collect → oscal_assess_assess → oscal_gap_map → sscf_benchmark_benchmark → report_gen_generate (both audiences) |
+| Full assessment of a Salesforce org | sfdc_connect_collect → oscal_assess_assess → oscal_gap_map → sscf_benchmark_benchmark → report_gen_generate (app-owner, .md) → report_gen_generate (gis, .md — auto-generates .docx + .pdf too) |
 | Gap mapping from an existing JSON file | oscal_gap_map → sscf_benchmark_benchmark → report_gen_generate |
 | Generate or refresh a governance report | report_gen_generate (app-owner + gis) |
 | Validate existing output against NIST AI RMF | nist-reviewer (no tool call — text analysis) |

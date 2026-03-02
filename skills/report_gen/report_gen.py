@@ -3,7 +3,7 @@ report-gen — governance output skill.
 
 Converts assessment backlog (+ optional sscf benchmark / nist review) into:
   - Plain-language Markdown or DOCX for application owners
-  - Technical Markdown or DOCX for CorpIS / governance review
+  - Technical Markdown + DOCX + PDF for CorpIS / governance review (gis audience always generates all 3)
 
 Usage:
     report-gen generate --backlog <path> --audience app-owner|gis --out <path>
@@ -594,6 +594,196 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
 
 
 # ---------------------------------------------------------------------------
+# PDF writer
+# ---------------------------------------------------------------------------
+
+
+def _pdf_safe(text: str, max_len: int = 0) -> str:
+    """Encode text to Latin-1 safely (fpdf2 core fonts are Latin-1 only)."""
+    out = text.encode("latin-1", errors="replace").decode("latin-1")
+    if max_len and len(out) > max_len:
+        out = out[: max_len - 3] + "..."
+    return out
+
+
+def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
+    """Write PDF governance report to out_path using fpdf2."""
+    try:
+        from fpdf import FPDF  # type: ignore
+    except ImportError:
+        click.echo("ERROR: fpdf2 not available. Run: pip install fpdf2>=2.8.0", err=True)
+        sys.exit(1)
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # --- Title block ---
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, _pdf_safe(ctx["title"]), new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_font("Helvetica", size=8)
+    pdf.cell(
+        0,
+        6,
+        _pdf_safe(
+            f"Assessment ID: {ctx['assessment_id']}  |  "
+            f"Generated: {ctx['generated_at_utc']}  |  Org: {ctx['org_alias']}"
+        ),
+        new_x="LMARGIN",
+        new_y="NEXT",
+        align="C",
+    )
+    pdf.ln(4)
+
+    # --- Helpers ---
+    def _section(title: str) -> None:
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.set_fill_color(220, 230, 241)
+        pdf.cell(0, 8, _pdf_safe(title), new_x="LMARGIN", new_y="NEXT", fill=True)
+        pdf.set_font("Helvetica", size=9)
+        pdf.ln(2)
+
+    def _kv_table(rows: list[list[str]]) -> None:
+        cw = [65.0, pdf.epw - 65.0]
+        pdf.set_font("Helvetica", size=9)
+        for row in rows:
+            pdf.cell(cw[0], 7, _pdf_safe(str(row[0])), border=1)
+            pdf.cell(cw[1], 7, _pdf_safe(str(row[1])), border=1, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+    def _table(headers: list[str], rows: list[list[str]], col_widths: list[float] | None = None) -> None:
+        n = len(headers)
+        cw: list[float] = col_widths if col_widths else [pdf.epw / n] * n
+
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_fill_color(220, 230, 241)
+        for i, h in enumerate(headers):
+            last = i == n - 1
+            nx, ny = ("LMARGIN", "NEXT") if last else ("RIGHT", "TOP")
+            pdf.cell(cw[i], 7, _pdf_safe(h), border=1, fill=True, new_x=nx, new_y=ny)
+
+        pdf.set_font("Helvetica", size=8)
+        for row in rows:
+            # Colour row by status value found anywhere in the row
+            status_val = next((str(c).lower() for c in row if str(c).lower() in ("fail", "partial", "pass")), "")
+            if status_val == "fail":
+                pdf.set_fill_color(255, 224, 224)
+                fill = True
+            elif status_val == "partial":
+                pdf.set_fill_color(255, 242, 204)
+                fill = True
+            else:
+                pdf.set_fill_color(255, 255, 255)
+                fill = False
+
+            nc = len(row)
+            for i, cell in enumerate(row):
+                last = i == nc - 1
+                pdf.cell(
+                    cw[i] if i < len(cw) else pdf.epw / nc,
+                    6,
+                    _pdf_safe(str(cell), max_len=50),
+                    border=1,
+                    fill=fill,
+                    new_x="LMARGIN" if last else "RIGHT",
+                    new_y="NEXT" if last else "TOP",
+                )
+        pdf.ln(2)
+
+    # --- Assessment Metadata ---
+    _section("Assessment Metadata")
+    _kv_table(
+        [
+            ["Assessment ID", ctx["assessment_id"]],
+            ["Generated (UTC)", ctx["generated_at_utc"]],
+            ["Org / Alias", ctx["org_alias"]],
+            ["Catalog Version", ctx.get("catalog_version", "")],
+            ["Framework", ctx.get("framework", "CSA_SSCF")],
+        ]
+    )
+
+    # --- Summary Metrics ---
+    _section("Summary Metrics")
+    s = ctx["summary"]
+    metric_rows: list[list[str]] = [
+        ["Total Controls", str(s["total"])],
+        ["Pass", str(s["pass"])],
+        ["Fail", str(s["fail"])],
+        ["Partial", str(s["partial"])],
+        ["Not Applicable", str(s["not_applicable"])],
+    ]
+    if ctx.get("sscf_overall_score") is not None:
+        metric_rows.append(["SSCF Overall Score", f"{ctx['sscf_overall_score']:.0%}"])
+        metric_rows.append(["SSCF Overall Status", (ctx.get("sscf_overall_status") or "").upper()])
+    _kv_table(metric_rows)
+
+    # --- Full Control Matrix ---
+    _section("Full Control Matrix")
+    matrix_rows = []
+    for f in ctx["all_findings"]:
+        sscf_ids = ", ".join(f.get("sscf_control_ids", []))
+        matrix_rows.append(
+            [
+                f.get("sbs_control_id", ""),
+                f.get("sbs_title", ""),
+                f.get("status", ""),
+                f.get("severity", ""),
+                f.get("owner", ""),
+                f.get("due_date", ""),
+                sscf_ids,
+            ]
+        )
+    _table(
+        ["SBS ID", "Title", "Status", "Severity", "Owner", "Due Date", "SSCF Controls"],
+        matrix_rows,
+        col_widths=[22.0, 52.0, 16.0, 18.0, 26.0, 22.0, 34.0],
+    )
+
+    # --- SSCF Domain Heatmap ---
+    _section("SSCF Domain Heatmap")
+    domains = ctx.get("sscf_domains", [])
+    if domains:
+        d_rows = [
+            [
+                d.get("domain_id", ""),
+                d.get("domain_label", d.get("domain_id", "")),
+                f"{d.get('score', 0):.0%}",
+                (d.get("status") or "").upper(),
+                str(d.get("fail", 0)),
+                str(d.get("partial", 0)),
+                str(d.get("pass", 0)),
+            ]
+            for d in domains
+        ]
+        _table(
+            ["Domain ID", "Domain", "Score", "Status", "Fail", "Partial", "Pass"],
+            d_rows,
+            col_widths=[25.0, 65.0, 20.0, 20.0, 20.0, 20.0, 20.0],
+        )
+    else:
+        pdf.set_font("Helvetica", size=9)
+        pdf.cell(0, 6, "SSCF benchmark not provided.", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+    # --- NIST AI RMF ---
+    _section("NIST AI RMF Compliance Note")
+    nist = ctx.get("nist_rmf")
+    if nist:
+        nist_rows = []
+        for fn in ("GOVERN", "MAP", "MEASURE", "MANAGE"):
+            val = nist.get(fn) or nist.get(fn.lower()) or "[not reported]"
+            nist_rows.append([fn, str(val)])
+        _kv_table(nist_rows)
+    else:
+        pdf.set_font("Helvetica", size=9)
+        pdf.cell(0, 6, "[PENDING NIST REVIEW]", new_x="LMARGIN", new_y="NEXT")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(out_path))
+    click.echo(f"  wrote PDF  report → {out_path}", err=True)
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -668,7 +858,8 @@ def generate(
         out_path = (_DELIVERABLES_DIR / out_path).resolve()
 
     ext = out_path.suffix.lower()
-    if ext not in (".md", ".docx"):
+    # GIS always generates MD + DOCX + PDF; app-owner uses the extension to pick format
+    if audience != "gis" and ext not in (".md", ".docx"):
         click.echo(f"ERROR: unsupported output format '{ext}'. Use .md or .docx.", err=True)
         sys.exit(1)
 
@@ -684,12 +875,18 @@ def generate(
     resolved_title = title or auto_title
 
     if dry_run:
+        base = out_path.with_suffix("")
+        out_desc = (
+            f"{base}.(md|docx|pdf)"
+            if audience == "gis"
+            else str(out_path)
+        )
         click.echo(
-            f"DRY RUN — would generate {ext[1:].upper()} report:\n"
+            f"DRY RUN — would generate report(s):\n"
             f"  assessment_id : {assessment_id}\n"
             f"  audience      : {audience}\n"
             f"  title         : {resolved_title}\n"
-            f"  output        : {out_path}\n"
+            f"  output        : {out_desc}\n"
             f"  sscf_benchmark: {sscf_benchmark or '(none)'}\n"
             f"  nist_review   : {nist_review or '(none)'}"
         )
@@ -702,12 +899,18 @@ def generate(
         err=True,
     )
 
-    if ext == ".md":
+    if audience == "gis":
+        base = out_path.with_suffix("")
+        _write_md(ctx, base.with_suffix(".md"))
+        _write_docx(ctx, base.with_suffix(".docx"))
+        _write_pdf(ctx, base.with_suffix(".pdf"))
+        click.echo(f"report-gen: done → {base.parent} (md + docx + pdf)")
+    elif ext == ".md":
         _write_md(ctx, out_path)
+        click.echo(f"report-gen: done → {out_path}")
     else:
         _write_docx(ctx, out_path)
-
-    click.echo(f"report-gen: done → {out_path}")
+        click.echo(f"report-gen: done → {out_path}")
 
 
 if __name__ == "__main__":
