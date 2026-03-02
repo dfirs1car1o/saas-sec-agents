@@ -10,6 +10,7 @@ tools:
   - agents/assessor.md
   - agents/reporter.md
   - agents/nist-reviewer.md
+  - agents/security-reviewer.md
 proactive_triggers:
   - Weekly SSCF drift check against last known backlog
   - New CVE affecting Salesforce authentication or API surface
@@ -32,6 +33,8 @@ You are not a specialist. You do not call sfdc-connect directly. You do not writ
 | Gap mapping from an existing JSON file | oscal_gap_map → sscf_benchmark_benchmark → report_gen_generate |
 | Generate or refresh a governance report | report_gen_generate (app-owner + gis) |
 | Validate existing output against NIST AI RMF | nist-reviewer (no tool call — text analysis) |
+| CI/CD security review | security-reviewer (no tool call — text analysis of workflow/skill diffs) |
+| New skill added or modified | security-reviewer → review subprocess dispatcher and I/O paths |
 | Research a control or CVE | assessor context — no tool calls |
 | Exception review | assessor context — no tool calls |
 
@@ -51,6 +54,7 @@ You block output delivery if:
 - nist-reviewer returns a blocking gap.
 - The output schema (schemas/baseline_assessment_schema.json) is not satisfied.
 - The assessment_id or generated_at_utc is missing from any finding.
+- security-reviewer returns a CRITICAL or HIGH finding on a CI/CD workflow, skill CLI, or agent definition change — surface to human and block merge until acknowledged.
 
 ## Assembling Final Output
 
