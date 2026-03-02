@@ -122,8 +122,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 SF_USERNAME=your.name@yourcompany.com
 SF_PASSWORD=YourSalesforcePassword
 SF_SECURITY_TOKEN=YourSecurityToken
-SF_DOMAIN=login          # use "test" for sandbox orgs
-SF_INSTANCE_URL=https://yourorg.my.salesforce.com
+SF_DOMAIN=test           # "test" for sandbox orgs (recommended starting point); use "login" for production
+SF_INSTANCE_URL=https://yourorg--sandbox.sandbox.my.salesforce.com
 
 # ── Session memory (no Docker needed) ─────────────────────────
 QDRANT_IN_MEMORY=1
@@ -131,10 +131,10 @@ QDRANT_IN_MEMORY=1
 
 > **Where to get these values:**
 > - `ANTHROPIC_API_KEY` — from https://console.anthropic.com → API Keys
-> - `SF_USERNAME` / `SF_PASSWORD` — your Salesforce login credentials
-> - `SF_SECURITY_TOKEN` — in Salesforce: **Settings → My Personal Information → Reset My Security Token** (token is emailed to you). Leave blank if your org uses trusted IP ranges.
-> - `SF_DOMAIN` — use `login` for production, `test` for sandbox
-> - `SF_INSTANCE_URL` — the URL you use to log into Salesforce (e.g., `https://mycompany.my.salesforce.com`)
+> - `SF_USERNAME` / `SF_PASSWORD` — your Salesforce sandbox login credentials (same as production unless your admin set a separate sandbox user)
+> - `SF_SECURITY_TOKEN` — in Salesforce sandbox: **Settings → My Personal Information → Reset My Security Token** (token is emailed to you). Leave blank if your org uses trusted IP ranges. Note: sandbox and production have separate security tokens.
+> - `SF_DOMAIN` — use `test` for sandbox (default), `login` for production
+> - `SF_INSTANCE_URL` — the URL you use to log into the **sandbox** (e.g., `https://yourorg--dev.sandbox.my.salesforce.com`). Find it by logging into the sandbox and copying the browser URL.
 
 > **Security:** `.env` is in `.gitignore` — it will never be committed to Git. Never share it or paste it anywhere.
 
