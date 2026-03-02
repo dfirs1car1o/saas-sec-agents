@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write  # needed to commit the generated SBOM
+  contents: read  # read-only; SBOM is uploaded as artifact, not committed
 
 jobs:
   generate-sbom:
@@ -13,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
@@ -26,14 +24,9 @@ jobs:
       - name: Generate SBOM
         run: cyclonedx-py environment --output-format json --output-file docs/sbom.cdx.json
 
-      - name: Commit SBOM if changed
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/sbom.cdx.json
-          if git diff --cached --quiet; then
-            echo "SBOM unchanged — nothing to commit"
-          else
-            git commit -m "chore(sbom): regenerate CycloneDX SBOM [skip ci]"
-            git push
-          fi
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: docs/sbom.cdx.json
+          retention-days: 90

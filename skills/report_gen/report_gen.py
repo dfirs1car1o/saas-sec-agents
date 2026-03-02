@@ -111,9 +111,7 @@ def _build_context(
             {
                 "domain_id": d.get("domain_id") or d.get("domain", ""),
                 "domain_label": (
-                    d.get("domain_label")
-                    or d.get("domain_id")
-                    or d.get("domain", "").replace("_", " ").title()
+                    d.get("domain_label") or d.get("domain_id") or d.get("domain", "").replace("_", " ").title()
                 ),
                 "score": d.get("score", 0),
                 "status": d.get("status", ""),
@@ -593,15 +591,28 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         else:
             doc.add_paragraph("SSCF benchmark not provided.")
 
-        # NIST AI RMF
-        doc.add_heading("NIST AI RMF Compliance Note", level=1)
+        # NIST AI RMF — only render when data is present
         nist = ctx.get("nist_rmf")
         if nist:
+            review = nist.get("nist_ai_rmf_review", nist)
+            doc.add_heading("NIST AI RMF Compliance Note", level=1)
+            overall = (review.get("overall") or "").upper()
+            if overall:
+                doc.add_paragraph(f"Overall verdict: {overall}")
             for fn in ("GOVERN", "MAP", "MEASURE", "MANAGE"):
-                val = nist.get(fn) or nist.get(fn.lower()) or "[not reported]"
-                doc.add_paragraph(f"{fn}: {val}")
-        else:
-            doc.add_paragraph("[PENDING NIST REVIEW]")
+                entry = review.get(fn) or review.get(fn.lower()) or {}
+                if isinstance(entry, dict):
+                    status = (entry.get("status") or "").upper()
+                    notes = (entry.get("notes") or "").strip()
+                    text = f"{status} -- {notes}" if notes else (status or "[not reported]")
+                else:
+                    text = str(entry) or "[not reported]"
+                doc.add_paragraph(f"{fn}: {text}")
+            blocking = review.get("blocking_issues", [])
+            if blocking:
+                doc.add_heading("Blocking Issues", level=2)
+                for issue in blocking:
+                    doc.add_paragraph(f"- {issue}")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out_path))
@@ -616,18 +627,18 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
 def _pdf_safe(text: str, max_len: int = 0) -> str:
     """Encode text to Latin-1 safely (fpdf2 core fonts are Latin-1 only)."""
     _UNICODE_MAP = {
-        "\u2014": " - ",   # em dash
-        "\u2013": "-",     # en dash
-        "\u2019": "'",     # right single quotation mark
-        "\u2018": "'",     # left single quotation mark
-        "\u201c": '"',     # left double quotation mark
-        "\u201d": '"',     # right double quotation mark
-        "\u2265": ">=",    # greater-than-or-equal (≥)
-        "\u2264": "<=",    # less-than-or-equal (≤)
-        "\u2192": "->",    # rightwards arrow (→)
-        "\u00d7": "x",     # multiplication sign (×)
-        "\u2022": "-",     # bullet (•)
-        "\u00b0": "deg",   # degree sign (°)
+        "\u2014": " - ",  # em dash
+        "\u2013": "-",  # en dash
+        "\u2019": "'",  # right single quotation mark
+        "\u2018": "'",  # left single quotation mark
+        "\u201c": '"',  # left double quotation mark
+        "\u201d": '"',  # right double quotation mark
+        "\u2265": ">=",  # greater-than-or-equal (≥)
+        "\u2264": "<=",  # less-than-or-equal (≤)
+        "\u2192": "->",  # rightwards arrow (→)
+        "\u00d7": "x",  # multiplication sign (×)
+        "\u2022": "-",  # bullet (•)
+        "\u00b0": "deg",  # degree sign (°)
     }
     for ch, repl in _UNICODE_MAP.items():
         text = text.replace(ch, repl)
@@ -675,11 +686,23 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         pdf.ln(2)
 
     def _kv_table(rows: list[list[str]]) -> None:
-        cw = [65.0, pdf.epw - 65.0]
+        key_w = 50.0
+        val_w = pdf.epw - key_w
+        line_h = 6.0
         pdf.set_font("Helvetica", size=9)
+        lm = pdf.l_margin
         for row in rows:
-            pdf.cell(cw[0], 7, _pdf_safe(str(row[0])), border=1)
-            pdf.cell(cw[1], 7, _pdf_safe(str(row[1])), border=1, new_x="LMARGIN", new_y="NEXT")
+            key_text = _pdf_safe(str(row[0]))
+            val_text = _pdf_safe(str(row[1]))
+            y0 = pdf.get_y()
+            # Render value column with wrapping to measure actual row height
+            pdf.set_xy(lm + key_w, y0)
+            pdf.multi_cell(val_w, line_h, val_text, border=1)
+            y1 = pdf.get_y()
+            # Render key column spanning the full measured height
+            pdf.set_xy(lm, y0)
+            pdf.cell(key_w, y1 - y0, key_text, border=1)
+            pdf.set_y(y1)
         pdf.ln(2)
 
     def _fit(text: str, width_mm: float) -> str:
@@ -812,19 +835,27 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
             scoreable = d.get("fail", 0) + d.get("partial", 0) + d.get("pass", 0)
             if scoreable == 0:
                 # No controls assessed for this domain — show N/A rather than misleading 100% GREEN
-                d_rows.append([
-                    d.get("domain_label", d.get("domain_id", "")),
-                    "N/A", "N/A", "-", "-", "-",
-                ])
+                d_rows.append(
+                    [
+                        d.get("domain_label", d.get("domain_id", "")),
+                        "N/A",
+                        "N/A",
+                        "-",
+                        "-",
+                        "-",
+                    ]
+                )
             else:
-                d_rows.append([
-                    d.get("domain_label", d.get("domain_id", "")),
-                    f"{d.get('score', 0):.0%}",
-                    (d.get("status") or "").upper(),
-                    str(d.get("fail", 0)),
-                    str(d.get("partial", 0)),
-                    str(d.get("pass", 0)),
-                ])
+                d_rows.append(
+                    [
+                        d.get("domain_label", d.get("domain_id", "")),
+                        f"{d.get('score', 0):.0%}",
+                        (d.get("status") or "").upper(),
+                        str(d.get("fail", 0)),
+                        str(d.get("partial", 0)),
+                        str(d.get("pass", 0)),
+                    ]
+                )
         _table(
             ["Domain", "Score", "Status", "Fail", "Partial", "Pass"],
             d_rows,
@@ -839,11 +870,28 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
     nist = ctx.get("nist_rmf")
     if nist:
         _section("NIST AI RMF Compliance Note")
+        review = nist.get("nist_ai_rmf_review", nist)
+        overall = (review.get("overall") or "").upper()
         nist_rows = []
+        if overall:
+            nist_rows.append(["Overall Verdict", overall])
         for fn in ("GOVERN", "MAP", "MEASURE", "MANAGE"):
-            val = nist.get(fn) or nist.get(fn.lower()) or "[not reported]"
-            nist_rows.append([fn, str(val)])
+            entry = review.get(fn) or review.get(fn.lower()) or {}
+            if isinstance(entry, dict):
+                status = (entry.get("status") or "").upper()
+                notes = (entry.get("notes") or "").strip()
+                text = f"{status} -- {notes}" if notes else (status or "[not reported]")
+            else:
+                text = str(entry) or "[not reported]"
+            nist_rows.append([fn, text])
         _kv_table(nist_rows)
+        blocking = review.get("blocking_issues", [])
+        if blocking:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.cell(0, 6, "Blocking Issues:", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", size=9)
+            for issue in blocking:
+                pdf.cell(0, 6, _pdf_safe(f"- {issue}"), new_x="LMARGIN", new_y="NEXT")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(out_path))
@@ -943,11 +991,7 @@ def generate(
 
     if dry_run:
         base = out_path.with_suffix("")
-        out_desc = (
-            f"{base}.(md|docx|pdf)"
-            if audience == "gis"
-            else str(out_path)
-        )
+        out_desc = f"{base}.(md|docx|pdf)" if audience == "gis" else str(out_path)
         click.echo(
             f"DRY RUN — would generate report(s):\n"
             f"  assessment_id : {assessment_id}\n"

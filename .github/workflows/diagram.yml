@@ -1,9 +1,8 @@
-name: Update Architecture Diagram
+name: Verify Architecture Diagram
 
-# Regenerates docs/architecture.png whenever the agent/skill/harness code
-# changes on main. The auto-commit uses [skip ci] to prevent a loop.
-# Does NOT run on pull_requests — the diagram committed on main is shown
-# via the PR template's embedded image link.
+# Checks that docs/architecture.png is up-to-date whenever the agent/skill/harness
+# code changes on main. Fails loudly if the diagram needs to be regenerated locally
+# and committed. Does NOT push to main.
 
 on:
   push:
@@ -16,21 +15,15 @@ on:
       - "config/**"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   diagram:
-    name: Regenerate architecture diagram
+    name: Verify architecture diagram is up-to-date
     runs-on: ubuntu-latest
-
-    # Skip when the previous push was itself the diagram auto-commit,
-    # preventing an infinite trigger loop.
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
@@ -42,18 +35,32 @@ jobs:
       - name: Install diagrams library
         run: pip install "diagrams>=0.23.4"
 
-      - name: Generate diagram
-        run: python3 scripts/gen_diagram.py
-
-      - name: Commit if changed
+      - name: Generate diagram to temp location
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/architecture.png
-          if git diff --staged --quiet; then
-            echo "Architecture diagram unchanged — nothing to commit."
+          # gen_diagram.py writes to docs/architecture.png by default.
+          # Save the checked-in version, regenerate, then compare.
+          cp docs/architecture.png /tmp/architecture_checked_in.png 2>/dev/null || true
+          python3 scripts/gen_diagram.py
+
+      - name: Check diagram is up-to-date
+        run: |
+          if [ -f /tmp/architecture_checked_in.png ]; then
+            if ! diff -q /tmp/architecture_checked_in.png docs/architecture.png > /dev/null 2>&1; then
+              echo "ERROR: docs/architecture.png is out of date."
+              echo "Run locally: python3 scripts/gen_diagram.py"
+              echo "Then commit and push the updated docs/architecture.png."
+              exit 1
+            fi
+            echo "Diagram is up-to-date."
           else
-            git commit -m "chore(diagram): regenerate reference architecture [skip ci]"
-            git push
-            echo "Architecture diagram updated and pushed."
+            echo "No diagram found in repo - uploading freshly generated diagram as artifact."
           fi
+
+      - name: Upload diagram artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-diagram
+          path: docs/architecture.png
+          if-no-files-found: ignore
+          retention-days: 30

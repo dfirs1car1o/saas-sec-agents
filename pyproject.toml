@@ -23,6 +23,7 @@ oscal-assess = "skills.oscal_assess.oscal_assess:cli"
 sscf-benchmark = "skills.sscf_benchmark.sscf_benchmark:cli"
 agent-loop = "harness.loop:cli"
 report-gen = "skills.report_gen.report_gen:cli"
+nist-review = "skills.nist_review.nist_review:cli"
 
 [tool.setuptools.packages.find]
 include = ["skills*", "harness*"]

@@ -166,6 +166,7 @@ def _run_loop(
         "gap_analysis": None,
         "backlog": None,
         "sscf_report": None,
+        "nist_review": None,
         "turns": 0,
     }
 
@@ -233,6 +234,8 @@ def _run_loop(
                         state["backlog"] = out_file
                     elif name == "sscf_benchmark_benchmark":
                         state["sscf_report"] = out_file
+                    elif name == "nist_review_assess":
+                        state["nist_review"] = out_file
             except (json.JSONDecodeError, AttributeError):
                 pass
 
@@ -352,9 +355,12 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             f"2. Call oscal_assess_assess (org='{org}') to produce gap_analysis.json.\n"
             f"3. Call oscal_gap_map (org='{org}') with the gap_analysis output to produce backlog.json.\n"
             f"4. Call sscf_benchmark_benchmark (org='{org}') with the backlog to produce the SSCF scorecard.\n"
-            f"5. Call report_gen_generate twice:\n"
+            f"5. Call nist_review_assess (org='{org}') with gap_analysis from step 2 and backlog from step 3 "
+            f"to produce nist_review.json.\n"
+            f"6. Call report_gen_generate twice:\n"
             f"   a. audience='app-owner', out='{org}_remediation_report.md', sscf_benchmark from step 4.\n"
             f"   b. audience='gis', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
+            f"nist_review from step 5, "
             f"title='{governance_title} - {org_display}'. "
             f"The gis call automatically also writes .docx and .pdf to the same directory.\n\n"
             "Return a final summary with: overall_score, overall_status (red/amber/green), "

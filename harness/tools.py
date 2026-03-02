@@ -144,6 +144,34 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "nist_review_assess",
+        "description": (
+            "Run NIST AI RMF 1.0 review against the assessment outputs (gap_analysis + backlog). "
+            "Validates Govern, Map, Measure, Manage functions and produces a structured verdict JSON. "
+            "Use dry_run=true for offline testing. Pass the output path to report_gen_generate as nist_review."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "org": {"type": "string", "description": "Org alias for output dir naming"},
+                "gap_analysis": {
+                    "type": "string",
+                    "description": "Path to gap_analysis.json produced by oscal_assess_assess",
+                },
+                "backlog": {
+                    "type": "string",
+                    "description": "Path to backlog.json produced by oscal_gap_map",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Produce realistic stub verdict without calling the API",
+                },
+                "out": {"type": "string", "description": "Override output file path"},
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "sscf_benchmark_benchmark",
         "description": (
             "Benchmark the remediation backlog against the SSCF control index to produce "
@@ -316,6 +344,26 @@ def _dispatch_report_gen(inp: dict[str, Any], out_dir: Path) -> str:
     return json.dumps({"status": "ok", "output_file": out_path})
 
 
+def _dispatch_nist_review(inp: dict[str, Any], out_dir: Path) -> str:
+    out_path = inp.get("out") or str(out_dir / "nist_review.json")
+    args = [
+        _PYTHON,
+        "-m",
+        "skills.nist_review.nist_review",
+        "assess",
+        "--out",
+        out_path,
+    ]
+    if inp.get("gap_analysis"):
+        args += ["--gap-analysis", inp["gap_analysis"]]
+    if inp.get("backlog"):
+        args += ["--backlog", inp["backlog"]]
+    if inp.get("dry_run"):
+        args.append("--dry-run")
+    _run(args)
+    return json.dumps({"status": "ok", "output_file": out_path})
+
+
 def _dispatch_sscf_benchmark(inp: dict[str, Any], out_dir: Path) -> str:
     out_path = inp.get("out") or str(out_dir / "sscf_report.json")
     sscf_index = _REPO / "config/sscf_control_index.yaml"
@@ -343,6 +391,7 @@ _DISPATCHERS = {
     "sfdc_connect_collect": _dispatch_sfdc_connect,
     "oscal_assess_assess": _dispatch_oscal_assess,
     "oscal_gap_map": _dispatch_gap_map,
+    "nist_review_assess": _dispatch_nist_review,
     "sscf_benchmark_benchmark": _dispatch_sscf_benchmark,
     "report_gen_generate": _dispatch_report_gen,
 }
