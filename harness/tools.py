@@ -137,6 +137,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "description": "Optional path to nist_review.json for NIST AI RMF section",
                 },
                 "org_alias": {"type": "string", "description": "Org alias for report header"},
+                "title": {"type": "string", "description": "Custom report title (overrides auto-generated title)"},
                 "dry_run": {"type": "boolean", "description": "Print plan without writing files"},
             },
             "required": ["backlog", "audience", "out"],
@@ -274,7 +275,20 @@ def _dispatch_gap_map(inp: dict[str, Any], out_dir: Path) -> str:
 
 
 def _dispatch_report_gen(inp: dict[str, Any], out_dir: Path) -> str:
-    out_path = inp.get("out") or str(out_dir / "report.md")
+    raw_out = inp.get("out")
+    if raw_out:
+        p = Path(raw_out)
+        if p.is_absolute():
+            out_path = str(p)
+        else:
+            # Resolve relative filenames against the backlog's directory so reports
+            # always land next to the data they came from, even when `org` is not
+            # explicitly passed to this tool (the LLM uses `org_alias` instead).
+            backlog = inp.get("backlog", "")
+            anchor = Path(backlog).parent if backlog else out_dir
+            out_path = str(anchor / p.name)
+    else:
+        out_path = str(out_dir / "report.md")
     audience = inp.get("audience", "gis")
     args = [
         _PYTHON,
@@ -294,6 +308,8 @@ def _dispatch_report_gen(inp: dict[str, Any], out_dir: Path) -> str:
         args += ["--nist-review", inp["nist_review"]]
     if inp.get("org_alias"):
         args += ["--org-alias", inp["org_alias"]]
+    if inp.get("title"):
+        args += ["--title", inp["title"]]
     if inp.get("dry_run"):
         args.append("--dry-run")
     _run(args)

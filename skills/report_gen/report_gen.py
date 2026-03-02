@@ -107,7 +107,22 @@ def _build_context(
         "summary": summary,
         "critical_high_findings": critical_high,
         "all_findings": items,
-        "sscf_domains": (sscf_report or {}).get("domains", []),
+        "sscf_domains": [
+            {
+                "domain_id": d.get("domain_id") or d.get("domain", ""),
+                "domain_label": (
+                    d.get("domain_label")
+                    or d.get("domain_id")
+                    or d.get("domain", "").replace("_", " ").title()
+                ),
+                "score": d.get("score", 0),
+                "status": d.get("status", ""),
+                "fail": d.get("fail", 0),
+                "partial": d.get("partial", 0),
+                "pass": d.get("pass", 0),
+            }
+            for d in (sscf_report or {}).get("domains", [])
+        ],
         "nist_rmf": nist_review,
         # passthrough for GIS metadata block
         "catalog_version": backlog.get("catalog_version", ""),
@@ -600,6 +615,9 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
 
 def _pdf_safe(text: str, max_len: int = 0) -> str:
     """Encode text to Latin-1 safely (fpdf2 core fonts are Latin-1 only)."""
+    _UNICODE_MAP = {"—": " - ", "–": "-", "\u2019": "'", "\u2018": "'", "\u201c": '"', "\u201d": '"'}
+    for ch, repl in _UNICODE_MAP.items():
+        text = text.replace(ch, repl)
     out = text.encode("latin-1", errors="replace").decode("latin-1")
     if max_len and len(out) > max_len:
         out = out[: max_len - 3] + "..."
@@ -651,6 +669,17 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
             pdf.cell(cw[1], 7, _pdf_safe(str(row[1])), border=1, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(2)
 
+    def _fit(text: str, width_mm: float) -> str:
+        """Truncate text to fit within width_mm at the current font using actual glyph widths."""
+        s = _pdf_safe(text)
+        margin = 1.0  # 1mm padding inside cell
+        if pdf.get_string_width(s) <= width_mm - margin:
+            return s
+        suffix = "..."
+        while s and pdf.get_string_width(s + suffix) > width_mm - margin:
+            s = s[:-1]
+        return s + suffix
+
     def _table(headers: list[str], rows: list[list[str]], col_widths: list[float] | None = None) -> None:
         n = len(headers)
         cw: list[float] = col_widths if col_widths else [pdf.epw / n] * n
@@ -660,7 +689,7 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         for i, h in enumerate(headers):
             last = i == n - 1
             nx, ny = ("LMARGIN", "NEXT") if last else ("RIGHT", "TOP")
-            pdf.cell(cw[i], 7, _pdf_safe(h), border=1, fill=True, new_x=nx, new_y=ny)
+            pdf.cell(cw[i], 7, _fit(h, cw[i]), border=1, fill=True, new_x=nx, new_y=ny)
 
         pdf.set_font("Helvetica", size=8)
         for row in rows:
@@ -679,10 +708,11 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
             nc = len(row)
             for i, cell in enumerate(row):
                 last = i == nc - 1
+                w = cw[i] if i < len(cw) else pdf.epw / nc
                 pdf.cell(
-                    cw[i] if i < len(cw) else pdf.epw / nc,
+                    w,
                     6,
-                    _pdf_safe(str(cell), max_len=50),
+                    _fit(str(cell), w),
                     border=1,
                     fill=fill,
                     new_x="LMARGIN" if last else "RIGHT",
@@ -728,15 +758,13 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
                 f.get("sbs_title", ""),
                 f.get("status", ""),
                 f.get("severity", ""),
-                f.get("owner", ""),
-                f.get("due_date", ""),
                 sscf_ids,
             ]
         )
     _table(
-        ["SBS ID", "Title", "Status", "Severity", "Owner", "Due Date", "SSCF Controls"],
+        ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
         matrix_rows,
-        col_widths=[22.0, 52.0, 16.0, 18.0, 26.0, 22.0, 34.0],
+        col_widths=[26.0, 80.0, 26.0, 22.0, 36.0],
     )
 
     # --- SSCF Domain Heatmap ---
@@ -745,7 +773,6 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
     if domains:
         d_rows = [
             [
-                d.get("domain_id", ""),
                 d.get("domain_label", d.get("domain_id", "")),
                 f"{d.get('score', 0):.0%}",
                 (d.get("status") or "").upper(),
@@ -756,9 +783,9 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
             for d in domains
         ]
         _table(
-            ["Domain ID", "Domain", "Score", "Status", "Fail", "Partial", "Pass"],
+            ["Domain", "Score", "Status", "Fail", "Partial", "Pass"],
             d_rows,
-            col_widths=[25.0, 65.0, 20.0, 20.0, 20.0, 20.0, 20.0],
+            col_widths=[82.0, 22.0, 24.0, 22.0, 22.0, 18.0],
         )
     else:
         pdf.set_font("Helvetica", size=9)

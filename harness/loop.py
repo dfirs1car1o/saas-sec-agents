@@ -289,15 +289,17 @@ def cli() -> None:
 @click.option(
     "--env",
     default="dev",
+    envvar="SFDC_ENV",
     type=click.Choice(["dev", "test", "prod"]),
     show_default=True,
-    help="Target environment label.",
+    help="Target environment label (default: SFDC_ENV env var, then 'dev').",
 )
 @click.option(
     "--org",
     default="unknown-org",
+    envvar="SFDC_ORG_ALIAS",
     show_default=True,
-    help="Org alias used for output directory naming and memory scoping.",
+    help="Org alias for output directory naming and memory scoping (default: SFDC_ORG_ALIAS env var).",
 )
 @click.option(
     "--dry-run",
@@ -328,6 +330,9 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
     dry_tag = " [DRY-RUN]" if dry_run else ""
     click.echo(f"\nagent-loop{dry_tag}: org={org} env={env}")
 
+    governance_title = os.getenv("REPORT_GOVERNANCE_TITLE", "Salesforce Security Governance Assessment")
+    org_display = os.getenv("REPORT_ORG_DISPLAY_NAME", org)
+
     if task is None:
         dry_note = " Use dry_run=true for all tool calls (no real Salesforce connection)." if dry_run else ""
         dry_gate_note = (
@@ -347,8 +352,10 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             f"2. Call oscal_assess_assess (org='{org}') to produce gap_analysis.json.\n"
             f"3. Call oscal_gap_map (org='{org}') with the gap_analysis output to produce backlog.json.\n"
             f"4. Call sscf_benchmark_benchmark (org='{org}') with the backlog to produce the SSCF scorecard.\n"
-            f"5. Call report_gen_generate twice: once with audience='app-owner' (out ending in .md) "
-            f"and once with audience='gis' (out ending in .md). "
+            f"5. Call report_gen_generate twice:\n"
+            f"   a. audience='app-owner', out='{org}_remediation_report.md', sscf_benchmark from step 4.\n"
+            f"   b. audience='gis', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
+            f"title='{governance_title} - {org_display}'. "
             f"The gis call automatically also writes .docx and .pdf to the same directory.\n\n"
             "Return a final summary with: overall_score, overall_status (red/amber/green), "
             "count of critical/fail findings, and the top 3 remediation priorities."
