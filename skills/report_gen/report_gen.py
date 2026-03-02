@@ -615,7 +615,20 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
 
 def _pdf_safe(text: str, max_len: int = 0) -> str:
     """Encode text to Latin-1 safely (fpdf2 core fonts are Latin-1 only)."""
-    _UNICODE_MAP = {"—": " - ", "–": "-", "\u2019": "'", "\u2018": "'", "\u201c": '"', "\u201d": '"'}
+    _UNICODE_MAP = {
+        "\u2014": " - ",   # em dash
+        "\u2013": "-",     # en dash
+        "\u2019": "'",     # right single quotation mark
+        "\u2018": "'",     # left single quotation mark
+        "\u201c": '"',     # left double quotation mark
+        "\u201d": '"',     # right double quotation mark
+        "\u2265": ">=",    # greater-than-or-equal (≥)
+        "\u2264": "<=",    # less-than-or-equal (≤)
+        "\u2192": "->",    # rightwards arrow (→)
+        "\u00d7": "x",     # multiplication sign (×)
+        "\u2022": "-",     # bullet (•)
+        "\u00b0": "deg",   # degree sign (°)
+    }
     for ch, repl in _UNICODE_MAP.items():
         text = text.replace(ch, repl)
     out = text.encode("latin-1", errors="replace").decode("latin-1")
@@ -693,7 +706,7 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
 
         pdf.set_font("Helvetica", size=8)
         for row in rows:
-            # Colour row by status value found anywhere in the row
+            # Colour row by status value found anywhere in the row (case-insensitive)
             status_val = next((str(c).lower() for c in row if str(c).lower() in ("fail", "partial", "pass")), "")
             if status_val == "fail":
                 pdf.set_fill_color(255, 224, 224)
@@ -747,41 +760,71 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         metric_rows.append(["SSCF Overall Status", (ctx.get("sscf_overall_status") or "").upper()])
     _kv_table(metric_rows)
 
+    # --- Top Findings / Remediation Priorities ---
+    critical_high = ctx.get("critical_high_findings", [])
+    if critical_high:
+        _section("Top Findings — Remediation Priorities")
+        top_rows = []
+        for f in critical_high:
+            remediation = f.get("remediation", "") or ""
+            top_rows.append(
+                [
+                    f.get("sbs_control_id", ""),
+                    f.get("sbs_title", ""),
+                    f.get("severity", "").title(),
+                    remediation,
+                ]
+            )
+        _table(
+            ["SBS ID", "Title", "Severity", "Remediation Action"],
+            top_rows,
+            col_widths=[32.0, 52.0, 22.0, 84.0],
+        )
+
     # --- Full Control Matrix ---
     _section("Full Control Matrix")
     matrix_rows = []
     for f in ctx["all_findings"]:
         sscf_ids = ", ".join(f.get("sscf_control_ids", []))
+        raw_status = f.get("status", "")
+        display_status = raw_status.replace("_", " ").title()
         matrix_rows.append(
             [
                 f.get("sbs_control_id", ""),
                 f.get("sbs_title", ""),
-                f.get("status", ""),
-                f.get("severity", ""),
+                display_status,
+                f.get("severity", "").title(),
                 sscf_ids,
             ]
         )
     _table(
         ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
         matrix_rows,
-        col_widths=[26.0, 80.0, 26.0, 22.0, 36.0],
+        col_widths=[32.0, 74.0, 28.0, 22.0, 34.0],
     )
 
     # --- SSCF Domain Heatmap ---
     _section("SSCF Domain Heatmap")
     domains = ctx.get("sscf_domains", [])
     if domains:
-        d_rows = [
-            [
-                d.get("domain_label", d.get("domain_id", "")),
-                f"{d.get('score', 0):.0%}",
-                (d.get("status") or "").upper(),
-                str(d.get("fail", 0)),
-                str(d.get("partial", 0)),
-                str(d.get("pass", 0)),
-            ]
-            for d in domains
-        ]
+        d_rows = []
+        for d in domains:
+            scoreable = d.get("fail", 0) + d.get("partial", 0) + d.get("pass", 0)
+            if scoreable == 0:
+                # No controls assessed for this domain — show N/A rather than misleading 100% GREEN
+                d_rows.append([
+                    d.get("domain_label", d.get("domain_id", "")),
+                    "N/A", "N/A", "-", "-", "-",
+                ])
+            else:
+                d_rows.append([
+                    d.get("domain_label", d.get("domain_id", "")),
+                    f"{d.get('score', 0):.0%}",
+                    (d.get("status") or "").upper(),
+                    str(d.get("fail", 0)),
+                    str(d.get("partial", 0)),
+                    str(d.get("pass", 0)),
+                ])
         _table(
             ["Domain", "Score", "Status", "Fail", "Partial", "Pass"],
             d_rows,
@@ -792,18 +835,15 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         pdf.cell(0, 6, "SSCF benchmark not provided.", new_x="LMARGIN", new_y="NEXT")
         pdf.ln(2)
 
-    # --- NIST AI RMF ---
-    _section("NIST AI RMF Compliance Note")
+    # --- NIST AI RMF --- only render when data is present
     nist = ctx.get("nist_rmf")
     if nist:
+        _section("NIST AI RMF Compliance Note")
         nist_rows = []
         for fn in ("GOVERN", "MAP", "MEASURE", "MANAGE"):
             val = nist.get(fn) or nist.get(fn.lower()) or "[not reported]"
             nist_rows.append([fn, str(val)])
         _kv_table(nist_rows)
-    else:
-        pdf.set_font("Helvetica", size=9)
-        pdf.cell(0, 6, "[PENDING NIST REVIEW]", new_x="LMARGIN", new_y="NEXT")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(out_path))
