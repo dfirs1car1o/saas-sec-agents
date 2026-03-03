@@ -114,6 +114,8 @@ jobs:
           lgpl_allowlist = {
               "docxtpl",  # LGPL-2.1-only; wraps python-docx for Jinja2 templating;
                           # used unmodified for DOCX report generation. Reviewed 2026-03-02.
+              "fpdf2",    # LGPL-3.0-only; pure-Python PDF generation; used unmodified
+                          # for report-gen PDF output (internal tooling). Reviewed 2026-03-03.
           }
           violations = [
               f"  {p['Name']} {p['Version']}: {p['License']}"
