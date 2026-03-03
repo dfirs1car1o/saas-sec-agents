@@ -32,6 +32,71 @@ _FILL_PASS = None  # no fill
 _FILL_PARTIAL = "FFF2CC"  # yellow
 _FILL_FAIL = "FFE0E0"  # red
 
+# What tooling or process is required to assess each API-unassessable control.
+# Shown in the "Controls Not Assessed via API" report section.
+_NOT_ASSESSED_HOW: dict[str, str] = {
+    "SBS-CODE-001": (
+        "Enable branch protection rules requiring ≥1 peer reviewer in your source control platform "
+        "(GitHub, Bitbucket, Azure DevOps)."
+    ),
+    "SBS-CODE-002": (
+        "Add a SAST step (Salesforce Code Analyzer, PMD) to the CI/CD pipeline configured to block "
+        "merges on HIGH/CRITICAL findings."
+    ),
+    "SBS-CODE-003": (
+        "Deploy a persistent Apex logging framework (e.g. Nebula Logger or custom Platform Events) "
+        "that writes to durable Salesforce objects or an external SIEM."
+    ),
+    "SBS-CODE-004": (
+        "Implement a SAST rule or code-review gate that scans Apex log statements for PII and "
+        "credential field names before merge."
+    ),
+    "SBS-CPORTAL-001": (
+        "Conduct an Apex code audit of all @AuraEnabled and @RemoteAction methods; verify no "
+        "user-supplied record IDs are accepted as parameters."
+    ),
+    "SBS-CPORTAL-002": (
+        "Export the guest user profile and audit all object and field permissions; verify no "
+        "business objects are accessible to unauthenticated users."
+    ),
+    "SBS-DEP-001": (
+        "Review the CI/CD pipeline configuration to confirm a dedicated non-human integration user "
+        "authenticates for all deployments."
+    ),
+    "SBS-DEP-002": (
+        "Document the list of prohibited metadata types and verify that profile restrictions or "
+        "DevOps tooling block direct production edits."
+    ),
+    "SBS-DEP-005": (
+        "Enable secret scanning with push protection on the Salesforce source repository "
+        "(GitHub secret scanning, gitleaks, truffleHog)."
+    ),
+    "SBS-DEP-006": (
+        "Review the Salesforce CLI Connected App OAuth policies in Setup and confirm finite "
+        "refresh and access token expiry is configured."
+    ),
+    "SBS-FILE-001": (
+        "Run a SOQL query on ContentDistribution records and verify all active links have a "
+        "non-null ExpiryDate field set to an appropriate date."
+    ),
+    "SBS-FILE-002": (
+        "Run a SOQL query on ContentDistribution records for sensitive content and verify "
+        "PasswordProtected = true for each."
+    ),
+    "SBS-FILE-003": (
+        "Establish a documented quarterly review process with a named owner; schedule recurring "
+        "SOQL scans of ContentDistribution records in the security runbook."
+    ),
+    "SBS-FDNS-001": (
+        "Review and document the centralised security system of record (e.g. Confluence, "
+        "SharePoint, Git); verify all control deviations and exceptions are captured."
+    ),
+    "SBS-INT-001": (
+        "Audit browser extension policies via your MDM console or Chrome Browser Cloud Management "
+        "admin portal; confirm an allowlist or blocklist is enforced for Salesforce users."
+    ),
+}
+
 
 # ---------------------------------------------------------------------------
 # Data loading helpers
@@ -98,6 +163,21 @@ def _build_context(
     ]
     critical_high.sort(key=lambda x: (_SEVERITY_ORDER.get(x.get("severity", "low"), 99), x.get("sbs_control_id", "")))
 
+    # Controls not assessed via API — excluded from scoring, need manual or tooling review
+    not_assessed = [
+        {
+            "control_id": f.get("sbs_control_id", ""),
+            "title": f.get("sbs_title", ""),
+            "severity": f.get("severity", ""),
+            "reason": f.get("observed_value", "Not assessable via Salesforce REST/SOQL API."),
+            "how_to_assess": _NOT_ASSESSED_HOW.get(
+                f.get("sbs_control_id", ""), "Manual review required — see the SBS control runbook."
+            ),
+        }
+        for f in items
+        if f.get("status") == "not_applicable"
+    ]
+
     return {
         "assessment_id": backlog.get("assessment_id", "unknown"),
         "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -107,6 +187,7 @@ def _build_context(
         "summary": summary,
         "critical_high_findings": critical_high,
         "all_findings": items,
+        "not_assessed_controls": not_assessed,
         "sscf_domains": [
             {
                 "domain_id": d.get("domain_id") or d.get("domain", ""),
@@ -266,7 +347,35 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         )
         lines.append("")
 
-        # ── Section 4: Appendix — Full Control Matrix ───────────────────────
+        # ── Section 4: Controls Not Assessed via API ────────────────────────
+        na_controls = ctx.get("not_assessed_controls", [])
+        if na_controls:
+            lines.append("## Controls Not Assessed via API")
+            lines.append("")
+            lines.append(
+                f"The following {len(na_controls)} control(s) could not be evaluated by the automated collector "
+                "and are excluded from the score above. Manual review or alternative tooling is required."
+            )
+            lines.append("")
+            na_rows = [
+                [
+                    c["control_id"],
+                    c["title"],
+                    c["severity"].title(),
+                    c["reason"][:80],
+                    c["how_to_assess"][:120],
+                ]
+                for c in na_controls
+            ]
+            lines.append(
+                _md_table(
+                    ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"],
+                    na_rows,
+                )
+            )
+            lines.append("")
+
+        # ── Section 5: Appendix — Full Control Matrix ───────────────────────
         lines.append("## Appendix: Full Control Matrix")
         lines.append("")
         rows = [
@@ -391,6 +500,36 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         else:
             lines.append("_[PENDING NIST REVIEW]_")
         lines.append("")
+
+        # ── Section 6: Controls Not Assessed via API ────────────────────────
+        na_controls = ctx.get("not_assessed_controls", [])
+        if na_controls:
+            lines.append("## Controls Not Assessed via API")
+            lines.append("")
+            lines.append(
+                f"The following {len(na_controls)} control(s) are outside the scope of the automated "
+                "sfdc-connect collector. They are excluded from all scores and SSCF domain calculations. "
+                "Each entry describes why the control cannot be assessed via API and what tooling or "
+                "process is required to evaluate it."
+            )
+            lines.append("")
+            na_rows = [
+                [
+                    c["control_id"],
+                    c["title"],
+                    c["severity"].title(),
+                    c["reason"],
+                    c["how_to_assess"],
+                ]
+                for c in na_controls
+            ]
+            lines.append(
+                _md_table(
+                    ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"],
+                    na_rows,
+                )
+            )
+            lines.append("")
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines), encoding="utf-8")
@@ -517,6 +656,20 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         for i, step in enumerate(steps, 1):
             doc.add_paragraph(f"{i}. {step}")
 
+        # Controls Not Assessed via API
+        na_controls = ctx.get("not_assessed_controls", [])
+        if na_controls:
+            doc.add_heading("Controls Not Assessed via API", level=1)
+            doc.add_paragraph(
+                f"The following {len(na_controls)} control(s) could not be evaluated by the automated "
+                "collector and are excluded from the score above. Manual review or alternative tooling is required."
+            )
+            na_rows = [
+                [c["control_id"], c["title"], c["severity"].title(), c["reason"][:80], c["how_to_assess"][:120]]
+                for c in na_controls
+            ]
+            _docx_table(doc, ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"], na_rows)
+
         # Full Control Matrix
         doc.add_heading("Appendix: Full Control Matrix", level=1)
         rows = [[f.get("sbs_control_id", ""), f.get("sbs_title", ""), f.get("status", "")] for f in ctx["all_findings"]]
@@ -620,6 +773,22 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
                 doc.add_heading("Blocking Issues", level=2)
                 for issue in blocking:
                     doc.add_paragraph(f"- {issue}")
+
+        # Controls Not Assessed via API
+        na_controls = ctx.get("not_assessed_controls", [])
+        if na_controls:
+            doc.add_heading("Controls Not Assessed via API", level=1)
+            doc.add_paragraph(
+                f"{len(na_controls)} control(s) are outside the scope of the automated sfdc-connect collector "
+                "and are excluded from all scores and SSCF domain calculations. "
+                "Each entry below describes why the control cannot be assessed via API "
+                "and what tooling or process is required to evaluate it."
+            )
+            na_rows = [
+                [c["control_id"], c["title"], c["severity"].title(), c["reason"], c["how_to_assess"]]
+                for c in na_controls
+            ]
+            _docx_table(doc, ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"], na_rows)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out_path))
@@ -936,6 +1105,39 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
             pdf.set_font("Helvetica", size=9)
             for issue in blocking:
                 pdf.cell(0, 6, _pdf_safe(f"- {issue}"), new_x="LMARGIN", new_y="NEXT")
+
+    # --- Controls Not Assessed via API ---
+    na_controls = ctx.get("not_assessed_controls", [])
+    if na_controls:
+        _section("Controls Not Assessed via API")
+        pdf.set_font("Helvetica", size=9)
+        pdf.multi_cell(
+            0,
+            5,
+            _pdf_safe(
+                f"{len(na_controls)} control(s) are outside the scope of the automated sfdc-connect "
+                "collector and are excluded from all scores and SSCF domain calculations. "
+                "Each row below describes why the control cannot be assessed via API "
+                "and what tooling or process is required to evaluate it."
+            ),
+        )
+        pdf.ln(2)
+        na_rows = [
+            [
+                c["control_id"],
+                c["title"],
+                c["severity"].title(),
+                c["reason"],
+                c["how_to_assess"],
+            ]
+            for c in na_controls
+        ]
+        _table(
+            ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"],
+            na_rows,
+            col_widths=[28.0, 42.0, 20.0, 50.0, 50.0],
+            wrap_col=4,
+        )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(out_path))
