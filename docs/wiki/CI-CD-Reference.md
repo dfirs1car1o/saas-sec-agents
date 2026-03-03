@@ -40,6 +40,8 @@ python3 scripts/validate_env.py --fix
 - If a new GPL/LGPL dep appeared: find the transitive dep and replace it
 - If LGPL is acceptable: add to `lgpl_allowlist` in `ci.yml` with review comment
 
+**Current LGPL allowlist:** `fpdf2` (LGPL-3.0) is explicitly allowed — it is used for PDF generation and is acceptable for internal tooling.
+
 ---
 
 ### `security-checks.yml` — Security Scanning
@@ -113,9 +115,9 @@ Scans `skills/` and `scripts/` only (agents/, docs/, config/ are excluded).
 
 | Job | Tool | Trigger | What it does |
 |---|---|---|---|
-| `Generate CycloneDX SBOM` | `cyclonedx-py` | Push to main only | Generates `docs/sbom.cdx.json` and commits it |
+| `Generate CycloneDX SBOM` | `cyclonedx-py` | Push to main only | Generates `docs/sbom.cdx.json` and uploads SBOM as 90-day CI artifact |
 
-The SBOM is committed automatically by `github-actions[bot]` with `[skip ci]`. No action needed from contributors.
+The SBOM is uploaded as a CI artifact (90-day retention). No auto-commit to main. No action needed from contributors.
 
 ---
 
@@ -133,9 +135,9 @@ Only fires when `pyproject.toml` changes. Uses GitHub's advisory database.
 
 | Job | Trigger | What it does |
 |---|---|---|
-| `Regenerate architecture diagram` | Push to main touching skills/, harness/, agents/ | Runs `scripts/gen_diagram.py` and commits updated `docs/architecture.png` |
+| `Verify architecture diagram` | Push to main touching skills/, harness/, agents/ | Runs `scripts/gen_diagram.py` and verifies committed `docs/architecture.png` is up-to-date (fails if stale) |
 
-Uses Graphviz (CI-only — not required locally).
+Uses Graphviz (CI-only — not required locally). No auto-commit to main — if the diagram is stale, update `docs/architecture.png` locally and commit it.
 
 ---
 

@@ -1,6 +1,6 @@
 # Skill Reference
 
-All 4 CLI skills. Each is a Python CLI installed by `pip install -e .` and callable from the shell or from the agent orchestrator via `tool_use`.
+All 5 CLI skills. Each is a Python CLI installed by `pip install -e .` and callable from the shell or from the agent orchestrator via `tool_use`.
 
 ---
 
@@ -183,3 +183,56 @@ python3 scripts/oscal_gap_map.py \
 Maps `gap_analysis.json` findings to SSCF controls using `config/oscal-salesforce/sbs_to_sscf_mapping.yaml`. Produces `backlog.json` with remediation items and SSCF control references.
 
 Controls starting with `SBS-` are looked up directly — no `control_mapping.yaml` needed.
+
+---
+
+## nist-review
+
+**Binary:** `nist-review`
+**Source:** `skills/nist_review/nist_review.py`
+**Purpose:** Validates multi-agent assessment outputs against NIST AI RMF 1.0 (Govern, Map, Measure, Manage) and produces a structured verdict JSON.
+
+### Command
+
+```bash
+nist-review assess \
+  --gap-analysis <path/to/gap_analysis.json> \
+  --backlog      <path/to/backlog.json> \
+  --out          <path/to/nist_review.json> \
+  [--dry-run]
+```
+
+### Options
+
+| Option | Required | Description |
+|---|---|---|
+| `--gap-analysis` | Yes (live) | Path to `gap_analysis.json` from `oscal-assess` |
+| `--backlog` | Yes (live) | Path to `backlog.json` from `oscal_gap_map` |
+| `--out` | Yes | Output path for `nist_review.json` |
+| `--dry-run` | No | Produce realistic stub verdict without calling the API |
+
+### Output format
+
+```json
+{
+  "nist_ai_rmf_review": {
+    "assessment_id": "sfdc-assess-...",
+    "reviewed_at_utc": "2026-03-03T...",
+    "govern":  { "status": "pass|partial|fail", "notes": "..." },
+    "map":     { "status": "pass|partial|fail", "notes": "..." },
+    "measure": { "status": "pass|partial|fail", "notes": "..." },
+    "manage":  { "status": "pass|partial|fail", "notes": "..." },
+    "overall": "clear|flag|block",
+    "blocking_issues": [],
+    "recommendations": ["..."]
+  }
+}
+```
+
+### Live mode
+
+In live mode (`--dry-run` omitted), calls `claude-sonnet-4-6` with `agents/nist-reviewer.md` as system prompt. Input JSONs are truncated to 6 000 chars each to stay within the token budget. Requires `ANTHROPIC_API_KEY`.
+
+### Dry-run mode
+
+Emits a realistic weak-org stub verdict: GOVERN=pass, MAP=partial, MEASURE=pass, MANAGE=partial, overall=flag. Does not call the Anthropic API.

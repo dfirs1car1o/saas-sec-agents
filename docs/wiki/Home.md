@@ -28,7 +28,7 @@ This system connects to Salesforce orgs, runs OSCAL and CSA SSCF security assess
 - **Application owners** — remediation backlog in Markdown
 - **CorpIS / GIS review** — full DOCX report with SSCF heatmap and NIST AI RMF compliance note
 
-The pipeline is fully agentic: `claude-opus-4-6` orchestrates 4 CLI tools and 5 specialist agents over a 20-turn ReAct loop. No human input needed once triggered.
+The pipeline is fully agentic: `claude-opus-4-6` orchestrates 4 CLI tools and 6 specialist agents over a 20-turn ReAct loop. No human input needed once triggered.
 
 ---
 
@@ -52,3 +52,4 @@ No Docker. No Node.js. No cloud accounts beyond Anthropic + Salesforce.
 | 4 | ✅ Done | `report-gen` DOCX/MD governance output |
 | 5 | ✅ Done | Auto-regenerating architecture diagram |
 | 6 | ✅ Done | CI hardening, security-reviewer agent |
+| NIST review + CI fixes | 2026-03-03 | ✅ Done | nist-review skill, 7-step pipeline, CI hardening |

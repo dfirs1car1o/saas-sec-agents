@@ -121,41 +121,80 @@ sscf-benchmark benchmark \
 
 ---
 
-## Stage 5: Report Generation (`report-gen`)
+## Stage 5: NIST AI RMF Review (`nist-review`)
 
-**What it does:** Generates audience-specific governance outputs from the assessment data.
+**What it does:** Validates the assessment outputs against NIST AI RMF 1.0, covering all four governance functions.
 
-**Two audiences:**
+**NIST AI RMF functions evaluated:**
 
-| Audience | Format | Contents |
-|---|---|---|
-| `app-owner` | Markdown | Remediation backlog, control gaps, severity breakdown |
-| `gis` | Markdown + DOCX | Full SSCF heatmap, NIST AI RMF note, executive summary, finding details |
+| Function | What it checks |
+|---|---|
+| GOVERN | Policies, accountability structures, and AI governance processes |
+| MAP | Risk identification and categorization alignment |
+| MEASURE | Measurement methods and metrics for AI risk |
+| MANAGE | Risk response, prioritization, and remediation planning |
 
-**Commands:**
+**Command:**
 ```bash
-# App owner report
+nist-review assess \
+    --gap-analysis gap_analysis.json \
+    --backlog backlog.json \
+    --out nist_review.json
+```
+
+**Output:** `nist_review.json` — structured verdict with per-function status (pass/partial/fail), overall verdict (clear/flag/block), blocking issues list, and recommendations.
+
+**Dry-run mode:**
+```bash
+nist-review assess \
+    --gap-analysis gap_analysis.json \
+    --backlog backlog.json \
+    --out nist_review.json \
+    --dry-run
+```
+Produces a realistic stub verdict (GOVERN=pass, MAP=partial, MEASURE=pass, MANAGE=partial, overall=flag) without calling the Anthropic API.
+
+---
+
+## Stage 6: Report Generation — App Owner (`report-gen`)
+
+**What it does:** Generates a plain-language remediation report for the application owner.
+
+**Command:**
+```bash
 report-gen generate \
     --backlog backlog.json \
     --sscf-report sscf_report.json \
     --audience app-owner \
     --org my-org \
-    --out report-app-owner.md
+    --out my-org_remediation_report.md
+```
 
-# GIS/CorpIS report
+**Output:** `{org}_remediation_report.md` — plain-language remediation backlog with control gaps and severity breakdown.
+
+---
+
+## Stage 7: Report Generation — GIS/CorpIS (`report-gen`)
+
+**What it does:** Generates a full technical governance report for CorpIS review.
+
+**Command:**
+```bash
 report-gen generate \
     --backlog backlog.json \
     --sscf-report sscf_report.json \
     --audience gis \
     --org my-org \
-    --out report-gis.md  # also writes report-gis.docx
+    --out my-org_security_assessment.md  # also writes .docx and .pdf
 ```
+
+**Output:** `{org}_security_assessment.md`, `{org}_security_assessment.docx`, `{org}_security_assessment.pdf` — full SSCF heatmap, NIST AI RMF note, executive summary, and finding details.
 
 ---
 
 ## Orchestrated Pipeline (agent-loop)
 
-All 5 stages above run automatically via `agent-loop`. The `claude-opus-4-6` orchestrator decides the sequence, passes outputs between tools, and enforces quality gates.
+All 7 stages above run automatically via `agent-loop`. The `claude-opus-4-6` orchestrator decides the sequence, passes outputs between tools, and enforces quality gates.
 
 ```bash
 # Full live run
@@ -165,7 +204,7 @@ agent-loop run --env prod --org mycompany
 agent-loop run --dry-run --env dev --org test-org
 ```
 
-**Turn budget:** 20 turns max. Typical full pipeline: 6–8 turns.
+**Turn budget:** 20 turns max. Typical full pipeline: 7–9 turns.
 
 **Quality gates the orchestrator enforces:**
 1. `critical/fail` findings require `--approve-critical` to proceed on live runs

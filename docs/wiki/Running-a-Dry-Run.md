@@ -1,6 +1,6 @@
 # Running a Dry Run
 
-A dry run executes the **full 6-stage pipeline** — orchestrator, all tool calls, report generation — without connecting to a real Salesforce org or spending API credits on tool execution. It uses a pre-built synthetic "weak org" snapshot that exercises every pipeline stage.
+A dry run executes the **full 7-stage pipeline** — orchestrator, all tool calls, report generation — without connecting to a real Salesforce org or spending API credits on tool execution. It uses a pre-built synthetic "weak org" snapshot that exercises every pipeline stage.
 
 ---
 
@@ -37,15 +37,18 @@ agent-loop [DRY-RUN]: org=test-org env=dev
   [tool] sscf_benchmark_benchmark({"org":"test-org","backlog":"...backlog.json"})
   → writes: docs/oscal-salesforce-poc/generated/test-org/sscf_report.json
 
+  [tool] nist_review_assess({"org":"test-org","gap_analysis":"...gap_analysis.json","backlog":"...backlog.json","dry_run":true})
+  → writes: docs/oscal-salesforce-poc/generated/test-org/nist_review.json
+
   [tool] report_gen_generate({"org":"test-org","audience":"app-owner",...})
-  → writes: docs/oscal-salesforce-poc/generated/test-org/report-app-owner.md
+  → writes: docs/oscal-salesforce-poc/generated/test-org/test-org_remediation_report.md
 
   [tool] report_gen_generate({"org":"test-org","audience":"gis",...})
-  → writes: docs/oscal-salesforce-poc/generated/test-org/report-gis.md
-  → writes: docs/oscal-salesforce-poc/generated/test-org/report-gis.docx
+  → writes: docs/oscal-salesforce-poc/generated/test-org/test-org_security_assessment.md
+  → writes: docs/oscal-salesforce-poc/generated/test-org/test-org_security_assessment.docx
 
 ============================================================
-Assessment complete (6 turn(s))
+Assessment complete (7 turn(s))
 overall_score : 34.8%
 critical_fails: 0
 ============================================================

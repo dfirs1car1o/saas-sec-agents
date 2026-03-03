@@ -11,6 +11,27 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ## [Unreleased]
 
+### 2026-03-03
+- feat: add `nist-review` CLI skill (`skills/nist_review/`) with dry-run and live Anthropic mode
+- feat: wire `nist_review_assess` as pipeline step 5 in `harness/loop.py`
+- fix: PDF `_kv_table` uses `multi_cell()` — NIST notes now wrap instead of truncating
+- fix: `sbom.yml` — remove `git push` to protected branch; upload SBOM as CI artifact instead
+- fix: `diagram.yml` — remove `git push`; verify committed diagram is up-to-date instead
+- fix: `ci.yml` — add `fpdf2` to LGPL allowlist (LGPL-3.0 acceptable for internal tooling)
+- fix: pin `actions/upload-artifact` to commit SHA `ea165f8d` (v4.6.2) in diagram + sbom workflows
+- fix: ruff format on `report_gen.py`, `nist_review.py`, and test files
+
+### 2026-03-02 (PDF + branding)
+- feat: configurable report title via `REPORT_GOVERNANCE_TITLE` env var
+- feat: configurable org display name via `REPORT_ORG_DISPLAY_NAME` env var
+- feat: org-named output files (`{org}_security_assessment.pdf/.docx/.md`, `{org}_remediation_report.md`)
+- feat: `SFDC_ORG_ALIAS` and `SFDC_ENV` env vars as defaults for `agent-loop run`
+- fix: PDF SBS ID column widened to 32 mm (SBS-CPORTAL-001 / SBS-SECCONF-001 no longer truncated)
+- fix: SSCF domains with 0 scoreable controls show N/A instead of misleading 100% GREEN
+- fix: report-gen dispatcher resolves relative `--out` against backlog directory (fixes unknown-org path bug)
+- fix: PDF Top Findings section added before Full Control Matrix
+- fix: PDF status values title-cased; Unicode symbols mapped to ASCII equivalents
+
 ### Changed (2026-03-02 — GitHub Actions upgrades)
 - `actions/checkout` v4 → v6 (PR #6)
 - `actions/setup-python` v5 → v6 (PR #7)
