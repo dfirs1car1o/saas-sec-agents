@@ -31,7 +31,13 @@ def build_client() -> Any:
     """Construct a Mem0 Memory client backed by Qdrant.
 
     Uses in-memory Qdrant when QDRANT_IN_MEMORY=1 (CI / local dev without Docker).
+    Raises RuntimeError (caught by caller) when MEMORY_ENABLED=0 or deps missing.
     """
+    if os.getenv("MEMORY_ENABLED", "0") != "1":
+        raise RuntimeError(
+            "memory disabled (set MEMORY_ENABLED=1 and install sentence-transformers to enable)"
+        )
+
     try:
         from mem0 import Memory  # type: ignore[import-untyped]
     except ImportError as exc:

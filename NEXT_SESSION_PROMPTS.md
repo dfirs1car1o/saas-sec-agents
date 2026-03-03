@@ -2,79 +2,87 @@
 
 ## Current State
 - Repo: `https://github.com/dfirs1car1o/saas-sec-agents`
-- Branch: `main` (all 5 phases merged)
-- Local path: `/Users/jerijuar/multiagent-azure`
-
-## What Is Complete
-- Phase 1: sfdc-connect CLI + full CI/CD security stack (PR #1)
-- Phase 2: oscal-assess + sscf-benchmark CLIs — full assessment pipeline (PR #2)
-- Phase 3: agent-loop harness + Mem0+Qdrant session memory (PR #3)
-- Phase 4: report-gen DOCX/MD governance skill (PR #4)
-- Phase 5: auto-regenerating architecture diagram + PR template (PR #5)
-- Corporate data scrub: CDW → Acme Corp, BSS → SaaS Security Team, GIS → CorpIS
-- All agent prompts current: orchestrator routing table + reporter CLI examples updated
-
-## One Thing Needed Before Dry Run
-Set `ANTHROPIC_API_KEY` in `.env`:
-```
-ANTHROPIC_API_KEY=sk-ant-...
-```
-Create at: https://console.anthropic.com/settings/keys
+- Branch: `main` (all phases + fixes merged, CI green)
+- Local path: `/Users/jerijuar/saas-sec-agents`
+- Pipeline: 7 steps, verified working end-to-end in dry-run
+- Last dry run: ~35% RED, 4 critical fails, 7 tool calls, nist_review.json + PDF/DOCX generated
 
 ---
 
-## Prompt 1: First Dry Run
-```text
-Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
-All 5 phases are complete and merged to main.
-Run the first end-to-end dry run:
+## Prompt 1: Review dry-run PDF and DOCX output
 
+```text
+Resume from /Users/jerijuar/saas-sec-agents/NEXT_SESSION.md.
+
+Run the full dry run and show me the PDF and DOCX output for review:
+
+  cd /Users/jerijuar/saas-sec-agents
   agent-loop run --dry-run --env dev --org test-org
 
-Expected pipeline: sfdc_connect_collect → oscal_assess_assess → oscal_gap_map
-  → sscf_benchmark_benchmark → report_gen_generate (app-owner + gis)
+The generated files will be in:
+  docs/oscal-salesforce-poc/generated/test-org/<today's date>/
+    test-org_security_assessment.pdf
+    test-org_security_assessment.docx
+    test-org_remediation_report.md
 
-Review all output files in docs/oscal-salesforce-poc/generated/test-org/<date>/
-and the deliverables in docs/oscal-salesforce-poc/deliverables/.
-If anything fails, diagnose and fix before moving to a live org.
+Read and display the PDF so I can review the formatting.
+Report any issues with: NIST AI RMF section wrapping, SSCF heatmap N/A rows,
+Top Findings table, SBS ID column widths, status colour coding.
 ```
 
-## Prompt 2: Live Org Assessment
+---
+
+## Prompt 2: Live Salesforce org assessment
+
 ```text
-Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
-Dry run has passed. Run a live assessment against the Salesforce org in .env.
+Resume from /Users/jerijuar/saas-sec-agents/NEXT_SESSION.md.
 
-Start Qdrant for session memory:
-  docker run -d -p 6333:6333 qdrant/qdrant
+Dry run verified. Run a live assessment against the Salesforce sandbox in .env.
+Make sure SF_USERNAME, SF_PASSWORD, SF_SECURITY_TOKEN, SF_DOMAIN=test are set.
 
-Then:
-  agent-loop run --env prod --org <alias>
+  agent-loop run --env test --org <alias>
 
-Review sscf_report.json and compare overall_score to the dry-run baseline (~0.34, RED).
-Generate deliverables for both audiences using report_gen_generate.
+Review sscf_report.json overall_score vs dry-run baseline (~35% RED).
+Check that all 7 pipeline steps fired and nist_review.json was produced.
+Open the generated PDF for review.
 ```
 
-## Prompt 3: NIST AI RMF Validation Pass
+---
+
+## Prompt 3: Colleague onboarding
+
 ```text
-Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
-Run the nist-reviewer context against the latest sscf_report.json and backlog.json.
-Check that all AI-assisted findings include uncertainty flags and human-review gates.
-Update any findings missing NIST AI RMF GOVERN/MAP/MEASURE/MANAGE annotations.
-Then regenerate the CorpIS governance report with the nist-review JSON as input:
-  report-gen generate --backlog ... --audience gis --nist-review nist_review.json --out ...
+Resume from /Users/jerijuar/saas-sec-agents/NEXT_SESSION.md.
+
+A new contributor is joining. Their GitHub username is: <username>
+1. Add them to .github/CODEOWNERS
+2. Enable enforce_admins on the main branch protection rule
+3. Walk through the onboarding steps in docs/CONTRIBUTING.md
+4. Verify they can run: git clone → pip install -e . → pytest tests/ -v → dry run
 ```
 
-## Prompt 4: Colleague Onboarding
+---
+
+## Prompt 4: NIST AI RMF deep review
+
 ```text
-Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION.md.
-A new contributor is joining. Review docs/CONTRIBUTING.md.
-Add their GitHub username to .github/CODEOWNERS and enable enforce_admins on branch protection.
-Walk through: git clone → pip install -e . → docker run qdrant → pytest tests/ -v → dry run.
+Resume from /Users/jerijuar/saas-sec-agents/NEXT_SESSION.md.
+
+Run a live NIST AI RMF review (not dry-run) against the latest assessment outputs:
+
+  nist-review assess \
+    --gap-analysis docs/oscal-salesforce-poc/generated/test-org/<date>/gap_analysis.json \
+    --backlog docs/oscal-salesforce-poc/generated/test-org/<date>/backlog.json \
+    --out /tmp/nist_review_live.json
+
+Review the verdict (GOVERN/MAP/MEASURE/MANAGE) and compare to the dry-run stub.
+If overall=block, identify blocking_issues and remediate before live org delivery.
 ```
 
-## Last Known Pipeline Run Metrics (dry-run weak-org, Phase 2)
-- Controls assessed: 45
-- Pass: ~24, Fail: ~9, Partial: ~12, Not Applicable: ~0
-- SSCF overall_score: ~0.34 → overall_status: RED
-- SSCF domains scored: 7
-- Dry-run deliverables: docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json
+---
+
+## Known Bash Tool Issue (new session fixes this)
+
+The Bash tool in the previous session was stuck on the old working directory
+`/Users/jerijuar/multiagent-azure` (folder was renamed to `/Users/jerijuar/saas-sec-agents`).
+**Starting a new Claude Code session in `/Users/jerijuar/saas-sec-agents` fixes this.**

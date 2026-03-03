@@ -1,145 +1,135 @@
-# Next Session Checkpoint — 2026-03-01 (Dry Run Verified, Bugs Fixed)
+# Next Session Checkpoint — 2026-03-03
 
 ## Session Summary
 
-This session (continuation of Phase 3–5):
-- **Dry run verified end-to-end**: `agent-loop run --dry-run --env dev --org test-org` runs successfully
-- **Bug fix — `load_dotenv()`**: `ANTHROPIC_API_KEY` in `.env` was not loaded; fixed by calling `load_dotenv(_REPO / ".env")` in `harness/loop.py`
-- **Bug fix — Mem0 embedder**: Mem0 defaulted to OpenAI embeddings; added HuggingFace fallback in `harness/memory.py` when no `OPENAI_API_KEY`
-- **Bug fix — `unknown-org` paths**: `oscal_assess_assess`, `oscal_gap_map`, `sscf_benchmark_benchmark` tool schemas lacked `org` property; orchestrator couldn't pass org alias → artifacts landed in `generated/unknown-org/`. Fixed by adding `org` to all three schemas.
-- **Quality gate + task prompt**: Default task prompt updated to: pass `org` to every tool, include step 5 (report_gen_generate app-owner + gis), and instruct orchestrator to proceed in dry-run without waiting for human gate.
-- **Quality gate explanation**: Two gates exist — Python gate (`loop.py`, fires on live runs only, bypassed by `--dry-run`) and orchestrator prompt gate (fires always, fires in dry-run too). Task prompt now includes a dry-run note to bypass the orchestrator's own gate.
+This session completed:
+- **NIST AI RMF skill** (`skills/nist_review/`) — dry-run + live Anthropic mode; wired as pipeline step 5
+- **PDF quality fixes** — `multi_cell()` wrapping in NIST section, N/A for empty domains, top findings table, SBS ID column widened
+- **Report renamed** — audience `gis` → `security` throughout; auto-title now "Salesforce Security Governance Assessment"
+- **CI hardening** — sbom.yml + diagram.yml no longer push to protected main (artifact upload instead); fpdf2 LGPL allowlisted; actions SHA-pinned
+- **Memory fix** — `MEMORY_ENABLED=0` default; no more `sentence_transformers` warning
+- **Docs + wiki** — all 11 wiki pages updated for 7-step pipeline; CHANGELOG current
+- **CI: all 6 workflows green** on main
 
 ---
 
 ## Phase Status
 
-| Phase | Status | PR | Deliverable |
-|---|---|---|---|
-| Phase 1 | ✅ DONE | PR #1 merged | sfdc-connect CLI + full CI stack |
-| Phase 2 | ✅ DONE | PR #2 merged | oscal-assess + sscf-benchmark CLIs |
-| Phase 3 | ✅ DONE | PR #3 merged | agent-loop harness + Mem0 + Qdrant |
-| Phase 4 | ✅ DONE | PR #4 merged | report-gen DOCX/MD governance skill |
-| Phase 5 | ✅ DONE | PR #5 merged | architecture diagram auto-generation |
-| Bug fixes | ✅ DONE | pushed to main | load_dotenv, Mem0 embedder, unknown-org, task prompt |
-| Deps bump | ✅ DONE | PRs #6–8 merged | actions/checkout v6, setup-python v6, codeql-action v4 |
+| Phase | Status | Deliverable |
+|---|---|---|
+| Phase 1 | ✅ Done | sfdc-connect CLI + CI stack |
+| Phase 2 | ✅ Done | oscal-assess + sscf-benchmark CLIs |
+| Phase 3 | ✅ Done | agent-loop harness + Mem0 + Qdrant |
+| Phase 4 | ✅ Done | report-gen DOCX/MD/PDF skill |
+| Phase 5 | ✅ Done | architecture diagram auto-generation |
+| Phase 6 | ✅ Done | security-reviewer agent, CI hardening, minimal local reqs |
+| Post-6 fixes | ✅ Done | NIST review skill, PDF polish, gis→security rename, diagram CI fix |
 
-**All phases done. Dry run working. CI: 9/9 green. No open branches.**
+**All phases done. CI green. No open branches or PRs.**
 
 ---
 
 ## Current State
 
-- Branch: `main` (all clean, pushed)
-- Tests: 9/9 passing (1.6s)
-- Dry run output: `docs/oscal-salesforce-poc/generated/test-org/<date>/`
-  - `sfdc_raw.json`, `gap_analysis.json`, `matrix.md`, `backlog.json`, `sscf_report.json`
-  - Reports were blocked by orchestrator quality gate in previous run → now fixed by task prompt update
-- `ANTHROPIC_API_KEY` is set in `.env`
+- **Branch:** `main` (clean, latest commit `1284141`)
+- **Local path:** `/Users/jerijuar/saas-sec-agents`
+- **Tests:** 9/9 passing
+- **Pipeline:** 7 steps (see below)
+- **Dry run:** verified working; score ~35% RED, 4 critical fails (expected weak-org)
 
 ---
 
-## Ready for Next Dry Run (Full Pipeline)
-
-```bash
-cd /Users/jerijuar/multiagent-azure
-agent-loop run --dry-run --env dev --org test-org
-```
-
-Expected: all 5 tools called in sequence, including:
-- `report_gen_generate` (app-owner .md)
-- `report_gen_generate` (gis .md)
-
-All outputs land in: `docs/oscal-salesforce-poc/generated/test-org/<date>/`
-
----
-
-## Quality Gate Architecture (for reference)
-
-```
-Gate 1 — Python gate (loop.py line ~249):
-    if critical_fails and not dry_run and not approve_critical:
-        sys.exit(2)
-    # Only fires on LIVE runs. Skipped entirely in --dry-run mode.
-    # Bypass with: --approve-critical
-
-Gate 2 — Orchestrator prompt gate (orchestrator.md):
-    "block output delivery if any critical/fail finding unreviewed"
-    # Fires in ALL modes including --dry-run
-    # Bypassed by task prompt dry_gate_note: "This is a dry run —
-    #   proceed through all pipeline stages including report generation
-    #   without waiting for human review of findings."
-```
-
----
-
-## Full Pipeline (Current State)
+## Full 7-Step Pipeline
 
 ```
 agent-loop run --dry-run --env dev --org test-org
    │
-   ├── sfdc_connect_collect (org, scope='all')  → sfdc_raw.json
-   ├── oscal_assess_assess  (org, dry_run=true) → gap_analysis.json  (45 controls, ~34% pass)
-   ├── oscal_gap_map        (org)               → backlog.json + matrix.md
-   ├── sscf_benchmark_benchmark (org)           → sscf_report.json   (7 domains, RED)
-   ├── report_gen_generate  (audience=app-owner) → report_app_owner.md
-   └── report_gen_generate  (audience=gis)       → report_gis.md
+   ├── 1. sfdc_connect_collect     (org, scope='all', dry_run=true) → sfdc_raw.json
+   ├── 2. oscal_assess_assess      (org, dry_run=true)              → gap_analysis.json
+   ├── 3. oscal_gap_map            (org)                            → backlog.json + matrix.md
+   ├── 4. sscf_benchmark_benchmark (org)                            → sscf_report.json
+   ├── 5. nist_review_assess       (org, dry_run=true)              → nist_review.json
+   ├── 6. report_gen_generate      (audience=app-owner)             → {org}_remediation_report.md
+   └── 7. report_gen_generate      (audience=security)              → {org}_security_assessment.md/.docx/.pdf
 ```
 
 All outputs land in: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
 
 ---
 
-## CI Stack (9/9, all green on main)
+## Resume Commands
 
-| Check | Notes |
-|---|---|
-| ruff check + format | line-length=120 |
-| bandit -lll -ii | HIGH = hard fail |
-| pip-audit | CVE scan |
-| gitleaks CLI v8.21.2 | full history secret scan |
-| pytest tests/ -v | 9 smoke tests: 3 harness + 3 pipeline + 3 report-gen |
-| validate_env --ci --json | Non-credential pre-flight |
-| CodeQL Python | Weekly + PR |
-| CodeRabbit Pro | .coderabbit.yaml |
-| dependency-review | Blocks HIGH/CRITICAL CVEs |
+```bash
+cd /Users/jerijuar/saas-sec-agents
+git checkout main && git pull
+pytest tests/ -v                          # should be 9/9
+agent-loop run --dry-run --env dev --org test-org
+```
 
----
-
-## Open Items (Non-Blocking)
-
-1. **Colleague GitHub username** → add to CODEOWNERS, flip `enforce_admins=true`
-2. **NIST AI RMF pass** — run nist-reviewer context against dry-run sscf_report.json
-3. **Live org assessment** — after dry run passes with full reports, run against real org in `.env`
+Expected output files:
+```
+docs/oscal-salesforce-poc/generated/test-org/<date>/
+  test-org_security_assessment.pdf
+  test-org_security_assessment.docx
+  test-org_security_assessment.md
+  test-org_remediation_report.md
+  nist_review.json
+  gap_analysis.json / backlog.json / sscf_report.json
+```
 
 ---
 
 ## Key Files
 
 ```
-mission.md                                    ← Read every session
-AGENTS.md                                     ← Agent roster
-harness/loop.py                               ← agent-loop CLI (20-turn ReAct)
-harness/tools.py                              ← 5 tool schemas + dispatchers
-harness/memory.py                             ← Mem0+Qdrant session memory
-harness/agents.py                             ← ORCHESTRATOR config
-agents/orchestrator.md                        ← Routing table + quality gates
-agents/reporter.md                            ← report-gen tool call examples
-skills/report_gen/report_gen.py               ← DOCX/MD governance output CLI
-scripts/gen_diagram.py                        ← Architecture diagram generator
-docs/architecture.png                         ← Auto-regenerated reference diagram
-docs/oscal-salesforce-poc/generated/          ← All assessment outputs
-docs/oscal-salesforce-poc/deliverables/       ← Governance deliverables
+harness/loop.py                    ← 7-step task prompt, 20-turn ReAct loop
+harness/tools.py                   ← 6 tool schemas + dispatchers
+harness/memory.py                  ← Mem0+Qdrant (MEMORY_ENABLED=1 to activate)
+harness/agents.py                  ← Model assignments (Opus/Sonnet/Haiku)
+agents/orchestrator.md             ← Routing table + quality gates
+agents/reporter.md                 ← report-gen tool call examples
+skills/report_gen/report_gen.py    ← PDF/DOCX/MD report generator
+skills/nist_review/nist_review.py  ← NIST AI RMF review skill
+scripts/check_licenses.py          ← Local license check with LGPL allowlist
+docs/architecture.png              ← Reference diagram
 ```
 
 ---
 
-## Resume Command
+## CI Stack (all green)
+
+| Workflow | Key tools | Status |
+|---|---|---|
+| ci | ruff, bandit, pip-audit, pytest, pip-licenses | ✅ |
+| security-checks | bandit, pip-audit, gitleaks | ✅ |
+| actions-security | zizmor, actionlint | ✅ |
+| codeql | CodeQL Python | ✅ |
+| sbom | cyclonedx-bom → artifact upload | ✅ |
+| diagram | generate → artifact upload (no push) | ✅ |
+
+---
+
+## Environment Variables (.env)
 
 ```bash
-cd /Users/jerijuar/multiagent-azure
-git checkout main && git pull
-pytest tests/ -v                    # should be 9/9
-agent-loop run --dry-run --env dev --org test-org
-# Expect: all 6 tool calls (5 pipeline + 2 reports), full output in generated/test-org/
+ANTHROPIC_API_KEY=sk-ant-...       # required
+QDRANT_IN_MEMORY=1                 # use in-memory Qdrant (no Docker needed)
+MEMORY_ENABLED=0                   # set to 1 + pip install sentence-transformers for cross-session memory
+SFDC_ORG_ALIAS=test-org            # default --org
+SFDC_ENV=dev                       # default --env
+REPORT_GOVERNANCE_TITLE=Salesforce Security Governance Assessment
+REPORT_ORG_DISPLAY_NAME=test-org
+# Live org (when ready):
+# SF_USERNAME=...
+# SF_PASSWORD=...
+# SF_SECURITY_TOKEN=...
+# SF_DOMAIN=test
 ```
+
+---
+
+## Open Items
+
+1. **Colleague GitHub username** → add to CODEOWNERS, flip `enforce_admins=true`
+2. **Live org assessment** → run `agent-loop run --env prod --org <alias>` against real Salesforce sandbox
+3. **PDF review** — user ran dry run but session ended before reviewing output files
