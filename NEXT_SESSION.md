@@ -9,6 +9,11 @@ This session completed:
 - **NIST regex fallback** — added re.search() fallback for responses with markdown fence preamble
 - **First live full pipeline run** — 48.4% RED, 1 critical fail (SBS-AUTH-001), NIST verdict: block (4 issues)
 - **4 GitHub Issues opened** — #10, #11, #12, #13 (NIST MANAGE/MAP/GOVERN/MEASURE fixes)
+- **Issue #10 fixed** — `due_date` auto-populated in oscal-assess (critical=7d, high=30d, moderate=90d, low=180d)
+- **Issue #11 fixed** — `data_source` + `ai_generated_findings_notice` added to gap_analysis.json output
+- **CI ruff fix** — harness/ files reformatted (loop.py, memory.py, tools.py)
+- **Not Assessed Controls section** — PDF/DOCX/MD reports now include a dedicated section listing the 15 API-unassessable controls with reason + how-to-assess guidance
+- **manual_controls_questionnaire.py** — new script for collecting manual evidence for those 15 controls; supports interactive + `--answers` file + `--merge` back into gap_analysis
 
 ---
 
@@ -24,25 +29,29 @@ This session completed:
 | Phase 6 | ✅ Done | security-reviewer agent, CI hardening |
 | JWT Auth | ✅ Done | JWT Bearer Flow, live verified |
 | Live run | ✅ Done | First real org assessment complete |
+| NIST #10/#11 | ✅ Done | due_date auto-populated, data_source declared |
+| Not Assessed section | ✅ Done | PDF/DOCX/MD all include not-assessed controls block |
 
 ---
 
-## Open GitHub Issues (fix these next)
+## Open GitHub Issues
 
-| Issue | Title | Priority |
-|---|---|---|
-| #10 | NIST MANAGE-BLOCK: Assign due_date to all critical/high fail findings | P1 |
-| #11 | NIST MAP-BLOCK: Declare live vs mock collection in assessment output | P1 |
-| #12 | NIST GOVERN-PARTIAL: Replace team-level owner with named individual | P2 |
-| #13 | NIST MEASURE-PARTIAL: Recalibrate mapping_confidence variance | P2 |
+| Issue | Title | Priority | Status |
+|---|---|---|---|
+| #10 | NIST MANAGE-BLOCK: Assign due_date to all critical/high fail findings | P1 | ✅ Fixed (commit 257bd76) |
+| #11 | NIST MAP-BLOCK: Declare live vs mock collection in assessment output | P1 | ✅ Fixed (commit 257bd76) |
+| #12 | NIST GOVERN-PARTIAL: Replace team-level owner with named individual | P2 | Open |
+| #13 | NIST MEASURE-PARTIAL: Recalibrate mapping_confidence variance | P2 | Open |
 
 ---
 
 ## Current State
 
 - **Branch:** `main`
+- **Last commit:** `7c4e5ac`
 - **Local path:** `/Users/jerijuar/saas-sec-agents`
 - **Tests:** 12/12 passing
+- **CI:** All workflows green (ci, codeql, security-checks, sbom, actions-security, diagram)
 - **Org:** cyber-coach-dev (`orgfarm-7ecec127cc-dev-ed.develop.my.salesforce.com`)
 - **Auth:** JWT Bearer (`SF_AUTH_METHOD=jwt` in .env, key at `~/salesforce_jwt_private.pem`)
 
@@ -54,7 +63,7 @@ This session completed:
 agent-loop run --env dev --org cyber-coach-dev --approve-critical
    │
    ├── 1. sfdc_connect_collect     → sfdc_raw.json
-   ├── 2. oscal_assess_assess      → gap_analysis.json
+   ├── 2. oscal_assess_assess      → gap_analysis.json  (+ data_source, due_date, ai_notice)
    ├── 3. oscal_gap_map            → backlog.json + matrix.md
    ├── 4. sscf_benchmark_benchmark → sscf_report.json
    ├── 5. nist_review_assess       → nist_review.json
@@ -63,6 +72,26 @@ agent-loop run --env dev --org cyber-coach-dev --approve-critical
 ```
 
 All outputs: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
+
+Reports now include a "Controls Not Assessed via API" section with reason + how-to-assess for
+all 15 not_applicable controls.
+
+---
+
+## Manual Controls Questionnaire
+
+For the 15 controls that cannot be assessed via API, run:
+
+```bash
+# Interactive — walk through all 15 controls
+python3 scripts/manual_controls_questionnaire.py --org cyber-coach-dev --env dev \
+    --merge docs/oscal-salesforce-poc/generated/cyber-coach-dev/<date>/gap_analysis.json
+
+# Non-interactive — supply pre-filled answers JSON
+python3 scripts/manual_controls_questionnaire.py --org cyber-coach-dev \
+    --answers answers.json \
+    --merge docs/oscal-salesforce-poc/generated/cyber-coach-dev/<date>/gap_analysis.json
+```
 
 ---
 
@@ -98,7 +127,6 @@ agent-loop run --env dev --org cyber-coach-dev --approve-critical
 - `RemoteProxy` SOQL not supported — needs Tooling API or Metadata API approach
 - `OrganizationSettings` MFA fields inaccessible via Tooling API on dev orgs
 - Report `--out` relative path resolves into `deliverables/` subdirectory — fix `_DELIVERABLES_DIR` logic in report_gen.py
-- PDF title column wrapping review (minor cosmetic)
 
 ---
 
