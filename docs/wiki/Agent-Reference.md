@@ -80,7 +80,7 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 | **Tools** | `report-gen` |
 | **Invoked by** | Orchestrator (after assessor completes) |
 
-**Role:** Generates governance outputs. Two runs per assessment: once for `app-owner` (Markdown), once for `gis` (Markdown + DOCX).
+**Role:** Generates governance outputs. Two runs per assessment: once for `app-owner` (Markdown), once for `security` (Markdown + DOCX + PDF).
 
 **Why Haiku?** Report generation is templated output from structured data — low complexity, high volume. Haiku is the fastest and cheapest model for this task.
 

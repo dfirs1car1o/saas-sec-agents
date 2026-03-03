@@ -3,10 +3,10 @@ report-gen — governance output skill.
 
 Converts assessment backlog (+ optional sscf benchmark / nist review) into:
   - Plain-language Markdown or DOCX for application owners
-  - Technical Markdown + DOCX + PDF for CorpIS / governance review (gis audience always generates all 3)
+  - Technical Markdown + DOCX + PDF for security governance review (security audience always generates all 3)
 
 Usage:
-    report-gen generate --backlog <path> --audience app-owner|gis --out <path>
+    report-gen generate --backlog <path> --audience app-owner|security --out <path>
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ def _build_context(
             for d in (sscf_report or {}).get("domains", [])
         ],
         "nist_rmf": nist_review,
-        # passthrough for GIS metadata block
+        # passthrough for security metadata block
         "catalog_version": backlog.get("catalog_version", ""),
         "framework": backlog.get("framework", "CSA_SSCF"),
         "sscf_overall_score": (sscf_report or {}).get("overall_score"),
@@ -280,7 +280,7 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         lines.append(_md_table(["Control ID", "Title", "Status"], rows))
         lines.append("")
 
-    else:  # gis audience
+    else:  # security audience
         # ── Section 1: Assessment Metadata ──────────────────────────────────
         lines.append(f"# {ctx['title']}")
         lines.append("")
@@ -514,7 +514,7 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         # status is col index 2
         _docx_table(doc, ["Control ID", "Title", "Status"], rows, status_col=2)
 
-    else:  # gis
+    else:  # security
         # Assessment Metadata
         doc.add_heading("Assessment Metadata", level=1)
         _docx_table(
@@ -917,8 +917,8 @@ def cli() -> None:
 @click.option(
     "--audience",
     required=True,
-    type=click.Choice(["app-owner", "gis"]),
-    help="'app-owner' = plain-language executive report. 'gis' = CorpIS technical governance review.",
+    type=click.Choice(["app-owner", "security"]),
+    help="'app-owner' = plain-language executive report. 'security' = technical security governance review.",
 )
 @click.option(
     "--out",
@@ -929,13 +929,13 @@ def cli() -> None:
     "--sscf-benchmark",
     "sscf_benchmark",
     default=None,
-    help="Optional path to sscf_report.json (adds domain heatmap to GIS report).",
+    help="Optional path to sscf_report.json (adds domain heatmap to security report).",
 )
 @click.option(
     "--nist-review",
     "nist_review",
     default=None,
-    help="Optional path to nist_review.json (adds NIST AI RMF section to GIS report).",
+    help="Optional path to nist_review.json (adds NIST AI RMF section to security report).",
 )
 @click.option(
     "--title",
@@ -973,8 +973,8 @@ def generate(
         out_path = (_DELIVERABLES_DIR / out_path).resolve()
 
     ext = out_path.suffix.lower()
-    # GIS always generates MD + DOCX + PDF; app-owner uses the extension to pick format
-    if audience != "gis" and ext not in (".md", ".docx"):
+    # security always generates MD + DOCX + PDF; app-owner uses the extension to pick format
+    if audience != "security" and ext not in (".md", ".docx"):
         click.echo(f"ERROR: unsupported output format '{ext}'. Use .md or .docx.", err=True)
         sys.exit(1)
 
@@ -985,13 +985,13 @@ def generate(
     auto_title = (
         f"Salesforce Security Assessment — {resolved_org} — {date_str}"
         if audience == "app-owner"
-        else f"Salesforce OSCAL/SSCF CorpIS Governance Review — {resolved_org} — {date_str}"
+        else f"Salesforce Security Governance Assessment — {resolved_org} — {date_str}"
     )
     resolved_title = title or auto_title
 
     if dry_run:
         base = out_path.with_suffix("")
-        out_desc = f"{base}.(md|docx|pdf)" if audience == "gis" else str(out_path)
+        out_desc = f"{base}.(md|docx|pdf)" if audience == "security" else str(out_path)
         click.echo(
             f"DRY RUN — would generate report(s):\n"
             f"  assessment_id : {assessment_id}\n"
@@ -1010,7 +1010,7 @@ def generate(
         err=True,
     )
 
-    if audience == "gis":
+    if audience == "security":
         base = out_path.with_suffix("")
         _write_md(ctx, base.with_suffix(".md"))
         _write_docx(ctx, base.with_suffix(".docx"))

@@ -43,7 +43,7 @@ agent-loop [DRY-RUN]: org=test-org env=dev
   [tool] report_gen_generate({"org":"test-org","audience":"app-owner",...})
   → writes: docs/oscal-salesforce-poc/generated/test-org/test-org_remediation_report.md
 
-  [tool] report_gen_generate({"org":"test-org","audience":"gis",...})
+  [tool] report_gen_generate({"org":"test-org","audience":"security",...})
   → writes: docs/oscal-salesforce-poc/generated/test-org/test-org_security_assessment.md
   → writes: docs/oscal-salesforce-poc/generated/test-org/test-org_security_assessment.docx
 
@@ -106,7 +106,7 @@ QDRANT_IN_MEMORY=1 pytest tests/ -v
 
 This runs:
 - `tests/test_pipeline_smoke.py` — 3 tests covering dry-run assess, gap map, benchmark
-- `tests/test_report_gen.py` — 3 tests covering app-owner MD, GIS MD, DOCX
+- `tests/test_report_gen.py` — 3 tests covering app-owner MD, security MD, DOCX
 - `tests/test_harness_dry_run.py` — 3 tests covering loop tool dispatch, error handler, API key handling
 
 All 9 tests pass without any environment variables or API keys.

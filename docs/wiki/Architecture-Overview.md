@@ -30,7 +30,7 @@
                     │   report-gen        │
                     │  (claude-haiku-4-5) │
                     │  app-owner MD       │
-                    │  gis MD + DOCX      │
+                    │  security MD + DOCX  │
                     └─────────┬──────────┘
                               │
                     ┌─────────▼──────────┐
@@ -71,7 +71,7 @@
 | `sfdc-connect` | `skills/sfdc_connect/sfdc_connect.py` | Authenticates to Salesforce org via REST; collects SecuritySettings, Auth providers, Permission Sets, Network Access, Connected Apps, Profiles |
 | `oscal-assess` | `skills/oscal_assess/oscal_assess.py` | Evaluates 45 SBS controls against collected org data; produces findings with status (pass/fail/partial/not_applicable) and severity |
 | `sscf-benchmark` | `skills/sscf_benchmark/sscf_benchmark.py` | Maps SBS findings to SSCF domains; calculates domain scores and overall posture (RED/AMBER/GREEN) |
-| `report-gen` | `skills/report_gen/report_gen.py` | Generates audience-specific outputs: app-owner Markdown, CorpIS Markdown + DOCX |
+| `report-gen` | `skills/report_gen/report_gen.py` | Generates audience-specific outputs: app-owner Markdown, security Markdown + DOCX + PDF |
 
 ---
 
@@ -88,8 +88,8 @@ sfdc-connect collect
                             → sscf_report.json (domain scorecard)
                                 → report-gen generate
                                     → report-app-owner.md
-                                    → report-gis.md
-                                    → report-gis.docx
+                                    → report-security.md
+                                    → report-security.docx
 ```
 
 All outputs land in `docs/oscal-salesforce-poc/generated/<org>/`.

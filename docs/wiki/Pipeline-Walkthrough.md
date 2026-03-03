@@ -174,16 +174,16 @@ report-gen generate \
 
 ---
 
-## Stage 7: Report Generation — GIS/CorpIS (`report-gen`)
+## Stage 7: Report Generation — Security Governance (`report-gen`)
 
-**What it does:** Generates a full technical governance report for CorpIS review.
+**What it does:** Generates a full technical governance report for security team review.
 
 **Command:**
 ```bash
 report-gen generate \
     --backlog backlog.json \
     --sscf-report sscf_report.json \
-    --audience gis \
+    --audience security \
     --org my-org \
     --out my-org_security_assessment.md  # also writes .docx and .pdf
 ```

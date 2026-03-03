@@ -116,7 +116,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "name": "report_gen_generate",
         "description": (
             "Generate governance output (DOCX or Markdown) from assessment backlog. "
-            "Use audience='app-owner' for a plain-language report; 'gis' for a technical CorpIS review."
+            "Use audience='app-owner' for a plain-language report; "
+            "'security' for a technical security governance review."
         ),
         "input_schema": {
             "type": "object",
@@ -124,7 +125,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "backlog": {"type": "string", "description": "Path to backlog.json from oscal_gap_map"},
                 "audience": {
                     "type": "string",
-                    "enum": ["app-owner", "gis"],
+                    "enum": ["app-owner", "security"],
                     "description": "Report audience",
                 },
                 "out": {"type": "string", "description": "Output file path (.md or .docx)"},
@@ -317,7 +318,7 @@ def _dispatch_report_gen(inp: dict[str, Any], out_dir: Path) -> str:
             out_path = str(anchor / p.name)
     else:
         out_path = str(out_dir / "report.md")
-    audience = inp.get("audience", "gis")
+    audience = inp.get("audience", "security")
     args = [
         _PYTHON,
         "-m",

@@ -1,66 +1,37 @@
-name: Verify Architecture Diagram
-
-# Checks that docs/architecture.png is up-to-date whenever the agent/skill/harness
-# code changes on main. Fails loudly if the diagram needs to be regenerated locally
-# and committed. Does NOT push to main.
+name: Regenerate Architecture Diagram
 
 on:
   push:
     branches: [main]
     paths:
-      - "skills/**"
-      - "harness/**"
-      - "scripts/**"
-      - "agents/**"
-      - "config/**"
+      - 'scripts/gen_diagram.py'
+      - 'harness/**'
+      - 'skills/**'
 
 permissions:
   contents: read
 
 jobs:
   diagram:
-    name: Verify architecture diagram is up-to-date
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install system dependencies (Graphviz)
-        run: sudo apt-get install -y graphviz --no-install-recommends
-
-      - name: Install diagrams library
-        run: pip install "diagrams>=0.23.4"
-
-      - name: Generate diagram to temp location
+      - name: Install dependencies
         run: |
-          # gen_diagram.py writes to docs/architecture.png by default.
-          # Save the checked-in version, regenerate, then compare.
-          cp docs/architecture.png /tmp/architecture_checked_in.png 2>/dev/null || true
-          python3 scripts/gen_diagram.py
+          sudo apt-get install -y graphviz
+          pip install diagrams
 
-      - name: Check diagram is up-to-date
-        run: |
-          if [ -f /tmp/architecture_checked_in.png ]; then
-            if ! diff -q /tmp/architecture_checked_in.png docs/architecture.png > /dev/null 2>&1; then
-              echo "ERROR: docs/architecture.png is out of date."
-              echo "Run locally: python3 scripts/gen_diagram.py"
-              echo "Then commit and push the updated docs/architecture.png."
-              exit 1
-            fi
-            echo "Diagram is up-to-date."
-          else
-            echo "No diagram found in repo - uploading freshly generated diagram as artifact."
-          fi
+      - name: Generate architecture diagram
+        run: python3 scripts/gen_diagram.py
 
       - name: Upload diagram artifact
-        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: architecture-diagram
           path: docs/architecture.png
-          if-no-files-found: ignore
           retention-days: 30

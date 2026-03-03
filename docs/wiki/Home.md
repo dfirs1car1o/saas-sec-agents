@@ -26,7 +26,7 @@ Welcome to the **SaaS Security Multi-Agent System** wiki. This is a fully automa
 
 This system connects to Salesforce orgs, runs OSCAL and CSA SSCF security assessments, and generates governance outputs for:
 - **Application owners** — remediation backlog in Markdown
-- **CorpIS / GIS review** — full DOCX report with SSCF heatmap and NIST AI RMF compliance note
+- **Security governance review** — full DOCX + PDF report with SSCF heatmap and NIST AI RMF compliance note
 
 The pipeline is fully agentic: `claude-opus-4-6` orchestrates 4 CLI tools and 6 specialist agents over a 20-turn ReAct loop. No human input needed once triggered.
 

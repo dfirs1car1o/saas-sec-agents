@@ -100,8 +100,8 @@ This will run against your real Salesforce org. Requires `SF_USERNAME`, `SF_PASS
 | `generated/<org>/backlog.json` | Remediation backlog mapped to SSCF controls |
 | `generated/<org>/sscf_report.json` | SSCF domain scorecard (0–100% per domain) |
 | `generated/<org>/report-app-owner.md` | App owner remediation report (Markdown) |
-| `generated/<org>/report-gis.md` | CorpIS governance report (Markdown) |
-| `generated/<org>/report-gis.docx` | CorpIS governance report (DOCX) |
+| `generated/<org>/report-security.md` | Security governance report (Markdown) |
+| `generated/<org>/report-security.docx` | Security governance report (DOCX) |
 | `generated/<org>/loop_result.json` | Consolidated run metadata |
 
 ---

@@ -359,10 +359,10 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             f"to produce nist_review.json.\n"
             f"6. Call report_gen_generate twice:\n"
             f"   a. audience='app-owner', out='{org}_remediation_report.md', sscf_benchmark from step 4.\n"
-            f"   b. audience='gis', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
+            f"   b. audience='security', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
             f"nist_review from step 5, "
             f"title='{governance_title} - {org_display}'. "
-            f"The gis call automatically also writes .docx and .pdf to the same directory.\n\n"
+            f"The security call automatically also writes .docx and .pdf to the same directory.\n\n"
             "Return a final summary with: overall_score, overall_status (red/amber/green), "
             "count of critical/fail findings, and the top 3 remediation priorities."
         )

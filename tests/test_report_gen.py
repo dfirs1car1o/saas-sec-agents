@@ -2,7 +2,7 @@
 
 Exercises three output variants:
 - app-owner audience Markdown (plain-language executive report)
-- CorpIS governance audience Markdown with SSCF domain heatmap
+- security audience Markdown with SSCF domain heatmap
 - app-owner DOCX (validated as a real Office Open XML ZIP)
 
 Uses the real salesforce_oscal_backlog_latest.json already in the repo.
@@ -30,7 +30,7 @@ def _run(*args: str, cwd: Path = REPO, check: bool = True) -> subprocess.Complet
 
 
 def _make_sscf_report(tmp_path: Path) -> Path:
-    """Generate a fresh sscf_report.json via the pipeline for use in GIS tests."""
+    """Generate a fresh sscf_report.json via the pipeline for use in security audience tests."""
     gap = tmp_path / "gap.json"
     backlog = tmp_path / "backlog.json"
     matrix = tmp_path / "matrix.md"
@@ -103,18 +103,18 @@ def test_app_owner_md(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 2 — CorpIS governance Markdown (with sscf_report)
+# Test 2 — security governance Markdown (with sscf_report)
 # ---------------------------------------------------------------------------
 
 
-def test_gis_md(tmp_path: Path) -> None:
+def test_security_md(tmp_path: Path) -> None:
     if not _BACKLOG.exists():
         pytest.skip(f"backlog file not found: {_BACKLOG}")
     if not _CONTROLS.exists():
         pytest.skip(f"controls catalog not found: {_CONTROLS}")
 
     sscf_report = _make_sscf_report(tmp_path)
-    out = tmp_path / "report_gis.md"
+    out = tmp_path / "report_security.md"
 
     result = _run(
         PYTHON,
@@ -124,14 +124,14 @@ def test_gis_md(tmp_path: Path) -> None:
         "--backlog",
         str(_BACKLOG),
         "--audience",
-        "gis",
+        "security",
         "--out",
         str(out),
         "--sscf-benchmark",
         str(sscf_report),
     )
-    assert result.returncode == 0, f"report-gen (gis) failed:\n{result.stderr}"
-    assert out.exists(), "GIS Markdown report not written"
+    assert result.returncode == 0, f"report-gen (security) failed:\n{result.stderr}"
+    assert out.exists(), "Security Markdown report not written"
 
     content = out.read_text()
     assert "# Assessment Metadata" in content, "Missing Assessment Metadata section"

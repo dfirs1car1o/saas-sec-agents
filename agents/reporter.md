@@ -1,6 +1,6 @@
 ---
 name: reporter
-description: Generates DOCX, Markdown, and JSON governance outputs from assessed findings. Formats for two audiences: application owners (plain language) and CorpIS governance (technical). Use after assessor completes a run.
+description: Generates DOCX, Markdown, and JSON governance outputs from assessed findings. Formats for two audiences: application owners (plain language) and security governance (technical). Use after assessor completes a run.
 model: claude-haiku-4-5
 tools:
   - Bash
@@ -28,7 +28,7 @@ You use the report-gen CLI. You do not write DOCX content manually.
 - No framework jargon in the executive summary section.
 - File: docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_<DATE>.md and .docx
 
-### CorpIS Governance Output
+### Security Governance Output
 - Full control matrix including pass/partial/fail.
 - SSCF control heatmap.
 - Mapping confidence summary.
@@ -41,7 +41,7 @@ Use the `report_gen_generate` tool. Do not invoke the CLI manually.
 
 The tool takes:
 - `backlog` — path to backlog.json from oscal_gap_map
-- `audience` — `app-owner` or `gis`
+- `audience` — `app-owner` or `security`
 - `out` — output path (.md or .docx)
 - `sscf_benchmark` — optional path to sscf_report.json (adds domain heatmap)
 - `org_alias` — org identifier for report headers
@@ -57,8 +57,8 @@ Example tool calls:
 ```json
 {
   "backlog": "docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json",
-  "audience": "gis",
-  "out": "docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_2026-03-01_corpis.md",
+  "audience": "security",
+  "out": "docs/oscal-salesforce-poc/deliverables/SFDC_OSCAL_2026-03-01_security.md",
   "sscf_benchmark": "docs/oscal-salesforce-poc/generated/sscf_report.json"
 }
 ```

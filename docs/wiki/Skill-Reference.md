@@ -146,13 +146,13 @@ report-gen generate \
     --org my-org \
     --out report-app-owner.md
 
-# GIS/CorpIS report (Markdown + DOCX)
+# Security governance report (Markdown + DOCX + PDF)
 report-gen generate \
     --backlog backlog.json \
     --sscf-report sscf_report.json \
-    --audience gis \
+    --audience security \
     --org my-org \
-    --out report-gis.md
+    --out report-security.md
 ```
 
 ### Audiences
@@ -160,11 +160,11 @@ report-gen generate \
 | Audience | Formats | Contents |
 |---|---|---|
 | `app-owner` | Markdown | Remediation backlog, control gaps by severity, owner assignments |
-| `gis` | Markdown + DOCX | Executive summary, SSCF heatmap, full finding details, NIST AI RMF note |
+| `security` | Markdown + DOCX + PDF | Executive summary, SSCF heatmap, full finding details, NIST AI RMF note |
 
 ### DOCX Template Engine
 
-Uses `docxtpl` (LGPL-2.1, Python Jinja2 wrapper for python-docx). Template: `skills/report_gen/templates/gis_report.docx`.
+Uses `docxtpl` (LGPL-2.1, Python Jinja2 wrapper for python-docx). Template: `skills/report_gen/templates/security_report.docx`.
 
 ---
 

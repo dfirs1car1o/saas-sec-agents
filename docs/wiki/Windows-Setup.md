@@ -177,7 +177,7 @@ agent-loop [DRY-RUN]: org=test-org env=dev
   [tool] oscal_gap_map(...)
   [tool] sscf_benchmark_benchmark(...)
   [tool] report_gen_generate(...)  ← app-owner report
-  [tool] report_gen_generate(...)  ← GIS report
+  [tool] report_gen_generate(...)  ← security report
 
 ============================================================
 Assessment complete (5 turn(s))
@@ -226,8 +226,8 @@ docs\oscal-salesforce-poc\generated\your-org-name\
   ├── backlog.json            ← remediation backlog
   ├── sscf_report.json        ← SSCF domain scorecard
   ├── report_app_owner.md     ← app owner remediation report
-  ├── report_gis.md           ← CorpIS governance report (Markdown)
-  ├── report_gis.docx         ← CorpIS governance report (Word)
+  ├── report_security.md      ← security governance report (Markdown)
+  ├── report_security.docx    ← security governance report (Word)
   └── loop_result.json        ← run metadata
 ```
 
