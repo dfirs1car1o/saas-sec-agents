@@ -34,9 +34,7 @@ def build_client() -> Any:
     Raises RuntimeError (caught by caller) when MEMORY_ENABLED=0 or deps missing.
     """
     if os.getenv("MEMORY_ENABLED", "0") != "1":
-        raise RuntimeError(
-            "memory disabled (set MEMORY_ENABLED=1 and install sentence-transformers to enable)"
-        )
+        raise RuntimeError("memory disabled (set MEMORY_ENABLED=1 and install sentence-transformers to enable)")
 
     try:
         from mem0 import Memory  # type: ignore[import-untyped]

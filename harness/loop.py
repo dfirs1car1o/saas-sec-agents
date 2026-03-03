@@ -58,8 +58,7 @@ def _log_expert_escalations(gap_analysis_path: str, dry_run: bool) -> list[str]:
         )
     else:
         click.echo(
-            f"  [sfdc-expert] {len(eligible)} control(s) flagged for expert review: "
-            + ", ".join(eligible),
+            f"  [sfdc-expert] {len(eligible)} control(s) flagged for expert review: " + ", ".join(eligible),
             err=True,
         )
     return eligible

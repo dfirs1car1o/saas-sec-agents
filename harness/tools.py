@@ -430,12 +430,14 @@ def _dispatch_sfdc_expert(inp: dict[str, Any], out_dir: Path) -> str:  # noqa: A
         enriched += 1
 
     gap_path.write_text(json.dumps(data, indent=2))
-    return json.dumps({
-        "status": "ok",
-        "enriched_findings": enriched,
-        "output_file": str(gap_path),
-        "apex_scripts_dir": str(apex_dir),
-    })
+    return json.dumps(
+        {
+            "status": "ok",
+            "enriched_findings": enriched,
+            "output_file": str(gap_path),
+            "apex_scripts_dir": str(apex_dir),
+        }
+    )
 
 
 def _dispatch_sscf_benchmark(inp: dict[str, Any], out_dir: Path) -> str:
