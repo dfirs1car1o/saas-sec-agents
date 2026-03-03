@@ -36,9 +36,10 @@ class Finding:
     remediation: str = ""
     owner: str = "SaaS Security Team"
     due_date: str = ""
+    needs_expert_review: bool = False
 
     def to_dict(self, org: str, env: str, date_str: str) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "control_id": self.control_id,
             "status": self.status,
             "severity": self.severity,
@@ -48,6 +49,9 @@ class Finding:
             "remediation": self.remediation,
             "evidence_ref": f"collector://salesforce/{env}/{self.control_id}/snapshot-{date_str}",
         }
+        if self.needs_expert_review:
+            d["needs_expert_review"] = True
+        return d
 
 
 def _na(control_id: str, severity: str, reason: str = "Scope not collected by sfdc-connect") -> Finding:
@@ -380,6 +384,7 @@ def _rule_acs_structural(control_id: str, severity: str) -> Callable[[dict], Fin
             severity,
             "Access scope collected — full assessment requires detailed profile/permission set audit.",
             f"Run a detailed permission audit for {control_id} using Setup > Permission Set Analyzer.",
+            needs_expert_review=True,
         )
 
     return _rule
@@ -570,6 +575,7 @@ def _rule_oauth_structural(control_id: str, severity: str) -> Callable[[dict], F
             severity,
             "OAuth scope collected — full assessment requires manual classification and documentation.",
             f"Complete manual assessment for {control_id} per the SBS runbook.",
+            needs_expert_review=True,
         )
 
     return _rule
@@ -621,6 +627,7 @@ def _rule_data_structural(control_id: str, severity: str) -> Callable[[dict], Fi
             severity,
             "Data security controls require field-level inventory — not available via sfdc-connect.",
             f"Complete {control_id} assessment via Setup > Data Classification or a custom SOQL audit.",
+            needs_expert_review=True,
         )
 
     return _rule
@@ -896,6 +903,14 @@ _DRY_RUN_OVERRIDES: dict[str, tuple[str, str, str]] = {
 # A few we want to show as passing in the dry-run:
 _DRY_RUN_PASS = {"SBS-INT-003"}
 
+# Controls that require sfdc-expert Apex/admin analysis — too deep for REST/SOQL alone.
+_EXPERT_ELIGIBLE: frozenset[str] = frozenset({
+    "SBS-ACS-005", "SBS-ACS-006", "SBS-ACS-007", "SBS-ACS-008",
+    "SBS-ACS-009", "SBS-ACS-010", "SBS-ACS-011", "SBS-ACS-012",
+    "SBS-OAUTH-003", "SBS-OAUTH-004",
+    "SBS-DATA-001", "SBS-DATA-002", "SBS-DATA-003",
+})
+
 
 # ---------------------------------------------------------------------------
 # Core assessment logic
@@ -936,6 +951,7 @@ def run_assessment(
                     severity=severity,
                     observed_value=observed,
                     remediation=remediation,
+                    needs_expert_review=cid in _EXPERT_ELIGIBLE,
                 )
             else:
                 # Fall through to the real rule with empty raw (will produce not_applicable)

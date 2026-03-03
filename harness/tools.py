@@ -173,6 +173,28 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "sfdc_expert_enrich",
+        "description": (
+            "Invoke the SFDC Expert agent to enrich partial/blocked findings that require "
+            "Apex or deep admin analysis. Reads gap_analysis.json, adds expert_notes to "
+            "eligible findings, and stages read-only Apex script proposals to "
+            "docs/oscal-salesforce-poc/apex-scripts/. "
+            "Only processes controls where needs_expert_review=true. "
+            "Apex scripts require human review before execution — never run autonomously."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "org": {"type": "string", "description": "Org alias for output dir naming"},
+                "gap_analysis": {
+                    "type": "string",
+                    "description": "Path to gap_analysis.json from oscal_assess_assess",
+                },
+            },
+            "required": ["gap_analysis"],
+        },
+    },
+    {
         "name": "sscf_benchmark_benchmark",
         "description": (
             "Benchmark the remediation backlog against the SSCF control index to produce "
@@ -365,6 +387,57 @@ def _dispatch_nist_review(inp: dict[str, Any], out_dir: Path) -> str:
     return json.dumps({"status": "ok", "output_file": out_path})
 
 
+def _dispatch_sfdc_expert(inp: dict[str, Any], out_dir: Path) -> str:  # noqa: ARG001
+    """Enrich gap_analysis findings that need expert Apex/admin review (Phase 1 stub)."""
+    gap_path_str = inp.get("gap_analysis", "")
+    if not gap_path_str:
+        return json.dumps({"status": "error", "message": "gap_analysis path required"})
+
+    gap_path = Path(gap_path_str)
+    if not gap_path.exists():
+        return json.dumps({"status": "error", "message": f"gap_analysis not found: {gap_path}"})
+
+    try:
+        data = json.loads(gap_path.read_text())
+    except Exception as exc:  # noqa: BLE001
+        return json.dumps({"status": "error", "message": f"Could not read gap_analysis: {exc}"})
+
+    apex_dir = _REPO / "docs" / "oscal-salesforce-poc" / "apex-scripts"
+    apex_dir.mkdir(parents=True, exist_ok=True)
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
+    enriched = 0
+
+    for finding in data.get("findings", []):
+        if not finding.get("needs_expert_review"):
+            continue
+        cid = finding["control_id"]
+        apex_filename = f"{cid}_{date_str}.apex"
+        apex_path = apex_dir / apex_filename
+        if not apex_path.exists():
+            apex_path.write_text(
+                f"// -- READ-ONLY -- sfdc-expert proposal for {cid}\n"
+                f"// Generated: {date_str} | Status: PENDING HUMAN REVIEW\n"
+                f"// Do NOT execute without System Administrator review.\n"
+                f"// Replace this placeholder with a specific SOQL/Apex query.\n"
+                f"//\n"
+                f"// Control: {cid}\n"
+                f"// Purpose: Surface data unavailable via sfdc-connect REST/SOQL API\n"
+            )
+        finding["expert_notes"] = (
+            f"Apex script staged at docs/oscal-salesforce-poc/apex-scripts/{apex_filename}. "
+            f"Awaiting human review before execution."
+        )
+        enriched += 1
+
+    gap_path.write_text(json.dumps(data, indent=2))
+    return json.dumps({
+        "status": "ok",
+        "enriched_findings": enriched,
+        "output_file": str(gap_path),
+        "apex_scripts_dir": str(apex_dir),
+    })
+
+
 def _dispatch_sscf_benchmark(inp: dict[str, Any], out_dir: Path) -> str:
     out_path = inp.get("out") or str(out_dir / "sscf_report.json")
     sscf_index = _REPO / "config/sscf_control_index.yaml"
@@ -392,6 +465,7 @@ _DISPATCHERS = {
     "sfdc_connect_collect": _dispatch_sfdc_connect,
     "oscal_assess_assess": _dispatch_oscal_assess,
     "oscal_gap_map": _dispatch_gap_map,
+    "sfdc_expert_enrich": _dispatch_sfdc_expert,
     "nist_review_assess": _dispatch_nist_review,
     "sscf_benchmark_benchmark": _dispatch_sscf_benchmark,
     "report_gen_generate": _dispatch_report_gen,

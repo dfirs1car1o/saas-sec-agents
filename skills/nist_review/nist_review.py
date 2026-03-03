@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -175,18 +176,31 @@ def assess(gap_analysis: str | None, backlog: str | None, out: str, dry_run: boo
     client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1024,
+        max_tokens=2048,
         system=system_prompt,
         messages=[{"role": "user", "content": user_msg}],
     )
     raw = response.content[0].text.strip()
+
+    # Strip markdown code fences (```json ... ``` or ``` ... ```)
     if raw.startswith("```"):
         lines = raw.splitlines()
         raw = "\n".join(lines[1:-1] if lines and lines[-1].strip() == "```" else lines[1:])
 
+    # Try direct parse first; if that fails, extract the first JSON object via regex
     try:
         verdict = json.loads(raw)
     except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            try:
+                verdict = json.loads(match.group())
+            except json.JSONDecodeError:
+                verdict = None
+        else:
+            verdict = None
+
+    if verdict is None:
         click.echo(f"WARNING: LLM response not valid JSON. Falling back to flag verdict.\n{raw[:300]}", err=True)
         verdict = {
             "nist_ai_rmf_review": {

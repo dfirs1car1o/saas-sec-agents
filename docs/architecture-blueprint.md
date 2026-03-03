@@ -135,6 +135,11 @@
 | nist-reviewer | `agents/nist-reviewer.md` | claude-sonnet-4-6 | 200K | AI RMF validation |
 | reporter | `agents/reporter.md` | claude-haiku-4-5 | 200K | Output formatting |
 | security-reviewer | `agents/security-reviewer.md` | claude-sonnet-4-6 | 200K | AppSec + DevSecOps CI/CD audit |
+| sfdc-expert | `agents/sfdc-expert.md` | claude-sonnet-4-6 | 200K | Apex + deep admin specialist (on-demand) |
+
+**sfdc-expert** is invoked on-demand (not sequential) — only when `oscal_assess_assess`
+emits findings with `needs_expert_review=true`. It proposes read-only Apex scripts staged
+in `docs/oscal-salesforce-poc/apex-scripts/` for human review before any execution.
 
 ---
 
@@ -268,5 +273,32 @@ See `scripts/validate_env.py --help` for the automated preflight check.
 |---|---|---|
 | SecuritySettings requires Tooling API | Some orgs restrict Tooling API access | Output includes error + `note` field; assessor flags as manual check |
 | OrganizationSettings MFA fields require API v57+ | Older orgs may not return MFA data | Flagged in output; use UI Security Health Check instead |
-| `sf org login web` not supported | No OAuth2 Connected App flow yet | Phase 2: add OAuth2 path for multi-org production use |
+| SOAP login blocked in some orgs | New orgs (Spring '24+) disable password-based login by default | Set `SF_AUTH_METHOD=jwt`; see §10a |
 | No record-level access by design | Cannot assess data-layer controls | Intentional; assessor uses metadata API for field-level security |
+
+---
+
+### §10a — JWT Bearer Flow Prerequisites
+
+For orgs that block password-based (SOAP) login (Spring '24+ default):
+
+| Step | Action |
+|---|---|
+| 1. Generate RSA keypair | `openssl genrsa -out ~/salesforce_jwt_private.pem 2048` |
+| 2. Generate cert | `openssl req -new -x509 -key ~/salesforce_jwt_private.pem -out ~/salesforce_cert.crt -days 365` |
+| 3. Create Connected App | Setup → App Manager → New; enable OAuth (scopes: api, refresh_token); check "Use digital signatures" → upload cert |
+| 4. Set permitted users | Edit Policies → Permitted Users = "Admin approved users are pre-authorized" |
+| 5. Authorize profile | Manage Connected App → Profiles → add your user's profile |
+
+**Environment variables** (add to `.env`):
+```dotenv
+SF_AUTH_METHOD=jwt
+SF_CONSUMER_KEY=<Consumer Key from Connected App>
+SF_PRIVATE_KEY_PATH=/Users/jerijuar/salesforce_jwt_private.pem
+```
+
+**Test:**
+```bash
+sfdc-connect auth --dry-run --auth-method jwt   # validate vars only
+sfdc-connect auth --auth-method jwt             # live connection test
+```

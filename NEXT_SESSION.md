@@ -3,13 +3,12 @@
 ## Session Summary
 
 This session completed:
-- **NIST AI RMF skill** (`skills/nist_review/`) — dry-run + live Anthropic mode; wired as pipeline step 5
-- **PDF quality fixes** — `multi_cell()` wrapping in NIST section, N/A for empty domains, top findings table, SBS ID column widened
-- **Report renamed** — audience `gis` → `security` throughout; auto-title now "Salesforce Security Governance Assessment"
-- **CI hardening** — sbom.yml + diagram.yml no longer push to protected main (artifact upload instead); fpdf2 LGPL allowlisted; actions SHA-pinned
-- **Memory fix** — `MEMORY_ENABLED=0` default; no more `sentence_transformers` warning
-- **Docs + wiki** — all 11 wiki pages updated for 7-step pipeline; CHANGELOG current
-- **CI: all 6 workflows green** on main
+- **JWT Bearer Auth** (`SF_AUTH_METHOD=jwt`) — full implementation in sfdc-connect, live verified against cyber-coach-dev org
+- **SOQL query fixes** — 5 broken field names fixed (SecuritySettings Metadata blob, event-monitoring GROUP BY, transaction-security IsEnabled, integrations AuthenticationProtocol, oauth PermittedUsersPolicyEnum)
+- **NIST max_tokens fix** — bumped 1024→2048; LLM was cutting JSON mid-response, all 4 dimensions now return real verdicts
+- **NIST regex fallback** — added re.search() fallback for responses with markdown fence preamble
+- **First live full pipeline run** — 48.4% RED, 1 critical fail (SBS-AUTH-001), NIST verdict: block (4 issues)
+- **4 GitHub Issues opened** — #10, #11, #12, #13 (NIST MANAGE/MAP/GOVERN/MEASURE fixes)
 
 ---
 
@@ -22,38 +21,64 @@ This session completed:
 | Phase 3 | ✅ Done | agent-loop harness + Mem0 + Qdrant |
 | Phase 4 | ✅ Done | report-gen DOCX/MD/PDF skill |
 | Phase 5 | ✅ Done | architecture diagram auto-generation |
-| Phase 6 | ✅ Done | security-reviewer agent, CI hardening, minimal local reqs |
-| Post-6 fixes | ✅ Done | NIST review skill, PDF polish, gis→security rename, diagram CI fix |
+| Phase 6 | ✅ Done | security-reviewer agent, CI hardening |
+| JWT Auth | ✅ Done | JWT Bearer Flow, live verified |
+| Live run | ✅ Done | First real org assessment complete |
 
-**All phases done. CI green. No open branches or PRs.**
+---
+
+## Open GitHub Issues (fix these next)
+
+| Issue | Title | Priority |
+|---|---|---|
+| #10 | NIST MANAGE-BLOCK: Assign due_date to all critical/high fail findings | P1 |
+| #11 | NIST MAP-BLOCK: Declare live vs mock collection in assessment output | P1 |
+| #12 | NIST GOVERN-PARTIAL: Replace team-level owner with named individual | P2 |
+| #13 | NIST MEASURE-PARTIAL: Recalibrate mapping_confidence variance | P2 |
 
 ---
 
 ## Current State
 
-- **Branch:** `main` (clean, latest commit `1284141`)
+- **Branch:** `main`
 - **Local path:** `/Users/jerijuar/saas-sec-agents`
-- **Tests:** 9/9 passing
-- **Pipeline:** 7 steps (see below)
-- **Dry run:** verified working; score ~35% RED, 4 critical fails (expected weak-org)
+- **Tests:** 12/12 passing
+- **Org:** cyber-coach-dev (`orgfarm-7ecec127cc-dev-ed.develop.my.salesforce.com`)
+- **Auth:** JWT Bearer (`SF_AUTH_METHOD=jwt` in .env, key at `~/salesforce_jwt_private.pem`)
 
 ---
 
 ## Full 7-Step Pipeline
 
 ```
-agent-loop run --dry-run --env dev --org test-org
+agent-loop run --env dev --org cyber-coach-dev --approve-critical
    │
-   ├── 1. sfdc_connect_collect     (org, scope='all', dry_run=true) → sfdc_raw.json
-   ├── 2. oscal_assess_assess      (org, dry_run=true)              → gap_analysis.json
-   ├── 3. oscal_gap_map            (org)                            → backlog.json + matrix.md
-   ├── 4. sscf_benchmark_benchmark (org)                            → sscf_report.json
-   ├── 5. nist_review_assess       (org, dry_run=true)              → nist_review.json
-   ├── 6. report_gen_generate      (audience=app-owner)             → {org}_remediation_report.md
-   └── 7. report_gen_generate      (audience=security)              → {org}_security_assessment.md/.docx/.pdf
+   ├── 1. sfdc_connect_collect     → sfdc_raw.json
+   ├── 2. oscal_assess_assess      → gap_analysis.json
+   ├── 3. oscal_gap_map            → backlog.json + matrix.md
+   ├── 4. sscf_benchmark_benchmark → sscf_report.json
+   ├── 5. nist_review_assess       → nist_review.json
+   ├── 6. report_gen_generate      (audience=app-owner)  → {org}_remediation_report.md
+   └── 7. report_gen_generate      (audience=security)   → {org}_security_assessment.md/.docx/.pdf
 ```
 
-All outputs land in: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
+All outputs: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
+
+---
+
+## Live Assessment Results (2026-03-03, cyber-coach-dev)
+
+| Domain | Score | Status |
+|---|---|---|
+| logging_monitoring | 0% | 🔴 RED |
+| configuration_hardening | 33% | 🔴 RED |
+| identity_access_management | 50% | 🟡 AMBER |
+| data_security_privacy | 50% | 🟡 AMBER |
+| cryptography_key_management | 70% | 🟡 AMBER |
+| governance_risk_compliance | N/A | — |
+| threat_detection_response | N/A | — |
+
+**Overall: 48.4% RED** | Critical fails: SBS-AUTH-001 | NIST: block
 
 ---
 
@@ -62,74 +87,30 @@ All outputs land in: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
 ```bash
 cd /Users/jerijuar/saas-sec-agents
 git checkout main && git pull
-pytest tests/ -v                          # should be 9/9
-agent-loop run --dry-run --env dev --org test-org
-```
-
-Expected output files:
-```
-docs/oscal-salesforce-poc/generated/test-org/<date>/
-  test-org_security_assessment.pdf
-  test-org_security_assessment.docx
-  test-org_security_assessment.md
-  test-org_remediation_report.md
-  nist_review.json
-  gap_analysis.json / backlog.json / sscf_report.json
+python3 -m pytest tests/ -v                             # 12/12
+agent-loop run --env dev --org cyber-coach-dev --approve-critical
 ```
 
 ---
 
-## Key Files
+## Secondary Fixes (not yet in issues)
 
-```
-harness/loop.py                    ← 7-step task prompt, 20-turn ReAct loop
-harness/tools.py                   ← 6 tool schemas + dispatchers
-harness/memory.py                  ← Mem0+Qdrant (MEMORY_ENABLED=1 to activate)
-harness/agents.py                  ← Model assignments (Opus/Sonnet/Haiku)
-agents/orchestrator.md             ← Routing table + quality gates
-agents/reporter.md                 ← report-gen tool call examples
-skills/report_gen/report_gen.py    ← PDF/DOCX/MD report generator
-skills/nist_review/nist_review.py  ← NIST AI RMF review skill
-scripts/check_licenses.py          ← Local license check with LGPL allowlist
-docs/architecture.png              ← Reference diagram
-```
-
----
-
-## CI Stack (all green)
-
-| Workflow | Key tools | Status |
-|---|---|---|
-| ci | ruff, bandit, pip-audit, pytest, pip-licenses | ✅ |
-| security-checks | bandit, pip-audit, gitleaks | ✅ |
-| actions-security | zizmor, actionlint | ✅ |
-| codeql | CodeQL Python | ✅ |
-| sbom | cyclonedx-bom → artifact upload | ✅ |
-| diagram | generate → artifact upload (no push) | ✅ |
+- `RemoteProxy` SOQL not supported — needs Tooling API or Metadata API approach
+- `OrganizationSettings` MFA fields inaccessible via Tooling API on dev orgs
+- Report `--out` relative path resolves into `deliverables/` subdirectory — fix `_DELIVERABLES_DIR` logic in report_gen.py
+- PDF title column wrapping review (minor cosmetic)
 
 ---
 
 ## Environment Variables (.env)
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...       # required
-QDRANT_IN_MEMORY=1                 # use in-memory Qdrant (no Docker needed)
-MEMORY_ENABLED=0                   # set to 1 + pip install sentence-transformers for cross-session memory
-SFDC_ORG_ALIAS=test-org            # default --org
-SFDC_ENV=dev                       # default --env
-REPORT_GOVERNANCE_TITLE=Salesforce Security Governance Assessment
-REPORT_ORG_DISPLAY_NAME=test-org
-# Live org (when ready):
-# SF_USERNAME=...
-# SF_PASSWORD=...
-# SF_SECURITY_TOKEN=...
-# SF_DOMAIN=test
+ANTHROPIC_API_KEY=sk-ant-...
+SF_USERNAME=jj.4445251c0b95@agentforce.com
+SF_AUTH_METHOD=jwt
+SF_CONSUMER_KEY=3MVG9Htw...          # in .env
+SF_PRIVATE_KEY_PATH=/Users/jerijuar/salesforce_jwt_private.pem
+SF_DOMAIN=login
+QDRANT_IN_MEMORY=1
+MEMORY_ENABLED=0
 ```
-
----
-
-## Open Items
-
-1. **Colleague GitHub username** → add to CODEOWNERS, flip `enforce_admins=true`
-2. **Live org assessment** → run `agent-loop run --env prod --org <alias>` against real Salesforce sandbox
-3. **PDF review** — user ran dry run but session ended before reviewing output files

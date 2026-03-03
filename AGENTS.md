@@ -12,6 +12,7 @@ This file is the canonical reference for all agents in this system. Each agent h
 | reporter | agents/reporter.md | claude-haiku-4-5 | Generates DOCX/MD/JSON outputs for app owners |
 | nist-reviewer | agents/nist-reviewer.md | claude-sonnet-4-6 | Validates all outputs against NIST AI RMF |
 | security-reviewer | agents/security-reviewer.md | claude-sonnet-4-6 | AppSec + DevSecOps review of CI/CD, workflows, and skill CLIs |
+| sfdc-expert | agents/sfdc-expert.md | claude-sonnet-4-6 | Apex + deep admin specialist (on-call) |
 
 ## Skill Roster
 
@@ -65,3 +66,4 @@ The orchestrator can be scheduled to run proactively:
 - Any NIST AI RMF gap identified by nist-reviewer blocks output until human acknowledges.
 - Any CRITICAL or HIGH finding from security-reviewer on a workflow or skill change blocks merge.
 - If orchestrator cannot determine org target, it asks human before calling sfdc-connect.
+- If any finding has `needs_expert_review=true`, invoke sfdc-expert before Assessor passes findings to gap mapping.

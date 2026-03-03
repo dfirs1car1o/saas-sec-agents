@@ -35,6 +35,37 @@ load_dotenv(_REPO / ".env")
 _MAX_TURNS = 20  # hard stop to prevent runaway loops
 
 # ---------------------------------------------------------------------------
+# Expert-review escalation helper
+# ---------------------------------------------------------------------------
+
+
+def _log_expert_escalations(gap_analysis_path: str, dry_run: bool) -> list[str]:
+    """Scan gap_analysis for controls needing sfdc-expert review. Log in dry-run."""
+    try:
+        data = json.loads(Path(gap_analysis_path).read_text())
+        eligible = [f["control_id"] for f in data.get("findings", []) if f.get("needs_expert_review")]
+    except Exception:  # noqa: BLE001
+        return []
+
+    if not eligible:
+        return eligible
+
+    if dry_run:
+        click.echo(
+            f"  [sfdc-expert] DRY-RUN: {len(eligible)} control(s) would trigger sfdc-expert:\n"
+            + "\n".join(f"    - {c}" for c in eligible),
+            err=True,
+        )
+    else:
+        click.echo(
+            f"  [sfdc-expert] {len(eligible)} control(s) flagged for expert review: "
+            + ", ".join(eligible),
+            err=True,
+        )
+    return eligible
+
+
+# ---------------------------------------------------------------------------
 # Critical/fail gate helpers
 # ---------------------------------------------------------------------------
 
@@ -230,6 +261,7 @@ def _run_loop(
                     name = block.name
                     if name == "oscal_assess_assess":
                         state["gap_analysis"] = out_file
+                        _log_expert_escalations(out_file, dry_run)
                     elif name == "oscal_gap_map":
                         state["backlog"] = out_file
                     elif name == "sscf_benchmark_benchmark":

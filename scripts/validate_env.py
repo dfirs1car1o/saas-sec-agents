@@ -185,6 +185,9 @@ def check_env_vars(suite: CheckSuite) -> None:
         ("ANTHROPIC_API_KEY", "Anthropic API key", True),
         ("SF_DOMAIN", "Salesforce domain (optional)", False),
         ("SF_INSTANCE_URL", "Salesforce instance URL (optional)", False),
+        ("SF_AUTH_METHOD", "Auth method: soap (default) or jwt (optional)", False),
+        ("SF_CONSUMER_KEY", "JWT: Connected App Consumer Key (optional)", False),
+        ("SF_PRIVATE_KEY_PATH", "JWT: RSA private key path (optional)", False),
     ]
 
     for key, description, hard in checks:
@@ -415,6 +418,9 @@ def attempt_fix(suite: CheckSuite) -> None:
             "SF_SECURITY_TOKEN",
             "ANTHROPIC_API_KEY",
             "repo-layout",
+            "SF_AUTH_METHOD",
+            "SF_CONSUMER_KEY",
+            "SF_PRIVATE_KEY_PATH",
         )
     ]
     if not failures:

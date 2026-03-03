@@ -4,12 +4,14 @@ gen_diagram.py — Generate reference architecture diagram for saas-sec-agents.
 
 Outputs: docs/architecture.png
 
-Shows the 6-agent Claude layer orchestrating 4 Python CLI skills across the
+Shows the 7-agent Claude layer orchestrating 4 Python CLI skills across the
 full assessment pipeline:
     sfdc-connect → oscal-assess → oscal_gap_map → sscf-benchmark → report-gen
 
 Security Reviewer is a parallel DevSecOps audit agent — invoked by the
 orchestrator on CI/CD and skill changes, not part of the main assessment flow.
+
+SFDC Expert is an on-call specialist — invoked when findings have needs_expert_review=true.
 
 Run manually or automatically via GitHub Actions on every push to main.
 
@@ -69,6 +71,7 @@ def main() -> None:
                 nist_reviewer = Server("NIST Reviewer\nSonnet 4.6")
                 reporter = Server("Reporter\nHaiku 4.5")
                 security_reviewer = Server("Security Reviewer\nSonnet 4.6")
+                sfdc_expert = Server("SFDC Expert\nSonnet 4.6")  # on-call specialist
 
         # ── Skill CLIs ───────────────────────────────────────────────────────
         with Cluster("Skill CLIs  (Python)"):
@@ -107,6 +110,7 @@ def main() -> None:
         orchestrator >> dashed >> nist_reviewer
         orchestrator >> dashed >> reporter
         orchestrator >> dashed >> security_reviewer
+        orchestrator >> dashed >> sfdc_expert
 
         collector >> Edge(style="dashed", color="gray") >> sfdc_connect
         assessor >> Edge(style="dashed", color="gray") >> oscal_assess

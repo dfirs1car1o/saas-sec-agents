@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import click
@@ -18,31 +20,161 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ---------------------------------------------------------------------------
+# Auth constants
+# ---------------------------------------------------------------------------
+
+AUTH_METHOD_SOAP = "soap"
+AUTH_METHOD_JWT = "jwt"
+VALID_AUTH_METHODS = (AUTH_METHOD_SOAP, AUTH_METHOD_JWT)
+
+REQUIRED_ENV_SOAP = ("SF_USERNAME", "SF_PASSWORD", "SF_SECURITY_TOKEN")
+REQUIRED_ENV_JWT = ("SF_USERNAME", "SF_CONSUMER_KEY", "SF_PRIVATE_KEY_PATH")
+REQUIRED_ENV = REQUIRED_ENV_SOAP  # backward-compat alias
+
+JWT_EXPIRY_SECONDS = 300  # Salesforce max: 5 min
+JWT_REQUEST_TIMEOUT = 30  # seconds
+
+
+# ---------------------------------------------------------------------------
 # Auth helpers
 # ---------------------------------------------------------------------------
 
-REQUIRED_ENV = ("SF_USERNAME", "SF_PASSWORD", "SF_SECURITY_TOKEN")
+
+def _check_env(auth_method: str = AUTH_METHOD_SOAP) -> None:
+    if auth_method == AUTH_METHOD_JWT:
+        missing = [k for k in REQUIRED_ENV_JWT if not os.getenv(k)]
+        if missing:
+            click.echo(
+                f"ERROR: Missing required env vars for JWT auth: {', '.join(missing)}\n"
+                "See .env.example for the JWT Bearer Flow section.",
+                err=True,
+            )
+            sys.exit(1)
+        key_path = os.environ.get("SF_PRIVATE_KEY_PATH", "")
+        if not Path(key_path).is_file():
+            click.echo(
+                f"ERROR: SF_PRIVATE_KEY_PATH does not exist or is not a file: {key_path}",
+                err=True,
+            )
+            sys.exit(1)
+    else:
+        missing = [k for k in REQUIRED_ENV_SOAP if not os.getenv(k)]
+        if missing:
+            click.echo(
+                f"ERROR: Missing required env vars: {', '.join(missing)}\n"
+                "Copy .env.example to .env and fill in values.",
+                err=True,
+            )
+            sys.exit(1)
 
 
-def _check_env() -> None:
-    missing = [k for k in REQUIRED_ENV if not os.getenv(k)]
-    if missing:
+def _resolve_auth_method(cli_flag: str | None) -> str:
+    """Return the effective auth method: CLI flag > SF_AUTH_METHOD env > 'soap'."""
+    method = cli_flag or os.getenv("SF_AUTH_METHOD") or AUTH_METHOD_SOAP
+    if method not in VALID_AUTH_METHODS:
         click.echo(
-            f"ERROR: Missing required env vars: {', '.join(missing)}\nCopy .env.example to .env and fill in values.",
+            f"ERROR: Unknown auth method '{method}'. Valid values: {', '.join(VALID_AUTH_METHODS)}",
             err=True,
         )
         sys.exit(1)
+    return method
 
 
-def _connect() -> Any:
+def _connect_jwt() -> Any:
+    """Return an authenticated Salesforce client using JWT Bearer Flow (read-only use only)."""
+    try:
+        import jwt as pyjwt
+    except ImportError:
+        click.echo("ERROR: PyJWT[crypto] not installed. Run: pip install 'PyJWT[crypto]>=2.8.0'", err=True)
+        sys.exit(1)
+    try:
+        import requests
+        from simple_salesforce import Salesforce
+    except ImportError:
+        click.echo("ERROR: simple-salesforce not installed. Run: uv pip install simple-salesforce", err=True)
+        sys.exit(1)
+
+    _check_env(AUTH_METHOD_JWT)
+
+    key_path = os.environ["SF_PRIVATE_KEY_PATH"]
+    try:
+        private_key = Path(key_path).read_bytes()
+    except FileNotFoundError:
+        click.echo(f"ERROR: SF_PRIVATE_KEY_PATH not found: {key_path}", err=True)
+        sys.exit(1)
+    except OSError as exc:
+        click.echo(f"ERROR: Could not read private key: {exc}", err=True)
+        sys.exit(1)
+
+    domain = os.environ.get("SF_DOMAIN", "login")
+    # Hardcoded token endpoints — one branch per domain, no dynamic URL construction
+    if domain == "test":
+        token_url = "https://test.salesforce.com/services/oauth2/token"
+        audience = "https://test.salesforce.com"
+    else:
+        token_url = "https://login.salesforce.com/services/oauth2/token"
+        audience = "https://login.salesforce.com"
+
+    claims = {
+        "iss": os.environ["SF_CONSUMER_KEY"],
+        "sub": os.environ["SF_USERNAME"],
+        "aud": audience,
+        "exp": int(time.time()) + JWT_EXPIRY_SECONDS,
+    }
+
+    try:
+        token = pyjwt.encode(claims, private_key, algorithm="RS256")
+    except Exception as exc:
+        click.echo(f"ERROR: JWT signing failed: {exc}", err=True)
+        sys.exit(1)
+
+    try:
+        resp = requests.post(
+            token_url,
+            data={"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": token},
+            timeout=JWT_REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        result = resp.json()
+    except requests.exceptions.Timeout:
+        click.echo("ERROR: JWT token request timed out", err=True)
+        sys.exit(1)
+    except requests.exceptions.HTTPError as exc:
+        try:
+            err_body = exc.response.json()
+            click.echo(
+                f"ERROR: JWT token request failed ({exc.response.status_code}): "
+                f"{err_body.get('error_description', err_body)}",
+                err=True,
+            )
+        except Exception:
+            click.echo(f"ERROR: JWT token request failed: {exc}", err=True)
+        sys.exit(1)
+    except requests.exceptions.RequestException as exc:
+        click.echo(f"ERROR: JWT network error: {exc}", err=True)
+        sys.exit(1)
+
+    access_token = result.get("access_token")
+    instance_url = result.get("instance_url")
+    if not access_token or not instance_url:
+        click.echo(f"ERROR: JWT response missing access_token or instance_url: {result}", err=True)
+        sys.exit(1)
+
+    return Salesforce(instance_url=instance_url, session_id=access_token)
+
+
+def _connect(auth_method: str = AUTH_METHOD_SOAP) -> Any:
     """Return an authenticated Salesforce client (read-only use only)."""
+    if auth_method == AUTH_METHOD_JWT:
+        return _connect_jwt()
+
     try:
         from simple_salesforce import Salesforce
     except ImportError:
         click.echo("ERROR: simple-salesforce not installed. Run: uv pip install simple-salesforce", err=True)
         sys.exit(1)
 
-    _check_env()
+    _check_env(AUTH_METHOD_SOAP)
     return Salesforce(
         username=os.environ["SF_USERNAME"],
         password=os.environ["SF_PASSWORD"],
@@ -81,14 +213,11 @@ def collect_auth(sf: Any) -> dict:
     """Auth: SSO, MFA, login IP ranges, session settings."""
     data: dict[str, Any] = {}
 
-    # Session settings via Tooling API (not available via standard SOQL)
+    # Session settings via Tooling API — use Metadata blob (field names vary by API version)
     try:
         tooling_result = sf.restful(
             "tooling/query",
-            params={
-                "q": "SELECT SessionTimeout, RequireHttps, ForceLogoutOnSessionTimeout,"
-                " LockSessionsToDomain FROM SecuritySettings LIMIT 1"
-            },
+            params={"q": "SELECT Metadata FROM SecuritySettings LIMIT 1"},
         )
         data["session_settings"] = tooling_result
     except Exception as exc:
@@ -164,7 +293,7 @@ def collect_event_monitoring(sf: Any) -> dict:
     # Event log file types available (indicates what monitoring is enabled)
     data["event_log_types"] = sf.query_all(
         "SELECT EventType, LogDate, LogFileLength FROM EventLogFile "
-        "WHERE LogDate = LAST_N_DAYS:7 GROUP BY EventType, LogDate, LogFileLength"
+        "WHERE LogDate = LAST_N_DAYS:7 ORDER BY LogDate DESC LIMIT 200"
     )
 
     # Check field audit trail / field history (metadata count as proxy)
@@ -183,8 +312,8 @@ def collect_transaction_security(sf: Any) -> dict:
     """Transaction Security Policies (automated threat response rules)."""
     return {
         "policies": sf.query_all(
-            "SELECT Id, DeveloperName, ResourceName, EventName, IsEnabled, "
-            "ExecutionUserId, BlockMessage FROM TransactionSecurityPolicy ORDER BY EventName"
+            "SELECT Id, DeveloperName, EventName, ExecutionUserId, BlockMessage "
+            "FROM TransactionSecurityPolicy ORDER BY EventName"
         )
     }
 
@@ -194,12 +323,19 @@ def collect_integrations(sf: Any) -> dict:
     data: dict[str, Any] = {}
 
     data["named_credentials"] = sf.query_all(
-        "SELECT Id, DeveloperName, Endpoint, AuthenticationProtocol FROM NamedCredential ORDER BY DeveloperName"
+        "SELECT Id, DeveloperName, Endpoint FROM NamedCredential ORDER BY DeveloperName"
     )
 
-    data["remote_site_settings"] = sf.query_all(
-        "SELECT Id, SiteName, EndpointUrl, IsActive, DisableProtocolSecurity FROM RemoteProxy ORDER BY SiteName"
-    )
+    try:
+        data["remote_site_settings"] = sf.query_all(
+            "SELECT Id, SiteName, EndpointUrl, IsActive, DisableProtocolSecurity FROM RemoteProxy ORDER BY SiteName"
+        )
+    except Exception:
+        data["remote_site_settings"] = {
+            "totalSize": 0,
+            "records": [],
+            "note": "RemoteSiteSettings not queryable via SOQL in this org — check Setup > Remote Site Settings",
+        }
 
     return data
 
@@ -208,8 +344,8 @@ def collect_oauth(sf: Any) -> dict:
     """OAuth policies on connected apps."""
     return {
         "connected_app_oauth_policies": sf.query_all(
-            "SELECT Id, Name, OptionsAllowAdminApprovedUsersOnly, PermittedUsersPolicyEnum, "
-            "RefreshTokenPolicyEnum FROM ConnectedApplication ORDER BY Name"
+            "SELECT Id, Name, OptionsAllowAdminApprovedUsersOnly, OptionsRefreshTokenValidityMetric "
+            "FROM ConnectedApplication ORDER BY Name"
         )
     }
 
@@ -253,9 +389,18 @@ def cli() -> None:
 @click.option("--env", default="dev", type=click.Choice(["dev", "test", "prod"]), help="Environment label")
 @click.option("--timeout", default=60, help="API timeout in seconds")
 @click.option("--dry-run", is_flag=True, help="Print what would be collected without calling API")
-def collect(org: str | None, scope: str, out: str | None, env: str, timeout: int, dry_run: bool) -> None:
+@click.option(
+    "--auth-method",
+    default=None,
+    type=click.Choice(list(VALID_AUTH_METHODS)),
+    help="Auth method override (default: SF_AUTH_METHOD env var or 'soap')",
+)
+def collect(
+    org: str | None, scope: str, out: str | None, env: str, timeout: int, dry_run: bool, auth_method: str | None
+) -> None:
     """Collect security-relevant configuration from a Salesforce org."""
     org_label = org or os.getenv("SFDC_ORG_ALIAS", os.getenv("SF_INSTANCE_URL", "unknown"))
+    effective_method = _resolve_auth_method(auth_method)
 
     if dry_run:
         scopes_to_run = list(SCOPE_COLLECTORS.keys()) if scope == "all" else [scope]
@@ -263,7 +408,7 @@ def collect(org: str | None, scope: str, out: str | None, env: str, timeout: int
         click.echo(f"Output: {out or 'stdout'}")
         return
 
-    sf = _connect()
+    sf = _connect(effective_method)
     if org:
         # Override instance URL if explicit org URL provided
         sf.sf_instance = org.replace("https://", "").rstrip("/")
@@ -285,17 +430,26 @@ def collect(org: str | None, scope: str, out: str | None, env: str, timeout: int
 
 @cli.command()
 @click.option("--dry-run", is_flag=True, help="Skip actual connection, just validate env vars are set")
-def auth(dry_run: bool) -> None:
+@click.option(
+    "--auth-method",
+    default=None,
+    type=click.Choice(list(VALID_AUTH_METHODS)),
+    help="Auth method override (default: SF_AUTH_METHOD env var or 'soap')",
+)
+def auth(dry_run: bool, auth_method: str | None) -> None:
     """Test authentication to the Salesforce org."""
+    effective_method = _resolve_auth_method(auth_method)
+
     if dry_run:
-        missing = [k for k in REQUIRED_ENV if not os.getenv(k)]
+        required = REQUIRED_ENV_JWT if effective_method == AUTH_METHOD_JWT else REQUIRED_ENV_SOAP
+        missing = [k for k in required if not os.getenv(k)]
         if missing:
             click.echo(f"FAIL — missing env vars: {', '.join(missing)}", err=True)
             sys.exit(1)
-        click.echo("OK — all required env vars set (dry-run, no connection made)")
+        click.echo(f"OK — all required env vars set for {effective_method} auth (dry-run, no connection made)")
         return
 
-    sf = _connect()
+    sf = _connect(effective_method)
     org_info = sf.query_all("SELECT Id, Name, OrganizationType FROM Organization LIMIT 1")
     if org_info["totalSize"] == 1:
         rec = org_info["records"][0]

@@ -79,6 +79,14 @@
           "remediation": { "type": "string" },
           "owner": { "type": "string" },
           "due_date": { "type": "string", "format": "date" },
+          "needs_expert_review": {
+            "type": "boolean",
+            "description": "True when sfdc-expert should be invoked for this control"
+          },
+          "expert_notes": {
+            "type": "string",
+            "description": "Notes from sfdc-expert after review; null if not invoked"
+          },
           "sscf_mappings": {
             "type": "array",
             "minItems": 1,
