@@ -96,6 +96,17 @@
        ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │  ORCHESTRATOR QA GATE                                               │
+│                                                                      │
+│  (parallel, on CI/CD or skill changes)                              │
+│                                                                      │
+│  SECURITY REVIEWER — claude-sonnet-4-6      ← DEVSECOPS LAYER      │
+│  File: agents/security-reviewer.md                                  │
+│                                                                      │
+│  • Reviews GitHub Actions workflows for supply-chain risk           │
+│  • Reviews skill CLIs for injection, secrets, and unsafe patterns   │
+│  • Checks SAST output (bandit), pip-audit, gitleaks findings        │
+│  • CRITICAL or HIGH findings block merge via CODEOWNERS gate        │
+│                                                                      │
 │  • Checks output schema conformance                                 │
 │  • Verifies no credentials in output                                │
 │  • Confirms evidence paths are within repo                          │
@@ -123,6 +134,7 @@
 | assessor | `agents/assessor.md` | claude-sonnet-4-6 | 200K | OSCAL/SBS/SSCF mapping |
 | nist-reviewer | `agents/nist-reviewer.md` | claude-sonnet-4-6 | 200K | AI RMF validation |
 | reporter | `agents/reporter.md` | claude-haiku-4-5 | 200K | Output formatting |
+| security-reviewer | `agents/security-reviewer.md` | claude-sonnet-4-6 | 200K | AppSec + DevSecOps CI/CD audit |
 
 ---
 

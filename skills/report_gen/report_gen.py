@@ -329,14 +329,12 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
                     f.get("sbs_title", ""),
                     f.get("status", ""),
                     f.get("severity", ""),
-                    f.get("owner", ""),
-                    f.get("due_date", ""),
                     sscf_ids,
                 ]
             )
         lines.append(
             _md_table(
-                ["SBS ID", "Title", "Status", "Severity", "Owner", "Due Date", "SSCF Controls"],
+                ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
                 rows,
             )
         )
@@ -349,15 +347,16 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         if domains:
             d_rows = []
             for d in domains:
+                no_controls = (d.get("fail", 0) + d.get("partial", 0) + d.get("pass", 0)) == 0
                 d_rows.append(
                     [
                         d.get("domain_id", ""),
                         d.get("domain_label", d.get("domain_id", "")),
-                        f"{d.get('score', 0):.0%}",
-                        (d.get("status") or "").upper(),
-                        str(d.get("fail", 0)),
-                        str(d.get("partial", 0)),
-                        str(d.get("pass", 0)),
+                        "N/A" if no_controls else f"{d.get('score', 0):.0%}",
+                        "N/A" if no_controls else (d.get("status") or "").upper(),
+                        "-" if no_controls else str(d.get("fail", 0)),
+                        "-" if no_controls else str(d.get("partial", 0)),
+                        "-" if no_controls else str(d.get("pass", 0)),
                     ]
                 )
             lines.append(
@@ -375,9 +374,19 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         lines.append("")
         nist = ctx.get("nist_rmf")
         if nist:
-            for fn in ("GOVERN", "MAP", "MEASURE", "MANAGE"):
-                val = nist.get(fn) or nist.get(fn.lower()) or "[not reported]"
-                lines.append(f"**{fn}:** {val}  ")
+            review = nist.get("nist_ai_rmf_review", nist)
+            overall = str(review.get("overall", "")).upper()
+            if overall:
+                lines.append(f"**Overall Verdict:** {overall}  ")
+            for fn in ("govern", "map", "measure", "manage"):
+                entry = review.get(fn, {})
+                if isinstance(entry, dict):
+                    status = str(entry.get("status", "")).upper()
+                    notes = entry.get("notes", "")
+                    text = f"{status} -- {notes}" if notes else (status or "[not reported]")
+                else:
+                    text = str(entry) or "[not reported]"
+                lines.append(f"**{fn.upper()}:** {text}  ")
             lines.append("")
         else:
             lines.append("_[PENDING NIST REVIEW]_")
@@ -555,14 +564,12 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
                     f.get("sbs_title", ""),
                     f.get("status", ""),
                     f.get("severity", ""),
-                    f.get("owner", ""),
-                    f.get("due_date", ""),
                     sscf_ids,
                 ]
             )
         _docx_table(
             doc,
-            ["SBS ID", "Title", "Status", "Severity", "Owner", "Due Date", "SSCF Controls"],
+            ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
             rows,
             status_col=2,
         )
@@ -694,15 +701,19 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         for row in rows:
             key_text = _pdf_safe(str(row[0]))
             val_text = _pdf_safe(str(row[1]))
+            # Pre-measure to guard against mid-row page breaks (same pattern as _table wrap_col)
+            row_h = max(
+                pdf.multi_cell(val_w, line_h, val_text, dry_run=True, output="HEIGHT"),
+                line_h,
+            )
+            if pdf.will_page_break(row_h):
+                pdf.add_page()
             y0 = pdf.get_y()
-            # Render value column with wrapping to measure actual row height
             pdf.set_xy(lm + key_w, y0)
             pdf.multi_cell(val_w, line_h, val_text, border=1)
-            y1 = pdf.get_y()
-            # Render key column spanning the full measured height
             pdf.set_xy(lm, y0)
-            pdf.cell(key_w, y1 - y0, key_text, border=1)
-            pdf.set_y(y1)
+            pdf.cell(key_w, row_h, key_text, border=1)
+            pdf.set_y(y0 + row_h)
         pdf.ln(2)
 
     def _fit(text: str, width_mm: float) -> str:
@@ -716,9 +727,15 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
             s = s[:-1]
         return s + suffix
 
-    def _table(headers: list[str], rows: list[list[str]], col_widths: list[float] | None = None) -> None:
+    def _table(
+        headers: list[str],
+        rows: list[list[str]],
+        col_widths: list[float] | None = None,
+        wrap_col: int | None = None,
+    ) -> None:
         n = len(headers)
         cw: list[float] = col_widths if col_widths else [pdf.epw / n] * n
+        lm = pdf.l_margin
 
         pdf.set_font("Helvetica", "B", 8)
         pdf.set_fill_color(220, 230, 241)
@@ -742,18 +759,43 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
                 fill = False
 
             nc = len(row)
-            for i, cell in enumerate(row):
-                last = i == nc - 1
-                w = cw[i] if i < len(cw) else pdf.epw / nc
-                pdf.cell(
-                    w,
-                    6,
-                    _fit(str(cell), w),
-                    border=1,
-                    fill=fill,
-                    new_x="LMARGIN" if last else "RIGHT",
-                    new_y="NEXT" if last else "TOP",
+            if wrap_col is not None and wrap_col < nc:
+                # Pre-measure height so we can add a page break BEFORE rendering if needed.
+                # This prevents multi_cell from crossing a page boundary mid-row, which
+                # would leave the other cells' y0 on the wrong page.
+                wrap_text = _pdf_safe(str(row[wrap_col]))
+                row_h = max(
+                    pdf.multi_cell(cw[wrap_col], 5.0, wrap_text, dry_run=True, output="HEIGHT"),
+                    6.0,
                 )
+                if pdf.will_page_break(row_h):
+                    pdf.add_page()
+                x_pos = [lm + sum(cw[:i]) for i in range(nc)]
+                y0 = pdf.get_y()
+                # Render wrap column (always fits now — page break guard above)
+                pdf.set_xy(x_pos[wrap_col], y0)
+                pdf.multi_cell(cw[wrap_col], 5.0, wrap_text, border=1, fill=fill)
+                # Render all other columns at the same y0 spanning the measured height
+                for i, cell_val in enumerate(row):
+                    if i == wrap_col:
+                        continue
+                    w = cw[i] if i < len(cw) else pdf.epw / nc
+                    pdf.set_xy(x_pos[i], y0)
+                    pdf.cell(w, row_h, _fit(str(cell_val), w), border=1, fill=fill)
+                pdf.set_y(y0 + row_h)
+            else:
+                for i, cell in enumerate(row):
+                    last = i == nc - 1
+                    w = cw[i] if i < len(cw) else pdf.epw / nc
+                    pdf.cell(
+                        w,
+                        6,
+                        _fit(str(cell), w),
+                        border=1,
+                        fill=fill,
+                        new_x="LMARGIN" if last else "RIGHT",
+                        new_y="NEXT" if last else "TOP",
+                    )
         pdf.ln(2)
 
     # --- Assessment Metadata ---
@@ -801,7 +843,8 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
         _table(
             ["SBS ID", "Title", "Severity", "Remediation Action"],
             top_rows,
-            col_widths=[32.0, 52.0, 22.0, 84.0],
+            col_widths=[30.0, 76.0, 22.0, 62.0],
+            wrap_col=1,
         )
 
     # --- Full Control Matrix ---
@@ -823,7 +866,8 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
     _table(
         ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
         matrix_rows,
-        col_widths=[32.0, 74.0, 28.0, 22.0, 34.0],
+        col_widths=[30.0, 82.0, 26.0, 20.0, 32.0],
+        wrap_col=1,
     )
 
     # --- SSCF Domain Heatmap ---

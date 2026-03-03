@@ -864,7 +864,7 @@ _DRY_RUN_OVERRIDES: dict[str, tuple[str, str, str]] = {
     "SBS-ACS-008": ("partial", "NHI privilege scope requires audit [dry-run]", "Restrict NHI permissions."),
     "SBS-ACS-009": ("partial", "Compensating controls require manual review [dry-run]", ""),
     "SBS-ACS-010": ("fail", "No access review process evidence found [dry-run]", "Implement quarterly access reviews."),
-    "SBS-ACS-011": ("partial", "Change governance process requires verification [dry-run]", ""),
+    "SBS-ACS-011": ("partial", "Change governance process requires verification [dry-run]", "Implement change approval workflow for access changes."),
     "SBS-ACS-012": ("partial", "Login hour restrictions require profile audit [dry-run]", ""),
     "SBS-INT-002": (
         "fail",
@@ -888,7 +888,7 @@ _DRY_RUN_OVERRIDES: dict[str, tuple[str, str, str]] = {
     "SBS-SECCONF-001": ("partial", "Health Check score: 64/100 [dry-run]", "Remediate to reach ≥80%."),
     "SBS-SECCONF-002": ("partial", "Score 64/100 — deviations remain [dry-run]", "Address all failing items."),
     "SBS-DEP-003": ("fail", "No Transaction Security Policies found [dry-run]", "Create TSPs for high-risk events."),
-    "SBS-CODE-003": ("partial", "Apex logging requires code audit [dry-run]", ""),
+    "SBS-CODE-003": ("partial", "Apex logging requires code audit [dry-run]", "Implement Platform Event or custom Apex logging framework."),
     "SBS-CODE-004": ("fail", "Sensitive data in logs cannot be ruled out [dry-run]", "Audit all Apex log statements."),
 }
 
