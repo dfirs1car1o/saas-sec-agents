@@ -17,9 +17,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
 
 from harness.loop import cli
@@ -70,23 +69,30 @@ def test_dry_run_loop_tool_dispatch_order(tmp_path: Path) -> None:
     """Loop calls tools in correct order and exits cleanly."""
 
     fake_gap = str(tmp_path / "gap_analysis.json")
-    fake_sscf = str(tmp_path / "sscf_report.json")
 
     # Write minimal gap_analysis.json so _extract_critical_fails / _extract_score work
-    (tmp_path / "gap_analysis.json").write_text(json.dumps({
-        "assessment_id": "test-001",
-        "findings": [
-            {"control_id": "SBS-AUTH-001", "status": "fail", "severity": "critical"},
-            {"control_id": "SBS-ACS-001", "status": "fail", "severity": "high"},
-        ],
-    }))
-    (tmp_path / "sscf_report.json").write_text(json.dumps({
-        "benchmark_id": "bench-001",
-        "overall_score": 0.34,
-        "overall_status": "red",
-        "domains": [],
-        "summary": {"domains_green": 0, "domains_red": 7},
-    }))
+    (tmp_path / "gap_analysis.json").write_text(
+        json.dumps(
+            {
+                "assessment_id": "test-001",
+                "findings": [
+                    {"control_id": "SBS-AUTH-001", "status": "fail", "severity": "critical"},
+                    {"control_id": "SBS-ACS-001", "status": "fail", "severity": "high"},
+                ],
+            }
+        )
+    )
+    (tmp_path / "sscf_report.json").write_text(
+        json.dumps(
+            {
+                "benchmark_id": "bench-001",
+                "overall_score": 0.34,
+                "overall_status": "red",
+                "domains": [],
+                "summary": {"domains_green": 0, "domains_red": 7},
+            }
+        )
+    )
 
     mock_responses = [
         _tool_use_response(
@@ -105,8 +111,9 @@ def test_dry_run_loop_tool_dispatch_order(tmp_path: Path) -> None:
     mock_anthropic_client = MagicMock()
     mock_anthropic_client.messages.create.side_effect = mock_responses
 
+    sfdc_out = str(tmp_path / "sfdc_raw.json")
     dispatch_results = {
-        "sfdc_connect_collect": json.dumps({"status": "ok", "dry_run": True, "output_file": str(tmp_path / "sfdc_raw.json")}),
+        "sfdc_connect_collect": json.dumps({"status": "ok", "dry_run": True, "output_file": sfdc_out}),
         "oscal_assess_assess": json.dumps({"status": "ok", "output_file": fake_gap}),
     }
 
@@ -120,7 +127,7 @@ def test_dry_run_loop_tool_dispatch_order(tmp_path: Path) -> None:
         patch("harness.loop.build_client") as mock_build,
         patch("harness.loop.load_memories", return_value="No prior assessments."),
         patch("harness.loop.save_assessment") as mock_save,
-        patch("harness.loop.dispatch",side_effect=fake_dispatch) as mock_dispatch,
+        patch("harness.loop.dispatch", side_effect=fake_dispatch) as mock_dispatch,
     ):
         mock_build.return_value = MagicMock()
 
@@ -144,7 +151,7 @@ def test_dry_run_loop_tool_dispatch_order(tmp_path: Path) -> None:
     # Verify memory save was called
     mock_save.assert_called_once()
     save_args = mock_save.call_args[0]
-    assert save_args[1] == "test-org"   # org_alias
+    assert save_args[1] == "test-org"  # org_alias
 
 
 # ---------------------------------------------------------------------------
@@ -169,10 +176,13 @@ def test_tool_error_triggers_handler(tmp_path: Path) -> None:
         patch("harness.loop.build_client", return_value=MagicMock()),
         patch("harness.loop.load_memories", return_value=""),
         patch("harness.loop.save_assessment"),
-        patch("harness.loop.dispatch",side_effect=RuntimeError("Salesforce connection refused")),
-        patch("harness.loop._handle_tool_error", return_value='{"status": "error", "message": "handled"}') as mock_handler,
+        patch("harness.loop.dispatch", side_effect=RuntimeError("Salesforce connection refused")),
+        patch(
+            "harness.loop._handle_tool_error",
+            return_value='{"status": "error", "message": "handled"}',
+        ) as mock_handler,
     ):
-        result = runner.invoke(cli, ["run", "--dry-run", "--org", "err-org"])
+        runner.invoke(cli, ["run", "--dry-run", "--org", "err-org"])
 
     mock_handler.assert_called_once()
     call_args = mock_handler.call_args[0]
@@ -199,7 +209,7 @@ def test_anthropic_client_uses_api_key(tmp_path: Path) -> None:
         patch("harness.loop.load_memories", return_value=""),
         patch("harness.loop.save_assessment"),
     ):
-        result = runner.invoke(
+        runner.invoke(
             cli,
             ["run", "--dry-run", "--org", "key-test-org", "--api-key", "sk-test-key"],
         )

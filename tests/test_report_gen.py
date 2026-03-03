@@ -40,21 +40,30 @@ def _make_sscf_report(tmp_path: Path) -> Path:
     _run(
         PYTHON,
         "scripts/oscal_gap_map.py",
-        "--controls", str(_CONTROLS),
-        "--gap-analysis", str(gap),
-        "--mapping", str(_MAPPING),
-        "--sscf-map", str(_SSCF_MAP),
-        "--out-md", str(matrix),
-        "--out-json", str(backlog),
+        "--controls",
+        str(_CONTROLS),
+        "--gap-analysis",
+        str(gap),
+        "--mapping",
+        str(_MAPPING),
+        "--sscf-map",
+        str(_SSCF_MAP),
+        "--out-md",
+        str(matrix),
+        "--out-json",
+        str(backlog),
     )
     _run(
         PYTHON,
         "-m",
         "skills.sscf_benchmark.sscf_benchmark",
         "benchmark",
-        "--backlog", str(backlog),
-        "--sscf-index", str(_SSCF_INDEX),
-        "--out", str(sscf),
+        "--backlog",
+        str(backlog),
+        "--sscf-index",
+        str(_SSCF_INDEX),
+        "--out",
+        str(sscf),
     )
     return sscf
 
@@ -70,11 +79,16 @@ def test_app_owner_md(tmp_path: Path) -> None:
 
     out = tmp_path / "report_app.md"
     result = _run(
-        PYTHON, "-m", "skills.report_gen.report_gen",
+        PYTHON,
+        "-m",
+        "skills.report_gen.report_gen",
         "generate",
-        "--backlog", str(_BACKLOG),
-        "--audience", "app-owner",
-        "--out", str(out),
+        "--backlog",
+        str(_BACKLOG),
+        "--audience",
+        "app-owner",
+        "--out",
+        str(out),
     )
     assert result.returncode == 0, f"report-gen failed:\n{result.stderr}"
     assert out.exists(), "Markdown report not written"
@@ -103,12 +117,18 @@ def test_gis_md(tmp_path: Path) -> None:
     out = tmp_path / "report_gis.md"
 
     result = _run(
-        PYTHON, "-m", "skills.report_gen.report_gen",
+        PYTHON,
+        "-m",
+        "skills.report_gen.report_gen",
         "generate",
-        "--backlog", str(_BACKLOG),
-        "--audience", "gis",
-        "--out", str(out),
-        "--sscf-benchmark", str(sscf_report),
+        "--backlog",
+        str(_BACKLOG),
+        "--audience",
+        "gis",
+        "--out",
+        str(out),
+        "--sscf-benchmark",
+        str(sscf_report),
     )
     assert result.returncode == 0, f"report-gen (gis) failed:\n{result.stderr}"
     assert out.exists(), "GIS Markdown report not written"
@@ -136,11 +156,16 @@ def test_docx_created(tmp_path: Path) -> None:
 
     out = tmp_path / "report_app.docx"
     result = _run(
-        PYTHON, "-m", "skills.report_gen.report_gen",
+        PYTHON,
+        "-m",
+        "skills.report_gen.report_gen",
         "generate",
-        "--backlog", str(_BACKLOG),
-        "--audience", "app-owner",
-        "--out", str(out),
+        "--backlog",
+        str(_BACKLOG),
+        "--audience",
+        "app-owner",
+        "--out",
+        str(out),
     )
     assert result.returncode == 0, f"report-gen (docx) failed:\n{result.stderr}"
     assert out.exists(), "DOCX report not written"
