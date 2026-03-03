@@ -44,6 +44,12 @@ def test_oscal_assess_dry_run_produces_valid_json(tmp_path: Path) -> None:
     data = json.loads(gap_json.read_text())
     assert "assessment_id" in data
     assert "findings" in data
+    # Issue #11: data_source and AI notice must be present
+    assert data.get("data_source") == "dry-run-mock", (
+        f"Expected data_source=dry-run-mock, got {data.get('data_source')}"
+    )
+    assert "ai_generated_findings_notice" in data
+
     findings = data["findings"]
     assert len(findings) == 45, f"Expected 45 findings, got {len(findings)}"
 
@@ -55,6 +61,16 @@ def test_oscal_assess_dry_run_produces_valid_json(tmp_path: Path) -> None:
     partial_count = sum(1 for f in findings if f["status"] == "partial")
     assert fail_count >= 3, f"Expected ≥3 fails in dry-run, got {fail_count}"
     assert partial_count >= 5, f"Expected ≥5 partials in dry-run, got {partial_count}"
+
+    # Issue #10: all fail/partial findings must have a non-empty due_date
+    actionable = [f for f in findings if f["status"] in ("fail", "partial")]
+    missing_due_date = [f["control_id"] for f in actionable if not f.get("due_date")]
+    assert not missing_due_date, f"Findings missing due_date: {missing_due_date}"
+
+    # Pass and not_applicable findings must NOT have a due_date
+    non_actionable = [f for f in findings if f["status"] in ("pass", "not_applicable")]
+    unexpected_due_date = [f["control_id"] for f in non_actionable if f.get("due_date")]
+    assert not unexpected_due_date, f"Non-actionable findings have due_date: {unexpected_due_date}"
 
 
 # ---------------------------------------------------------------------------

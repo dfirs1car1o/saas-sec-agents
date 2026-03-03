@@ -13,7 +13,7 @@ import json
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +52,26 @@ class Finding:
         if self.needs_expert_review:
             d["needs_expert_review"] = True
         return d
+
+
+# ---------------------------------------------------------------------------
+# Due-date SLA table (Issue #10 — NIST MANAGE-BLOCK)
+# ---------------------------------------------------------------------------
+
+_DUE_DATE_DAYS: dict[str, int] = {
+    "critical": 7,
+    "high": 30,
+    "moderate": 90,
+    "low": 180,
+}
+
+
+def _auto_due_date(severity: str, status: str, assessed_dt: datetime) -> str:
+    """Return ISO due date for actionable findings; empty string for pass/not_applicable."""
+    if status not in ("fail", "partial"):
+        return ""
+    days = _DUE_DATE_DAYS.get(severity, 90)
+    return (assessed_dt + timedelta(days=days)).strftime("%Y-%m-%d")
 
 
 def _na(control_id: str, severity: str, reason: str = "Scope not collected by sfdc-connect") -> Finding:
@@ -871,7 +891,11 @@ _DRY_RUN_OVERRIDES: dict[str, tuple[str, str, str]] = {
     "SBS-ACS-008": ("partial", "NHI privilege scope requires audit [dry-run]", "Restrict NHI permissions."),
     "SBS-ACS-009": ("partial", "Compensating controls require manual review [dry-run]", ""),
     "SBS-ACS-010": ("fail", "No access review process evidence found [dry-run]", "Implement quarterly access reviews."),
-    "SBS-ACS-011": ("partial", "Change governance process requires verification [dry-run]", "Implement change approval workflow for access changes."),
+    "SBS-ACS-011": (
+        "partial",
+        "Change governance process requires verification [dry-run]",
+        "Implement change approval workflow for access changes.",
+    ),
     "SBS-ACS-012": ("partial", "Login hour restrictions require profile audit [dry-run]", ""),
     "SBS-INT-002": (
         "fail",
@@ -895,7 +919,11 @@ _DRY_RUN_OVERRIDES: dict[str, tuple[str, str, str]] = {
     "SBS-SECCONF-001": ("partial", "Health Check score: 64/100 [dry-run]", "Remediate to reach ≥80%."),
     "SBS-SECCONF-002": ("partial", "Score 64/100 — deviations remain [dry-run]", "Address all failing items."),
     "SBS-DEP-003": ("fail", "No Transaction Security Policies found [dry-run]", "Create TSPs for high-risk events."),
-    "SBS-CODE-003": ("partial", "Apex logging requires code audit [dry-run]", "Implement Platform Event or custom Apex logging framework."),
+    "SBS-CODE-003": (
+        "partial",
+        "Apex logging requires code audit [dry-run]",
+        "Implement Platform Event or custom Apex logging framework.",
+    ),
     "SBS-CODE-004": ("fail", "Sensitive data in logs cannot be ruled out [dry-run]", "Audit all Apex log statements."),
 }
 
@@ -904,12 +932,23 @@ _DRY_RUN_OVERRIDES: dict[str, tuple[str, str, str]] = {
 _DRY_RUN_PASS = {"SBS-INT-003"}
 
 # Controls that require sfdc-expert Apex/admin analysis — too deep for REST/SOQL alone.
-_EXPERT_ELIGIBLE: frozenset[str] = frozenset({
-    "SBS-ACS-005", "SBS-ACS-006", "SBS-ACS-007", "SBS-ACS-008",
-    "SBS-ACS-009", "SBS-ACS-010", "SBS-ACS-011", "SBS-ACS-012",
-    "SBS-OAUTH-003", "SBS-OAUTH-004",
-    "SBS-DATA-001", "SBS-DATA-002", "SBS-DATA-003",
-})
+_EXPERT_ELIGIBLE: frozenset[str] = frozenset(
+    {
+        "SBS-ACS-005",
+        "SBS-ACS-006",
+        "SBS-ACS-007",
+        "SBS-ACS-008",
+        "SBS-ACS-009",
+        "SBS-ACS-010",
+        "SBS-ACS-011",
+        "SBS-ACS-012",
+        "SBS-OAUTH-003",
+        "SBS-OAUTH-004",
+        "SBS-DATA-001",
+        "SBS-DATA-002",
+        "SBS-DATA-003",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -931,7 +970,8 @@ def run_assessment(
     env: str,
 ) -> list[dict[str, Any]]:
     """Apply rules to all known controls and return serialised findings."""
-    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
+    assessed_dt = datetime.now(UTC)
+    date_str = assessed_dt.strftime("%Y-%m-%d")
     findings = []
 
     for control in controls:
@@ -959,7 +999,11 @@ def run_assessment(
         else:
             finding = rule(raw or {})
 
-        findings.append(finding.to_dict(org, env, date_str))
+        d = finding.to_dict(org, env, date_str)
+        # Auto-populate due_date for all actionable findings (Issue #10 — NIST MANAGE-BLOCK)
+        if not d.get("due_date"):
+            d["due_date"] = _auto_due_date(d["severity"], d["status"], assessed_dt)
+        findings.append(d)
 
     return findings
 
@@ -1058,6 +1102,12 @@ def assess(
         "assessed_at_utc": datetime.now(UTC).isoformat(),
         "org": org_label,
         "env": env,
+        # Issue #11 — NIST MAP-BLOCK: declare collection mode and AI-generated nature
+        "data_source": "dry-run-mock" if dry_run else "live-collection",
+        "ai_generated_findings_notice": (
+            "Findings are AI-generated assessments derived from sfdc-connect API data. "
+            "Human verification is required before delivery to governance stakeholders."
+        ),
         "findings": findings,
     }
 
