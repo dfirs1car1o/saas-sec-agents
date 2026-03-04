@@ -16,6 +16,7 @@ This session completed:
 - **Results banner** — `agent-loop run` now prints full absolute paths to all 7 generated artifacts after every run
 - **Wiki complete** — all 14 pages audited and updated; macOS Silicon + Linux/WSL2 setup guides added
 - **3 CI failures fixed** (`d52e09d`) — ruff format (4 files), validate_env cred_skip (OPENAI_API_KEY missing), test_docx_created pandoc guard
+- **CorpIS scrub** (`5b5b456`) — replaced all internal "CorpIS" labels with "Security Team" across 31 files (contexts, skills, docs, configs, generated reports)
 
 ---
 
@@ -38,6 +39,7 @@ This session completed:
 | Executive reports | ✅ Done | Python-rendered scorecard, domain chart, sorted matrix |
 | Wiki 14 pages | ✅ Done | All pages audited; macOS + Linux setup guides added |
 | CI all green | ✅ Done | ruff format, validate_env, test_docx_created fixed |
+| CorpIS scrub | ✅ Done | "Security Team" replaces all internal CorpIS labels (31 files) |
 | Docker MCP Gateway | ✅ Done | Brave Search running on localhost:8000/sse |
 | API compat fixes | ✅ Done | max_completion_tokens, max_retries, loop stop |
 | --mock-llm | ✅ Done | Offline test mode for report-gen |
@@ -72,7 +74,7 @@ docker run -d --name mcp-gateway \
 ## Current State
 
 - **Branch:** `main` (clean — all committed)
-- **Last commit:** `d52e09d` — CI fixes (ruff format, validate_env, test_docx)
+- **Last commit:** `5b5b456` — CorpIS → Security Team scrub across all files
 - **Tests:** 12/12 passing
 - **Local path:** `/Users/jerijuar/saas-sec-agents`
 - **Org:** cyber-coach-dev (`orgfarm-7ecec127cc-dev-ed.develop.my.salesforce.com`)
