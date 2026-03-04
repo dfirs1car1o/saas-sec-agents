@@ -389,8 +389,9 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             f"nist_review from step 5, "
             f"title='{governance_title} - {org_display}'. "
             f"The security call automatically also writes .docx to the same directory.\n\n"
-            "Return a final summary with: overall_score, overall_status (red/amber/green), "
-            "count of critical/fail findings, and the top 3 remediation priorities."
+            "After step 6b completes, STOP calling tools immediately. "
+            "The harness extracts overall_score, critical_fails, and output paths automatically. "
+            "Return a brief text summary of what was completed and which files were written."
         )
 
     click.echo(f"  task: {task[:120]}{'...' if len(task) > 120 else ''}", err=True)

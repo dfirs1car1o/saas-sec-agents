@@ -220,4 +220,4 @@ def test_openai_client_uses_api_key(tmp_path: Path) -> None:
             ["run", "--dry-run", "--org", "key-test-org", "--api-key", "sk-test-key"],
         )
 
-    mock_ctor.assert_called_once_with(api_key="sk-test-key")
+    mock_ctor.assert_called_once_with(api_key="sk-test-key", max_retries=5)
