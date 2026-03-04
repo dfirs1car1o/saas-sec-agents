@@ -1,17 +1,17 @@
-# Next Session Checkpoint — 2026-03-04
+# Next Session Checkpoint — 2026-03-05
 
 ## Session Summary
 
 This session completed:
-- **SDK Migration** — full `anthropic` → `openai` SDK swap across 10 source files
-- **Models** — all agents now default to `gpt-5.2` (env-var overridable)
-- **report_gen.py rewrite** — 1278 → 165 lines; LLM writes prose via OpenAI; pandoc produces DOCX; PDF dropped
-- **validate_env.py** — checks `OPENAI_API_KEY` (was `ANTHROPIC_API_KEY`); added model override WARNs
-- **.env.example** — OpenAI key block + optional model overrides + Azure OpenAI (FedRAMP/IL5) stanza
-- **tests updated** — all mocks rewritten for `openai.OpenAI` / `chat.completions.create` / `finish_reason`
-- **role_model_policy.yaml** — `anthropic` removed from all fallback lists
-- **Docker MCP gateway** — configured and running on port 8000 with Brave Search (6 tools)
-- **~/.claude/mcp.json** — created; `docker-mcp-gateway` SSE endpoint wired for next session
+- **SDK migration committed** — `389f9f9` + `949acfc`; 10 files changed, anthropic → openai
+- **`.venv` rebuilt** — old venv had broken interpreter path (pointed to deleted `multiagent-azure/`). Rebuilt with Python 3.13.7
+- **`--mock-llm` flag added** — `report_gen generate --mock-llm` emits deterministic template output for CI; no API call needed
+- **`max_completion_tokens` fix** — `gpt-5.2` rejects `max_tokens`; fixed in `loop.py`, `nist_review.py`, `report_gen.py`
+- **`max_retries=5`** — OpenAI client now auto-retries 429 TPM rate limits
+- **`_MAX_TURNS` 20→12** — prevents runaway loop; 7 pipeline steps + overhead
+- **Orchestrator stop prompt** — task prompt now explicitly tells LLM to stop after step 6b (was re-running benchmark/nist to pull metrics)
+- **Dry-run passed** — 11 turns, exit 0, all artifacts written
+- **Live run passed** — cyber-coach-dev: 48.4% RED, 1 critical (SBS-AUTH-001), all reports written
 
 ---
 
@@ -32,69 +32,68 @@ This session completed:
 | sfdc-expert agent | ✅ Done | agents/sfdc-expert.md + apex-scripts/README.md |
 | SDK Migration | ✅ Done | anthropic → openai; gpt-5.2 defaults; LLM report writer |
 | Docker MCP Gateway | ✅ Done | Brave Search running on localhost:8000/sse |
+| API compat fixes | ✅ Done | max_completion_tokens, max_retries, loop stop |
+| --mock-llm | ✅ Done | Offline test mode for report-gen |
 
 ---
 
 ## IMPORTANT: First Steps Next Session
 
 ```bash
-# 1. Install updated deps (openai replaces anthropic)
 cd /Users/jerijuar/saas-sec-agents
-pip install -e ".[dev]"
 
-# 2. Run tests against new mocks
+# 1. Activate venv
+source .venv/bin/activate
+
+# 2. Quick sanity check
 pytest tests/ -v    # expect 12/12
-
-# 3. Verify env (OPENAI_API_KEY check)
 python3 scripts/validate_env.py
 
-# 4. Ensure Docker MCP gateway is running
+# 3. Ensure Docker MCP gateway is running
 docker ps | grep mcp-gateway
 # If not running:
-docker run -d --name mcp-gateway -v /var/run/docker.sock:/var/run/docker.sock -v ~/.docker/mcp:/root/.docker/mcp -p 8000:8000 docker/mcp-gateway:latest --transport sse --port 8000 --servers brave --secrets /root/.docker/mcp/.env
+docker run -d --name mcp-gateway \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v ~/.docker/mcp:/root/.docker/mcp \
+  -p 8000:8000 docker/mcp-gateway:latest \
+  --transport sse --port 8000 --servers brave \
+  --secrets /root/.docker/mcp/.env
 ```
 
 ---
 
 ## Current State
 
-- **Branch:** `main`
-- **Last commit:** `dddf7bf` (pre-migration — migration NOT yet committed)
+- **Branch:** `main` (clean — all committed)
+- **Last commit:** `c43dc07`
+- **Tests:** 12/12 passing
 - **Local path:** `/Users/jerijuar/saas-sec-agents`
-- **Tests:** 12/12 (mocks updated — needs re-run after `pip install -e .`)
 - **Org:** cyber-coach-dev (`orgfarm-7ecec127cc-dev-ed.develop.my.salesforce.com`)
 - **Auth:** JWT Bearer (`SF_AUTH_METHOD=jwt` in .env, key at `~/salesforce_jwt_private.pem`)
 - **LLM:** OpenAI `gpt-5.2` (all roles) via `OPENAI_API_KEY` in `.env`
+- **venv:** `.venv/` — Python 3.13.7, recreated this session
 
 ---
 
-## SDK Migration — Files Changed
+## Live Assessment Results (2026-03-05, cyber-coach-dev)
 
-| File | Change |
-|---|---|
-| `pyproject.toml` | `anthropic` → `openai>=1.0.0`; removed fpdf2, docxtpl, defusedxml, duplicate PyJWT |
-| `harness/agents.py` | Models from env vars; defaults `gpt-5.2` all roles |
-| `harness/tools.py` | `_to_openai_tools()` converter; `ALL_TOOLS` in OpenAI function format |
-| `harness/loop.py` | `openai.OpenAI` client; OpenAI message loop (tool_calls, finish_reason) |
-| `skills/nist_review/nist_review.py` | OpenAI client + `choices[0].message.content` |
-| `skills/report_gen/report_gen.py` | Full LLM rewrite; pandoc DOCX; PDF dropped |
-| `scripts/validate_env.py` | `OPENAI_API_KEY` checks; model override WARNs |
-| `.env.example` | OpenAI key + model overrides + Azure OpenAI stanza |
-| `tests/test_harness_dry_run.py` | OpenAI mock helpers; `chat.completions.create` |
-| `config/role_model_policy.yaml` | `anthropic` removed from fallbacks |
+| Domain | Score | Status |
+|---|---|---|
+| logging_monitoring | 0% | RED |
+| configuration_hardening | 33% | RED |
+| identity_access_management | 50% | AMBER |
+| data_security_privacy | 50% | AMBER |
+| cryptography_key_management | 70% | AMBER |
+| governance_risk_compliance | N/A | — |
+| threat_detection_response | N/A | — |
 
----
+**Overall: 48.4% RED** | Critical fails: SBS-AUTH-001 | Turns: 12
 
-## Docker MCP Gateway
-
-- **Container:** `mcp-gateway` on `localhost:8000/sse`
-- **Active tools:** Brave Search (6 tools)
-- **Key file:** `~/.docker/mcp/.env` contains `brave.api_key=...`
-- **Claude config:** `~/.claude/mcp.json` wired to SSE endpoint
-- **Restart command (if container stopped):**
-```bash
-docker run -d --name mcp-gateway -v /var/run/docker.sock:/var/run/docker.sock -v ~/.docker/mcp:/root/.docker/mcp -p 8000:8000 docker/mcp-gateway:latest --transport sse --port 8000 --servers brave --secrets /root/.docker/mcp/.env
-```
+Generated outputs: `docs/oscal-salesforce-poc/generated/cyber-coach-dev/2026-03-04/`
+- `sfdc_raw.json`, `gap_analysis.json`, `backlog.json`, `matrix.md`
+- `sscf_report.json`, `nist_review.json`
+- `cyber-coach-dev_remediation_report.md` (app-owner)
+- `cyber-coach-dev_security_assessment.md` + `.docx` (security)
 
 ---
 
@@ -116,26 +115,19 @@ All outputs: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
 
 ---
 
-## Live Assessment Results (2026-03-03, cyber-coach-dev)
+## Docker MCP Gateway
 
-| Domain | Score | Status |
-|---|---|---|
-| logging_monitoring | 0% | RED |
-| configuration_hardening | 33% | RED |
-| identity_access_management | 50% | AMBER |
-| data_security_privacy | 50% | AMBER |
-| cryptography_key_management | 70% | AMBER |
-| governance_risk_compliance | N/A | — |
-| threat_detection_response | N/A | — |
-
-**Overall: 48.4% RED** | Critical fails: SBS-AUTH-001 | NIST: block
+- **Container:** `mcp-gateway` on `localhost:8000/sse`
+- **Active tools:** Brave Search (6 tools)
+- **Key file:** `~/.docker/mcp/.env` contains `brave.api_key=...`
+- **Claude config:** `~/.claude/mcp.json` wired to SSE endpoint
 
 ---
 
 ## Environment Variables (.env)
 
 ```bash
-OPENAI_API_KEY=sk-...          # replaces ANTHROPIC_API_KEY
+OPENAI_API_KEY=sk-...          # OpenAI key
 SF_USERNAME=jj.4445251c0b95@agentforce.com
 SF_AUTH_METHOD=jwt
 SF_CONSUMER_KEY=3MVG9Htw...
@@ -150,10 +142,12 @@ MEMORY_ENABLED=0
 
 ---
 
-## Known Issues / Next Steps
+## Known Issues / Potential Next Steps
 
-- Migration NOT committed yet — commit + push at session start after tests pass
-- `RemoteProxy` SOQL not supported — needs Tooling API fix
-- `OrganizationSettings` MFA fields inaccessible via Tooling API on dev orgs
-- Consider enabling more Docker MCP servers (filesystem, obsidian, playwright) via `--servers` flag
-- Run first live assessment with GPT-5.2 to validate output quality vs Claude
+- **SBS-AUTH-001** — MFA not enforced on cyber-coach-dev; requires manual Salesforce org remediation
+- **Orchestrator still hits max_turns=12** on live runs — LLM makes 1-2 extra tool calls after the pipeline; consider bumping to 14 or adding explicit `finish()` tool
+- **`RemoteProxy` SOQL** not supported in API v59 — graceful fallback exists; Tooling API fix pending
+- **`OrganizationSettings` MFA fields** inaccessible on dev orgs via API — manual check note in reports
+- **PDF output** — orchestrator requests `.pdf` extension even though PDF is dropped; report_gen writes markdown to a `.pdf`-named file. Harmless but confusing
+- **Colleague GitHub username** needed for CODEOWNERS + enforce_admins flip
+- **Docker MCP servers** — could enable more: filesystem, obsidian, playwright via `--servers` flag
