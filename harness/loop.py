@@ -200,6 +200,9 @@ def _run_loop(
         "backlog": None,
         "sscf_report": None,
         "nist_review": None,
+        "report_app_owner": None,
+        "report_security_md": None,
+        "report_security_docx": None,
         "turns": 0,
     }
 
@@ -272,6 +275,15 @@ def _run_loop(
                         state["sscf_report"] = out_file
                     elif name == "nist_review_assess":
                         state["nist_review"] = out_file
+                    elif name == "report_gen_generate":
+                        audience = inp.get("audience", "")
+                        if audience == "app-owner":
+                            state["report_app_owner"] = out_file
+                        elif audience == "security":
+                            state["report_security_md"] = out_file
+                            docx = str(Path(out_file).with_suffix(".docx"))
+                            if Path(docx).exists():
+                                state["report_security_docx"] = docx
             except (json.JSONDecodeError, AttributeError):
                 pass
 
@@ -406,10 +418,15 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
     )
 
     # --- Final output ---
+    score = state.get("score", 0.0)
+    critical_fails = state.get("critical_fails", [])
+    score_pct = f"{score:.1%}"
+    status_label = "GREEN" if score >= 0.80 else "AMBER" if score >= 0.50 else "RED"
+    status_icon = {"GREEN": "✅", "AMBER": "⚠️", "RED": "🔴"}.get(status_label, "")
+
     click.echo("\n" + "=" * 60)
     click.echo(f"Assessment complete ({state['turns']} turn(s))")
-    click.echo(f"overall_score : {state.get('score', 0.0):.1%}")
-    critical_fails = state.get("critical_fails", [])
+    click.echo(f"overall_score : {score_pct}  {status_icon} {status_label}")
     click.echo(f"critical_fails: {len(critical_fails)}")
     if critical_fails:
         for c in critical_fails:
@@ -431,17 +448,41 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
                 "env": env,
                 "dry_run": dry_run,
                 "turns": state["turns"],
-                "overall_score": state.get("score", 0.0),
+                "overall_score": score,
+                "overall_status": status_label.lower(),
                 "critical_fails": critical_fails,
                 "gap_analysis": state.get("gap_analysis"),
                 "backlog": state.get("backlog"),
                 "sscf_report": state.get("sscf_report"),
+                "nist_review": state.get("nist_review"),
+                "report_app_owner": state.get("report_app_owner"),
+                "report_security_md": state.get("report_security_md"),
+                "report_security_docx": state.get("report_security_docx"),
                 "summary": state.get("summary", ""),
             },
             indent=2,
         )
     )
-    click.echo(f"\nResult written → {result_path}")
+
+    # --- Results location banner ---
+    click.echo("\n" + "─" * 60)
+    click.echo("📁  RESULTS")
+    click.echo("─" * 60)
+    _file_labels = [
+        ("gap_analysis",       "Gap analysis  "),
+        ("backlog",            "Backlog       "),
+        ("sscf_report",        "SSCF report   "),
+        ("nist_review",        "NIST review   "),
+        ("report_app_owner",   "App owner MD  "),
+        ("report_security_md", "Security MD   "),
+        ("report_security_docx", "Security DOCX "),
+    ]
+    for key, label in _file_labels:
+        path = state.get(key)
+        if path:
+            click.echo(f"  {label}→  {path}")
+    click.echo(f"  Loop result   →  {result_path}")
+    click.echo("─" * 60)
 
 
 if __name__ == "__main__":
