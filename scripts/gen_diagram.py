@@ -4,7 +4,7 @@ gen_diagram.py — Generate reference architecture diagram for saas-sec-agents.
 
 Outputs: docs/architecture.png
 
-Shows the 7-agent Claude layer orchestrating 4 Python CLI skills across the
+Shows the 7-agent OpenAI layer orchestrating 4 Python CLI skills across the
 full assessment pipeline:
     sfdc-connect → oscal-assess → oscal_gap_map → sscf-benchmark → report-gen
 
@@ -63,15 +63,15 @@ def main() -> None:
             sfdc = Okta("SFDC Org\n(read-only)")
 
         # ── Agent Layer ──────────────────────────────────────────────────────
-        with Cluster("Agent Layer  (Claude API)"):
-            orchestrator = Server("Orchestrator\nOpus 4.6")
+        with Cluster("Agent Layer  (OpenAI API)"):
+            orchestrator = Server("Orchestrator\ngpt-5.2")
             with Cluster("Sub-Agents"):
-                collector = Server("Collector\nSonnet 4.6")
-                assessor = Server("Assessor\nSonnet 4.6")
-                nist_reviewer = Server("NIST Reviewer\nSonnet 4.6")
-                reporter = Server("Reporter\nHaiku 4.5")
-                security_reviewer = Server("Security Reviewer\nSonnet 4.6")
-                sfdc_expert = Server("SFDC Expert\nSonnet 4.6")  # on-call specialist
+                collector = Server("Collector\ngpt-5.2")
+                assessor = Server("Assessor\ngpt-5.2")
+                nist_reviewer = Server("NIST Reviewer\ngpt-5.2")
+                reporter = Server("Reporter\ngpt-4o-mini")
+                security_reviewer = Server("Security Reviewer\ngpt-5.2")
+                sfdc_expert = Server("SFDC Expert\ngpt-5.2")  # on-call specialist
 
         # ── Skill CLIs ───────────────────────────────────────────────────────
         with Cluster("Skill CLIs  (Python)"):

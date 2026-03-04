@@ -95,10 +95,10 @@ def test_app_owner_md(tmp_path: Path) -> None:
     assert out.exists(), "Markdown report not written"
 
     content = out.read_text()
-    assert "# Executive Summary" in content, "Missing Executive Summary section"
-    assert "## Critical and High Findings" in content, "Missing Critical/High section"
+    assert "## Executive Scorecard" in content, "Missing Executive Scorecard section"
+    assert "## Immediate Actions" in content, "Missing Immediate Actions section"
     assert "## What Happens Next" in content, "Missing What Happens Next section"
-    assert "## Appendix: Full Control Matrix" in content, "Missing Full Control Matrix"
+    assert "## Full Control Matrix" in content, "Missing Full Control Matrix"
     # Must contain at least one table row (pipe character)
     assert "|" in content, "No table found in output"
 
@@ -136,15 +136,13 @@ def test_security_md(tmp_path: Path) -> None:
     assert out.exists(), "Security Markdown report not written"
 
     content = out.read_text()
-    assert "# Assessment Metadata" in content, "Missing Assessment Metadata section"
-    assert "## Summary Metrics" in content, "Missing Summary Metrics section"
+    assert "## Executive Scorecard" in content, "Missing Executive Scorecard section"
+    assert "## Domain Posture" in content, "Missing Domain Posture section"
     assert "## Full Control Matrix" in content, "Missing Full Control Matrix section"
-    assert "## SSCF Domain Heatmap" in content, "Missing SSCF Domain Heatmap section"
-    assert "## NIST AI RMF Compliance Note" in content, "Missing NIST AI RMF section"
-    # SSCF data provided — should not show [PENDING] placeholder
-    assert "[PENDING NIST REVIEW]" in content or "PENDING" in content  # NIST not provided → placeholder OK
-    # Domain heatmap must have real domain rows (not just placeholder)
-    assert "identity_access_management" in content or "SSCF-" in content, "Expected SSCF domain data"
+    assert "## Executive Summary" in content, "Missing Executive Summary section"
+    assert "## Risk Analysis" in content, "Missing Risk Analysis section"
+    # Domain chart must have real domain rows
+    assert "Identity Access Management" in content or "Configuration Hardening" in content, "Expected SSCF domain data"
 
 
 # ---------------------------------------------------------------------------
