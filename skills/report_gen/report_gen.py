@@ -204,6 +204,7 @@ def _build_context(
         ],
         "nist_rmf": nist_review,
         # passthrough for security metadata block
+        "assessment_owner": backlog.get("assessment_owner", ""),
         "catalog_version": backlog.get("catalog_version", ""),
         "framework": backlog.get("framework", "CSA_SSCF"),
         "sscf_overall_score": (sscf_report or {}).get("overall_score"),
@@ -400,6 +401,7 @@ def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
                 ["Field", "Value"],
                 [
                     ["Assessment ID", ctx["assessment_id"]],
+                    ["Assessment Owner", ctx.get("assessment_owner", "")],
                     ["Generated (UTC)", ctx["generated_at_utc"]],
                     ["Org / Alias", ctx["org_alias"]],
                     ["Catalog Version", ctx.get("catalog_version", "")],
@@ -684,6 +686,7 @@ def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
             ["Field", "Value"],
             [
                 ["Assessment ID", ctx["assessment_id"]],
+                ["Assessment Owner", ctx.get("assessment_owner", "")],
                 ["Generated (UTC)", ctx["generated_at_utc"]],
                 ["Org / Alias", ctx["org_alias"]],
                 ["Catalog Version", ctx.get("catalog_version", "")],
@@ -972,6 +975,7 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
     _kv_table(
         [
             ["Assessment ID", ctx["assessment_id"]],
+            ["Assessment Owner", ctx.get("assessment_owner", "")],
             ["Generated (UTC)", ctx["generated_at_utc"]],
             ["Org / Alias", ctx["org_alias"]],
             ["Catalog Version", ctx.get("catalog_version", "")],

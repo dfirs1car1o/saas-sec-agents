@@ -87,6 +87,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "type": "boolean",
                     "description": "Emit realistic stub findings (weak-org scenario) without a real org",
                 },
+                "assessment_owner": {
+                    "type": "string",
+                    "description": "Named individual responsible for the assessment (NIST GOVERN compliance)",
+                },
                 "out": {"type": "string", "description": "Override output file path"},
             },
             "required": [],
@@ -295,6 +299,8 @@ def _dispatch_oscal_assess(inp: dict[str, Any], out_dir: Path) -> str:
         args += ["--collector-output", inp["collector_output"]]
     if inp.get("dry_run"):
         args.append("--dry-run")
+    if inp.get("assessment_owner"):
+        args += ["--assessment-owner", inp["assessment_owner"]]
     _run(args)
     return json.dumps({"status": "ok", "output_file": out_path})
 

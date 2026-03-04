@@ -49,6 +49,8 @@ def test_oscal_assess_dry_run_produces_valid_json(tmp_path: Path) -> None:
         f"Expected data_source=dry-run-mock, got {data.get('data_source')}"
     )
     assert "ai_generated_findings_notice" in data
+    # Issue #12: assessment_owner field must be present
+    assert "assessment_owner" in data
 
     findings = data["findings"]
     assert len(findings) == 45, f"Expected 45 findings, got {len(findings)}"
@@ -126,6 +128,13 @@ def test_gap_map_produces_backlog(tmp_path: Path) -> None:
     assert "assessment_id" in data
     assert "mapped_items" in data
     assert len(data["mapped_items"]) > 0
+
+    # Issue #12: assessment_owner must flow through from gap_analysis to backlog
+    assert "assessment_owner" in data
+
+    # Issue #13: mapping_confidence must vary (not all "high")
+    confidences = {item.get("mapping_confidence") for item in data["mapped_items"]}
+    assert len(confidences) > 1, f"Expected mapping_confidence variance, got uniform: {confidences}"
 
 
 # ---------------------------------------------------------------------------

@@ -33,6 +33,20 @@ def _findings(gap: dict[str, Any]) -> list[dict[str, Any]]:
     return [f for f in findings if isinstance(f, dict)]
 
 
+def _confidence_from_status(status: str) -> str:
+    """Map finding status to mapping_confidence (Issue #13 — NIST MEASURE-PARTIAL).
+
+    high   — pass/fail: deterministic API evidence confirmed or refuted the control.
+    medium — partial: evidence is incomplete or structural; definitive call not possible.
+    low    — not_applicable: control is outside collector scope; no API evidence available.
+    """
+    if status in ("pass", "fail"):
+        return "high"
+    if status == "partial":
+        return "medium"
+    return "low"  # not_applicable or unknown
+
+
 def _status_summary(items: list[dict[str, Any]]) -> dict[str, int]:
     summary = {"pass": 0, "fail": 0, "partial": 0, "not_applicable": 0}
     for item in items:
@@ -135,6 +149,7 @@ def main() -> int:
     gap = _load_json(gap_path)
     findings = _findings(gap)
     assessment_id = str(gap.get("assessment_id", "unknown-assessment"))
+    assessment_owner = str(gap.get("assessment_owner", ""))
 
     mapping_cfg = _load_yaml(mapping_path)
     mappings = mapping_cfg.get("mappings", [])
@@ -176,7 +191,7 @@ def main() -> int:
                     "remediation": finding.get("remediation", ""),
                     "evidence_ref": finding.get("evidence_ref", ""),
                     "mapping_notes": "Direct collector mapping (SBS control ID emitted by collector).",
-                    "mapping_confidence": "high",
+                    "mapping_confidence": _confidence_from_status(finding.get("status", "")),
                     "sscf_mappings": sscf_overrides.get(sbs_control_id)
                     or sscf_defaults_by_category.get(sbs.get("category", ""))
                     or [],
@@ -230,6 +245,7 @@ def main() -> int:
 
     backlog_payload = {
         "assessment_id": assessment_id,
+        "assessment_owner": assessment_owner,
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "catalog_version": controls_payload.get("catalog", {}).get("version"),
         "framework": "CSA_SSCF",

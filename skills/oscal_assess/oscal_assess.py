@@ -1044,12 +1044,20 @@ def cli() -> None:
     is_flag=True,
     help="Emit realistic stub findings (weak-org scenario) without connecting to Salesforce.",
 )
+@click.option(
+    "--assessment-owner",
+    "assessment_owner",
+    default=None,
+    help="Named individual responsible for this assessment (e.g. 'Jane Smith'). "
+    "Required for NIST GOVERN compliance. Defaults to unassigned placeholder.",
+)
 def assess(
     collector_output: str | None,
     controls_path: str,
     out: str | None,
     env: str,
     dry_run: bool,
+    assessment_owner: str | None,
 ) -> None:
     """Assess Salesforce org configuration against SBS controls.
 
@@ -1102,6 +1110,8 @@ def assess(
         "assessed_at_utc": datetime.now(UTC).isoformat(),
         "org": org_label,
         "env": env,
+        # Issue #12 — NIST GOVERN-PARTIAL: named individual accountable for the assessment
+        "assessment_owner": assessment_owner or "Unassigned — set via --assessment-owner flag",
         # Issue #11 — NIST MAP-BLOCK: declare collection mode and AI-generated nature
         "data_source": "dry-run-mock" if dry_run else "live-collection",
         "ai_generated_findings_notice": (
