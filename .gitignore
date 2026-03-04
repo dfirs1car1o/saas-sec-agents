@@ -23,5 +23,8 @@ terraform.tfvars
 docs/oscal-salesforce-poc/generated/*/
 !docs/oscal-salesforce-poc/generated/*.json
 
+# report-gen deliverables output (generated artifacts, not tracked)
+docs/oscal-salesforce-poc/deliverables/
+
 # Claude Code session state
 .claude/

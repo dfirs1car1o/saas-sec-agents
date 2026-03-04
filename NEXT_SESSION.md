@@ -6,6 +6,10 @@ This session completed:
 - **Issue #12 fixed** — `assessment_owner` named individual field added to oscal-assess (`--assessment-owner` flag), flows through `gap_analysis.json` → `backlog.json` → report metadata (MD/DOCX/PDF)
 - **Issue #13 fixed** — `mapping_confidence` variance: `pass`/`fail` → `high`, `partial` → `medium`, `not_applicable` → `low` (replaces uniform `"high"` across all 45 findings)
 - **All 4 NIST issues closed** — #10 #11 #12 #13 all resolved
+- **Wiki onboarding expanded** — macOS Silicon, Linux (Ubuntu + Fedora/RHEL), WSL2 sections; JWT setup steps; 12/12 test count; PDF in output table
+- **sfdc-expert agent committed** — `agents/sfdc-expert.md` (Sonnet 4.6, on-call Apex/admin specialist)
+- **apex-scripts/README.md committed** — safety rules and approval flow for staged Apex scripts
+- **`.gitignore` updated** — `deliverables/` directory excluded (generated report artifacts)
 
 ---
 
@@ -24,6 +28,8 @@ This session completed:
 | NIST #10/#11 | ✅ Done | due_date auto-populated, data_source declared |
 | Not Assessed section | ✅ Done | PDF/DOCX/MD all include not-assessed controls block |
 | NIST #12/#13 | ✅ Done | assessment_owner field + mapping_confidence variance |
+| Wiki onboarding | ✅ Done | macOS Silicon + Linux + WSL2 platform sections |
+| sfdc-expert agent | ✅ Done | agents/sfdc-expert.md + apex-scripts/README.md |
 
 ---
 
@@ -36,7 +42,7 @@ This session completed:
 | #12 | NIST GOVERN-PARTIAL: Replace team-level owner with named individual | P2 | ✅ Fixed (commit faab601) |
 | #13 | NIST MEASURE-PARTIAL: Recalibrate mapping_confidence variance | P2 | ✅ Fixed (commit faab601) |
 
-**No open issues.**
+**No open issues. No open PRs.**
 
 ---
 
