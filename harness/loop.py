@@ -32,7 +32,7 @@ _REPO = Path(__file__).resolve().parents[1]
 # Load .env at import time so OPENAI_API_KEY and SF_* vars are in os.environ
 # before Click reads envvar= options or os.getenv() is called anywhere.
 load_dotenv(_REPO / ".env")
-_MAX_TURNS = 20  # hard stop to prevent runaway loops
+_MAX_TURNS = 12  # hard stop: 7 pipeline steps + LLM-only turns (summary, gate, etc.)
 
 # ---------------------------------------------------------------------------
 # Expert-review escalation helper
@@ -172,7 +172,7 @@ def _run_loop(
     except ImportError as exc:
         raise RuntimeError("openai package not installed. Run: pip install openai") from exc
 
-    client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+    client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"), max_retries=5)
 
     # --- Memory: load prior assessments for this org ---
     mem_client = None
@@ -209,7 +209,7 @@ def _run_loop(
 
         response = client.chat.completions.create(
             model=ORCHESTRATOR.model,
-            max_tokens=4096,
+            max_completion_tokens=4096,
             tools=ALL_TOOLS,
             messages=messages,
         )
@@ -221,7 +221,7 @@ def _run_loop(
             break
 
         if choice.finish_reason == "length":
-            click.echo("WARNING: Response truncated (max_tokens reached).", err=True)
+            click.echo("WARNING: Response truncated (max_completion_tokens reached).", err=True)
             state["summary"] = "[truncated]"
             break
 

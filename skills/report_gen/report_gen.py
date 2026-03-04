@@ -148,7 +148,7 @@ def _call_llm(system_prompt: str, user_msg: str, model: str, mock: bool = False)
     client = openai.OpenAI(api_key=api_key)
     response = client.chat.completions.create(
         model=model,
-        max_tokens=4096,
+        max_completion_tokens=4096,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_msg},
