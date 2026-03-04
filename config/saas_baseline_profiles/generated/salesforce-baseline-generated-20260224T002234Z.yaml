@@ -59,7 +59,7 @@
     "required": true,
     "risk_scenarios_from_intake": "Impossible travel login patterns\nHigh-volume export anomalies\nSuspicious API token and integration usage\nPrivileged admin risky config changes",
     "approved_actions": "Block, challenge, notify, allow with audit",
-    "approval_owner": "CorpIS Change Advisory Board",
+    "approval_owner": "Security Team Change Advisory Board",
     "exception_owner": "Security Risk Exception Board",
     "policies": [
       {
@@ -115,7 +115,7 @@
   "operations": {
     "assessment_owner": "SaaS Security Assurance Team",
     "remediation_sla": "Critical 30d, High 60d, Medium 90d, Low 90d",
-    "escalation_path": "Escalate to CorpIS governance and application owner after SLA breach",
+    "escalation_path": "Escalate to Security Team governance and application owner after SLA breach",
     "evidence_format": "JSON findings + markdown executive summary + evidence links"
   }
 }

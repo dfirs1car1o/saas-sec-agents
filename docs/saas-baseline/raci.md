@@ -1,7 +1,7 @@
 # SaaS Risk Program RACI (Baseline Operations)
 
 ## Teams
-- `CorpIS`: Corporate Information Security (corporate policy/standards owner)
+- `Security Team`: Corporate Information Security (corporate policy/standards owner)
 - `BSS`: SaaS Security Team (program operations owner)
 - `SECOPS`: Security Operations / Cyber Defense team
 - `APP`: SaaS Application Owners (Salesforce/ServiceNow/Workday)
@@ -10,7 +10,7 @@
 
 ## Responsibility Matrix
 
-| Activity | CorpIS | BSS | SECOPS | APP | PLAT | AUDIT |
+| Activity | Security Team | BSS | SECOPS | APP | PLAT | AUDIT |
 |---|---|---|---|---|---|---|
 | Define policy and security standards | A | C | I | C | C | C |
 | Maintain SSCF control mapping index | A | R | C | C | C | I |
@@ -24,6 +24,6 @@
 | Quarterly governance reporting | A | R | C | I | I | C |
 
 ## Decision Rights
-- Baseline requirement changes: `CorpIS` final approval.
+- Baseline requirement changes: `Security Team` final approval.
 - Remediation execution timing: `BSS` + `APP` joint planning.
-- Exception acceptance: `CorpIS` decision with documented risk owner sign-off.
+- Exception acceptance: `Security Team` decision with documented risk owner sign-off.

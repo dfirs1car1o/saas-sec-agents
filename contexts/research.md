@@ -30,7 +30,7 @@ For a CVE or security advisory:
 ## Advisory: <CVE ID or title>
 ## Affected Control(s): <SBS and/or SSCF control IDs>
 ## Impact: <what does this change about the assessment?>
-## Recommended Action: <update a config? add a collector scope? flag to CorpIS?>
+## Recommended Action: <update a config? add a collector scope? flag to Security Team?>
 ## References: <sources>
 ```
 

@@ -66,7 +66,7 @@ Establish a business-approved SaaS Security Configuration Baseline Program align
    - Phase A: Salesforce only
    - Phase B: ServiceNow + Workday
 2. Confirm policy authority:
-   - CorpIS approves control requirements
+   - Security Team approves control requirements
    - SST runs assurance operations
 3. Confirm exception SLAs:
    - Critical 30 days, High 60 days, Medium/Low 90 days

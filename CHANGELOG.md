@@ -54,10 +54,10 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ### Added (Phase 4 — 2026-03-01)
 - `skills/report_gen/report_gen.py` — governance output CLI: `report-gen generate`
-  - Two audiences: `app-owner` (plain-language executive report) and `gis` (CorpIS technical review)
+  - Two audiences: `app-owner` (plain-language executive report) and `gis` (Security Team technical review)
   - Two formats: `.md` (Markdown) and `.docx` (programmatic python-docx with status cell shading)
   - Sections: Executive Summary, Critical/High Findings, What Happens Next, Full Control Matrix, SSCF Domain Heatmap, NIST AI RMF Note
-- `tests/test_report_gen.py` — 3 smoke tests (app-owner MD, CorpIS MD with SSCF, DOCX magic-byte validation)
+- `tests/test_report_gen.py` — 3 smoke tests (app-owner MD, Security Team MD with SSCF, DOCX magic-byte validation)
 - `harness/tools.py` — added `report_gen_generate` tool schema and `_dispatch_report_gen` dispatcher
 - `pyproject.toml` — added `report-gen` entry point and `diagrams>=0.23.4` dev dependency
 
@@ -73,7 +73,7 @@ This project follows a simple changelog format and semantic versioning intent:
 - `harness/agents.py` — ORCHESTRATOR AgentConfig (claude-opus-4-6, mission.md + orchestrator.md system prompt)
 - `tests/test_harness_dry_run.py` — 3 harness smoke tests (tool dispatch order, error handler, API key plumbing)
 - `docs/CONTRIBUTING.md` — full contributor wiki (setup, Docker deps, env vars, pipeline, CI docs)
-- Corporate data scrub: CDW → Acme Corp, BSS → SaaS Security Team, GIS → CorpIS across 33 files
+- Corporate data scrub: CDW → Acme Corp, BSS → SaaS Security Team, GIS → Security Team across 33 files
 
 ### Added
 - OpenClaw agent framework: mission.md, AGENTS.md, 5 agent definitions, 4 skill SKILL.md files

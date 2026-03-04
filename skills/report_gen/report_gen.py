@@ -58,7 +58,7 @@ _SYSTEM_PROMPTS: dict[str, str] = {
         "Do NOT include a NIST AI RMF section."
     ),
     "security": (
-        "You are a security governance analyst writing for a CorpIS security review board. "
+        "You are a security governance analyst writing for a Security Team security review board. "
         "Write two sections only:\n"
         "1. ## Executive Summary — 2-3 paragraphs: assessment scope, overall posture, "
         "the key risk drivers behind the score, and governance implications.\n"
@@ -335,7 +335,7 @@ _NIST_GATE_BANNERS = {
     "flag": (
         "> 🚩 **GOVERNANCE FLAG: REVIEW REQUIRED**  \n"
         "> The NIST AI RMF reviewer has raised issues requiring attention before this report "
-        "is submitted for CorpIS review. See the NIST AI RMF Governance Review section at the end.\n"
+        "is submitted for Security Team review. See the NIST AI RMF Governance Review section at the end.\n"
     ),
 }
 _NIST_APPOWNER_NOTE = {
@@ -414,7 +414,7 @@ _MOCK_TEMPLATES: dict[str, str] = {
 
 def _call_llm(system_prompt: str, user_msg: str, model: str, mock: bool = False) -> str:
     if mock:
-        audience = "security" if "CorpIS" in system_prompt else "app-owner"
+        audience = "security" if "Security Team" in system_prompt else "app-owner"
         return _MOCK_TEMPLATES[audience]
 
     try:

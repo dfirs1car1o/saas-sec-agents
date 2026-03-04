@@ -17,7 +17,7 @@ Created an `OSCAL POC for Salesforce` track under the SaaS Risk Program to opera
 ## Operating Intent
 - Use version-pinned SBS XML as upstream benchmark source.
 - Map SBS controls to CSA SSCF control IDs for governance traceability.
-- Preserve Acme Corp ownership model (BSS + CorpIS) and exception governance.
+- Preserve Acme Corp ownership model (BSS + Security Team) and exception governance.
 - Keep technical and operational baseline outputs in sync from one mapped control set.
 
 ## Next Steps

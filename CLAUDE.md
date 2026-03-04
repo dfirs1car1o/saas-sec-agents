@@ -2,7 +2,7 @@
 
 ## What This Repo Is
 
-A multi-agent AI system that connects to Salesforce orgs, runs OSCAL and CSA SSCF assessments, and generates governance outputs for application owners and CorpIS review.
+A multi-agent AI system that connects to Salesforce orgs, runs OSCAL and CSA SSCF assessments, and generates governance outputs for application owners and Security Team review.
 
 ## You Are Running On
 

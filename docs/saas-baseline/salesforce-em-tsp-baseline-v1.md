@@ -2,7 +2,7 @@
 ## Event Monitoring + Transaction Security Policies
 
 ## 1. Purpose
-Define the first production-ready Salesforce security baseline for Acme Corp's SaaS Risk Program, aligned to CSA SSCF and CorpIS governance.
+Define the first production-ready Salesforce security baseline for Acme Corp's SaaS Risk Program, aligned to CSA SSCF and Security Team governance.
 
 ## 2. Scope
 - Platform: Salesforce
@@ -35,7 +35,7 @@ Required policy set:
 4. Privileged admin risky-action policy (High, Notify)
 
 Implementation rules:
-- Critical blocking policies require CorpIS approval.
+- Critical blocking policies require Security Team approval.
 - All policies run in monitor mode before block mode in production.
 - Exceptions must follow `docs/saas-baseline/exception-process.md`.
 

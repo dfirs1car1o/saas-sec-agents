@@ -91,7 +91,7 @@ def main() -> None:
         # ── Governance Deliverables ───────────────────────────────────────────
         with Cluster("Governance Deliverables"):
             app_owner = Document("App Owner\nReport")
-            corpis = MultipleDocuments("CorpIS\nGovernance Review")
+            corpis = MultipleDocuments("Security Team\nGovernance Review")
 
         # ── Data pipeline (solid arrows) ─────────────────────────────────────
         sfdc >> sfdc_connect >> raw_json
