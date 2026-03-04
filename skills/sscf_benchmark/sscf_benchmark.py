@@ -24,7 +24,9 @@ import click
 STATUS_SCORE = {"pass": 1.0, "partial": 0.5, "fail": 0.0}
 
 
-def _domain_status(score: float, threshold: float) -> str:
+def _domain_status(score: float | None, threshold: float) -> str:
+    if score is None:
+        return "not_assessed"
     if score >= threshold:
         return "green"
     if score >= 0.50:
@@ -41,12 +43,17 @@ def _score_findings(items: list[dict[str, Any]]) -> tuple[int, int, int, int, fl
             counts[status] += 1
 
     scoreable = counts["pass"] + counts["partial"] + counts["fail"]
-    if scoreable == 0:
-        score = 1.0  # All N/A → treat as fully compliant for scoring purposes
+    total = scoreable + counts["not_applicable"]
+    if total == 0:
+        # No findings mapped to this domain at all — not assessed via API
+        score = None
+    elif scoreable == 0:
+        # All findings are not_applicable — exclude from numeric score
+        score = None
     else:
         score = (counts["pass"] * 1.0 + counts["partial"] * 0.5) / scoreable
 
-    return counts["pass"], counts["partial"], counts["fail"], counts["not_applicable"], round(score, 4)
+    return counts["pass"], counts["partial"], counts["fail"], counts["not_applicable"], score
 
 
 # ---------------------------------------------------------------------------
@@ -148,17 +155,17 @@ def run_benchmark(
                 "partial": partials,
                 "fail": fails,
                 "not_applicable": nas,
-                "score": score,
+                "score": round(score, 4) if score is not None else None,
                 "status": _domain_status(score, threshold),
                 "controls": control_detail,
             }
         )
 
-    # Overall score
+    # Overall score — only assessed domains (score is not None)
     all_items = [item for items in domain_controls.values() for ctrl_items in items.values() for item in ctrl_items]
     _, _, _, _, overall_score = _score_findings(all_items)
 
-    summary_counts = {"green": 0, "amber": 0, "red": 0}
+    summary_counts = {"green": 0, "amber": 0, "red": 0, "not_assessed": 0}
     for dr in domain_results:
         summary_counts[dr["status"]] += 1
 
@@ -176,6 +183,7 @@ def run_benchmark(
             "domains_green": summary_counts["green"],
             "domains_amber": summary_counts["amber"],
             "domains_red": summary_counts["red"],
+            "domains_not_assessed": summary_counts["not_assessed"],
             "unmatched_findings": len(unmatched_items),
         },
     }
@@ -201,11 +209,12 @@ def _to_markdown(report: dict[str, Any]) -> str:
         "| Domain | Score | Status | Pass | Partial | Fail | N/A |",
         "|---|---|---|---|---|---|---|",
     ]
-    status_emoji = {"green": "✅", "amber": "⚠️", "red": "❌"}
+    status_emoji = {"green": "✅", "amber": "⚠️", "red": "❌", "not_assessed": "—"}
     for d in report["domains"]:
         emoji = status_emoji.get(d["status"], "")
+        score_str = f"{int(d['score'] * 100)}%" if d["score"] is not None else "N/A"
         lines.append(
-            f"| {d['domain']} | {int(d['score'] * 100)}% | {emoji} {d['status'].upper()}"
+            f"| {d['domain']} | {score_str} | {emoji} {d['status'].upper()}"
             f" | {d['pass']} | {d['partial']} | {d['fail']} | {d['not_applicable']} |"
         )
 
@@ -223,9 +232,10 @@ def _to_markdown(report: dict[str, Any]) -> str:
 
     for d in report["domains"]:
         emoji = status_emoji.get(d["status"], "")
+        score_str = f"{int(d['score'] * 100)}%" if d["score"] is not None else "N/A"
         lines += [
             "",
-            f"### {d['domain']} — {int(d['score'] * 100)}% {emoji}",
+            f"### {d['domain']} — {score_str} {emoji}",
             "",
             "| SSCF Control | Title | Findings | Worst Status |",
             "|---|---|---|---|",
@@ -316,8 +326,9 @@ def benchmark(
         err=True,
     )
     for d in report["domains"]:
+        score_str = f"{int(d['score'] * 100)}%" if d["score"] is not None else "N/A"
         click.echo(
-            f"    {d['domain']}: {int(d['score'] * 100)}% [{d['status'].upper()}]"
+            f"    {d['domain']}: {score_str} [{d['status'].upper()}]"
             f" ({d['pass']}P/{d['partial']}p/{d['fail']}F)",
             err=True,
         )
