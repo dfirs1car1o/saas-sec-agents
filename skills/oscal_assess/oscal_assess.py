@@ -1047,9 +1047,9 @@ def cli() -> None:
 @click.option(
     "--assessment-owner",
     "assessment_owner",
-    default=None,
+    default="SaaS Security Architect",
     help="Named individual responsible for this assessment (e.g. 'Jane Smith'). "
-    "Required for NIST GOVERN compliance. Defaults to unassigned placeholder.",
+    "Required for NIST GOVERN compliance. Defaults to 'SaaS Security Architect'.",
 )
 def assess(
     collector_output: str | None,
@@ -1111,7 +1111,7 @@ def assess(
         "org": org_label,
         "env": env,
         # Issue #12 — NIST GOVERN-PARTIAL: named individual accountable for the assessment
-        "assessment_owner": assessment_owner or "Unassigned — set via --assessment-owner flag",
+        "assessment_owner": assessment_owner or "SaaS Security Architect",
         # Issue #11 — NIST MAP-BLOCK: declare collection mode and AI-generated nature
         "data_source": "dry-run-mock" if dry_run else "live-collection",
         "ai_generated_findings_notice": (
