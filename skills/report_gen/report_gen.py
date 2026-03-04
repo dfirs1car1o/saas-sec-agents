@@ -1,1151 +1,174 @@
 """
-report-gen — governance output skill.
+report-gen — LLM-driven governance output skill.
 
-Converts assessment backlog (+ optional sscf benchmark / nist review) into:
-  - Plain-language Markdown or DOCX for application owners
-  - Technical Markdown + DOCX + PDF for security governance review (security audience always generates all 3)
+Generates a Markdown report via OpenAI chat completions, then converts to DOCX
+via pandoc for the security audience. PDF output is dropped entirely.
 
 Usage:
     report-gen generate --backlog <path> --audience app-owner|security --out <path>
+    report-gen generate --backlog <path> --audience security --sscf-benchmark <path> \\
+        --nist-review <path> --out <path>
 """
 
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import click
+from dotenv import load_dotenv
+
+_REPO = Path(__file__).resolve().parents[2]
+load_dotenv(_REPO / ".env")
 
 # ---------------------------------------------------------------------------
-# Constants
+# System prompts per audience
 # ---------------------------------------------------------------------------
 
-_DELIVERABLES_DIR = Path(__file__).resolve().parents[2] / "docs" / "oscal-salesforce-poc" / "deliverables"
+_SYSTEM_PROMPTS: dict[str, str] = {
+    "app-owner": (
+        "You are a security consultant writing a plain-English remediation report for an application owner. "
+        "No jargon. Every finding must have a specific action, a responsible team, and a deadline. "
+        "Format as Markdown with clear sections: Executive Summary, Priority Findings, Remediation Roadmap."
+    ),
+    "security": (
+        "You are a security governance analyst writing a technical assessment report for a security review board. "
+        "Include OSCAL/SBS control IDs, SSCF domain scores, NIST AI RMF verdict, evidence references, "
+        "mapping confidence levels, and a prioritised remediation backlog. "
+        "Format as Markdown. Be precise and technical."
+    ),
+}
 
-_SEVERITY_ORDER = {"critical": 0, "high": 1, "moderate": 2, "low": 3}
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-# DOCX cell shading colours (OOXML hex, no #)
-_FILL_PASS = None  # no fill
-_FILL_PARTIAL = "FFF2CC"  # yellow
-_FILL_FAIL = "FFE0E0"  # red
 
-# What tooling or process is required to assess each API-unassessable control.
-# Shown in the "Controls Not Assessed via API" report section.
-_NOT_ASSESSED_HOW: dict[str, str] = {
-    "SBS-CODE-001": (
-        "Enable branch protection rules requiring ≥1 peer reviewer in your source control platform "
-        "(GitHub, Bitbucket, Azure DevOps)."
+def _load_json(path: str | Path) -> dict[str, Any]:
+    p = Path(path)
+    if not p.exists():
+        click.echo(f"ERROR: file not found: {p}", err=True)
+        sys.exit(1)
+    try:
+        return json.loads(p.read_text())
+    except json.JSONDecodeError as exc:
+        click.echo(f"ERROR: invalid JSON in {p}: {exc}", err=True)
+        sys.exit(1)
+
+
+def _build_user_message(
+    backlog: dict[str, Any],
+    sscf: dict[str, Any] | None,
+    nist: dict[str, Any] | None,
+    audience: str,
+    org: str,
+    title: str,
+) -> str:
+    """Assemble the structured prompt payload sent to the LLM."""
+    # Top 30 findings to stay within token budget; not_applicable collected separately
+    all_items = backlog.get("mapped_items", [])
+    items = [i for i in all_items if i.get("status") != "not_applicable"][:30]
+    not_applicable = [i for i in all_items if i.get("status") == "not_applicable"]
+
+    lines = [
+        f"Assessment Title: {title}",
+        f"Org: {org}",
+        f"Generated: {datetime.now(UTC).isoformat()}",
+        f"Assessment ID: {backlog.get('assessment_id', 'unknown')}",
+    ]
+
+    if sscf:
+        score = sscf.get("overall_score")
+        status = sscf.get("overall_status", "unknown")
+        if score is not None:
+            lines.append(f"Overall Score: {score:.1%} ({status})")
+
+    lines.append("\n## Findings (top 30 assessed)")
+    lines.append(json.dumps(items, indent=2))
+
+    if sscf:
+        lines.append("\n## SSCF Domain Scores")
+        lines.append(json.dumps(sscf.get("domains", sscf), indent=2))
+
+    if nist:
+        lines.append("\n## NIST AI RMF Verdict")
+        lines.append(json.dumps(nist, indent=2))
+
+    if not_applicable:
+        na_lines = [
+            f"- {i.get('control_id', '?')}: {i.get('reason', 'Not assessable via API')}"
+            for i in not_applicable
+        ]
+        lines.append("\n## Controls Not Assessed via API")
+        lines.extend(na_lines)
+
+    lines.append(f"\nWrite a complete {audience} governance report in Markdown.")
+    return "\n".join(lines)
+
+
+_MOCK_TEMPLATES: dict[str, str] = {
+    "app-owner": (
+        "# Executive Summary\n\nMock report for testing.\n\n"
+        "## Critical and High Findings\n\n| Control | Status | Action |\n|---|---|---|\n| SBS-AUTH-001 | Fail | Enable MFA |\n\n"
+        "## What Happens Next\n\nRemediate items above within SLA windows.\n\n"
+        "## Appendix: Full Control Matrix\n\n| Control | Status |\n|---|---|\n| SBS-AUTH-001 | Fail |\n"
     ),
-    "SBS-CODE-002": (
-        "Add a SAST step (Salesforce Code Analyzer, PMD) to the CI/CD pipeline configured to block "
-        "merges on HIGH/CRITICAL findings."
-    ),
-    "SBS-CODE-003": (
-        "Deploy a persistent Apex logging framework (e.g. Nebula Logger or custom Platform Events) "
-        "that writes to durable Salesforce objects or an external SIEM."
-    ),
-    "SBS-CODE-004": (
-        "Implement a SAST rule or code-review gate that scans Apex log statements for PII and "
-        "credential field names before merge."
-    ),
-    "SBS-CPORTAL-001": (
-        "Conduct an Apex code audit of all @AuraEnabled and @RemoteAction methods; verify no "
-        "user-supplied record IDs are accepted as parameters."
-    ),
-    "SBS-CPORTAL-002": (
-        "Export the guest user profile and audit all object and field permissions; verify no "
-        "business objects are accessible to unauthenticated users."
-    ),
-    "SBS-DEP-001": (
-        "Review the CI/CD pipeline configuration to confirm a dedicated non-human integration user "
-        "authenticates for all deployments."
-    ),
-    "SBS-DEP-002": (
-        "Document the list of prohibited metadata types and verify that profile restrictions or "
-        "DevOps tooling block direct production edits."
-    ),
-    "SBS-DEP-005": (
-        "Enable secret scanning with push protection on the Salesforce source repository "
-        "(GitHub secret scanning, gitleaks, truffleHog)."
-    ),
-    "SBS-DEP-006": (
-        "Review the Salesforce CLI Connected App OAuth policies in Setup and confirm finite "
-        "refresh and access token expiry is configured."
-    ),
-    "SBS-FILE-001": (
-        "Run a SOQL query on ContentDistribution records and verify all active links have a "
-        "non-null ExpiryDate field set to an appropriate date."
-    ),
-    "SBS-FILE-002": (
-        "Run a SOQL query on ContentDistribution records for sensitive content and verify "
-        "PasswordProtected = true for each."
-    ),
-    "SBS-FILE-003": (
-        "Establish a documented quarterly review process with a named owner; schedule recurring "
-        "SOQL scans of ContentDistribution records in the security runbook."
-    ),
-    "SBS-FDNS-001": (
-        "Review and document the centralised security system of record (e.g. Confluence, "
-        "SharePoint, Git); verify all control deviations and exceptions are captured."
-    ),
-    "SBS-INT-001": (
-        "Audit browser extension policies via your MDM console or Chrome Browser Cloud Management "
-        "admin portal; confirm an allowlist or blocklist is enforced for Salesforce users."
+    "security": (
+        "# Assessment Metadata\n\nMock security report for testing.\n\n"
+        "## Summary Metrics\n\nOverall: 48.4% RED\n\n"
+        "## Full Control Matrix\n\n| Control | Status |\n|---|---|\n| SBS-AUTH-001 | Fail |\n\n"
+        "## SSCF Domain Heatmap\n\n| Domain | Score |\n|---|---|\n| identity_access_management | 50% |\n\n"
+        "## NIST AI RMF Compliance Note\n\n[PENDING NIST REVIEW]\n"
     ),
 }
 
 
-# ---------------------------------------------------------------------------
-# Data loading helpers
-# ---------------------------------------------------------------------------
+def _call_llm(system_prompt: str, user_msg: str, model: str, mock: bool = False) -> str:
+    """Call OpenAI chat completions; return the full Markdown string."""
+    if mock:
+        audience = "security" if "security governance" in system_prompt else "app-owner"
+        return _MOCK_TEMPLATES[audience]
 
-
-def _load_backlog(path: str | Path) -> dict[str, Any]:
-    """Load and return the backlog JSON. Exits on error."""
-    p = Path(path)
-    if not p.exists():
-        click.echo(f"ERROR: backlog file not found: {p}", err=True)
-        sys.exit(1)
     try:
-        return json.loads(p.read_text())
-    except json.JSONDecodeError as exc:
-        click.echo(f"ERROR: invalid JSON in backlog: {exc}", err=True)
+        import openai
+    except ImportError:
+        click.echo("ERROR: openai package not installed. Run: pip install openai", err=True)
         sys.exit(1)
 
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        click.echo("ERROR: OPENAI_API_KEY not set.", err=True)
+        sys.exit(1)
 
-def _load_optional(path: str | Path | None) -> dict[str, Any] | None:
-    """Load optional supplementary JSON; return None if path not given or missing."""
-    if not path:
-        return None
-    p = Path(path)
-    if not p.exists():
-        click.echo(f"WARNING: optional file not found (skipping): {p}", err=True)
-        return None
-    try:
-        return json.loads(p.read_text())
-    except json.JSONDecodeError as exc:
-        click.echo(f"WARNING: could not parse {p}: {exc} (skipping)", err=True)
-        return None
-
-
-# ---------------------------------------------------------------------------
-# Context assembly
-# ---------------------------------------------------------------------------
-
-
-def _build_context(
-    backlog: dict[str, Any],
-    sscf_report: dict[str, Any] | None,
-    nist_review: dict[str, Any] | None,
-    audience: str,
-    title: str,
-    org_alias: str,
-) -> dict[str, Any]:
-    """Assemble the template context dict from raw data sources."""
-    items: list[dict[str, Any]] = backlog.get("mapped_items", [])
-
-    summary_raw = backlog.get("summary", {})
-    status_counts = summary_raw.get("status_counts", {})
-    summary = {
-        "total": summary_raw.get("findings_total", len(items)),
-        "pass": status_counts.get("pass", 0),
-        "fail": status_counts.get("fail", 0),
-        "partial": status_counts.get("partial", 0),
-        "not_applicable": status_counts.get("not_applicable", 0),
-    }
-
-    # Critical/High failures — sorted by severity then control_id
-    critical_high = [
-        i for i in items if i.get("status") in ("fail", "partial") and i.get("severity") in ("critical", "high")
-    ]
-    critical_high.sort(key=lambda x: (_SEVERITY_ORDER.get(x.get("severity", "low"), 99), x.get("sbs_control_id", "")))
-
-    # Controls not assessed via API — excluded from scoring, need manual or tooling review
-    not_assessed = [
-        {
-            "control_id": f.get("sbs_control_id", ""),
-            "title": f.get("sbs_title", ""),
-            "severity": f.get("severity", ""),
-            "reason": f.get("observed_value", "Not assessable via Salesforce REST/SOQL API."),
-            "how_to_assess": _NOT_ASSESSED_HOW.get(
-                f.get("sbs_control_id", ""), "Manual review required — see the SBS control runbook."
-            ),
-        }
-        for f in items
-        if f.get("status") == "not_applicable"
-    ]
-
-    return {
-        "assessment_id": backlog.get("assessment_id", "unknown"),
-        "generated_at_utc": datetime.now(UTC).isoformat(),
-        "org_alias": org_alias or backlog.get("org", "unknown"),
-        "title": title,
-        "audience": audience,
-        "summary": summary,
-        "critical_high_findings": critical_high,
-        "all_findings": items,
-        "not_assessed_controls": not_assessed,
-        "sscf_domains": [
-            {
-                "domain_id": d.get("domain_id") or d.get("domain", ""),
-                "domain_label": (
-                    d.get("domain_label") or d.get("domain_id") or d.get("domain", "").replace("_", " ").title()
-                ),
-                "score": d.get("score", 0),
-                "status": d.get("status", ""),
-                "fail": d.get("fail", 0),
-                "partial": d.get("partial", 0),
-                "pass": d.get("pass", 0),
-            }
-            for d in (sscf_report or {}).get("domains", [])
+    client = openai.OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=model,
+        max_tokens=4096,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
         ],
-        "nist_rmf": nist_review,
-        # passthrough for security metadata block
-        "assessment_owner": backlog.get("assessment_owner", ""),
-        "catalog_version": backlog.get("catalog_version", ""),
-        "framework": backlog.get("framework", "CSA_SSCF"),
-        "sscf_overall_score": (sscf_report or {}).get("overall_score"),
-        "sscf_overall_status": (sscf_report or {}).get("overall_status"),
-    }
+    )
+    return response.choices[0].message.content.strip()
 
 
-# ---------------------------------------------------------------------------
-# Executive summary text — user contribution point
-# ---------------------------------------------------------------------------
-
-
-def _executive_summary_text(ctx: dict[str, Any]) -> str:
-    """Return a plain-language paragraph summarising the org's security posture.
-
-    This is called from the app-owner Executive Summary section. The tone and
-    technical depth here determine how non-technical stakeholders understand risk.
-
-    TODO: Implement this function. Consider:
-    - How much Salesforce jargon is appropriate for an app owner audience?
-    - Should it name specific failing controls or speak in plain-language categories?
-    - Should it include a risk rating (e.g. "HIGH RISK") or remain neutral in tone?
-
-    Parameters
-    ----------
-    ctx : dict
-        The assembled context with keys: assessment_id, org_alias, summary,
-        critical_high_findings, sscf_overall_score, sscf_overall_status.
-
-    Returns
-    -------
-    str
-        One paragraph of plain English for the Executive Summary section.
-    """
-    s = ctx["summary"]
-    total_scoreable = s["pass"] + s["fail"] + s["partial"]
-    pass_pct = round(100 * s["pass"] / total_scoreable) if total_scoreable else 0
-    critical_count = len([f for f in ctx["critical_high_findings"] if f.get("severity") == "critical"])
-    high_count = len([f for f in ctx["critical_high_findings"] if f.get("severity") == "high"])
-
-    lines = [
-        f"This assessment evaluated {s['total']} security controls for the Salesforce org "
-        f'"{ctx["org_alias"]}". '
-        f"Of the scoreable controls, {pass_pct}% are passing, with {s['fail']} control(s) failing "
-        f"and {s['partial']} requiring partial remediation.",
-    ]
-
-    if critical_count:
-        lines.append(
-            f"There are {critical_count} critical finding(s) that require immediate attention "
-            "to prevent potential security incidents or compliance violations."
-        )
-    if high_count:
-        lines.append(
-            f"Additionally, {high_count} high-severity finding(s) should be addressed within the next 30 days."
-        )
-
-    if not critical_count and not high_count:
-        lines.append("No critical or high-severity findings were identified in this assessment.")
-
-    return " ".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Markdown writer
-# ---------------------------------------------------------------------------
-
-_STATUS_EMOJI = {"pass": "✅", "fail": "❌", "partial": "⚠️", "not_applicable": "—"}
-
-
-def _md_table(headers: list[str], rows: list[list[str]]) -> str:
-    """Render a simple GFM Markdown table."""
-    sep = ["-" * max(len(h), 3) for h in headers]
-    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(sep) + " |"]
-    for row in rows:
-        cells = [str(c).replace("|", "\\|") for c in row]
-        lines.append("| " + " | ".join(cells) + " |")
-    return "\n".join(lines)
-
-
-def _write_md(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
-    """Write Markdown governance report to out_path."""
-    audience = ctx["audience"]
-    lines: list[str] = []
-
-    if audience == "app-owner":
-        # ── Section 1: Executive Summary ────────────────────────────────────
-        lines.append(f"# {ctx['title']}")
-        lines.append("")
-        lines.append(
-            f"**Assessment ID:** {ctx['assessment_id']}  \n"
-            f"**Generated:** {ctx['generated_at_utc']}  \n"
-            f"**Org:** {ctx['org_alias']}"
-        )
-        lines.append("")
-        lines.append("# Executive Summary")
-        lines.append("")
-        lines.append(_executive_summary_text(ctx))
-        lines.append("")
-
-        s = ctx["summary"]
-        lines.append(
-            _md_table(
-                ["Total Controls", "Pass", "Fail", "Partial", "Not Applicable"],
-                [[s["total"], s["pass"], s["fail"], s["partial"], s["not_applicable"]]],
-            )
-        )
-        lines.append("")
-
-        # ── Section 2: Critical and High Findings ───────────────────────────
-        lines.append("## Critical and High Findings")
-        lines.append("")
-        ch = ctx["critical_high_findings"]
-        if ch:
-            rows = [
-                [
-                    f["sbs_control_id"],
-                    f.get("sbs_title", ""),
-                    f.get("severity", "").title(),
-                    f.get("owner", ""),
-                    f.get("due_date", ""),
-                    f.get("remediation", "")[:120],
-                ]
-                for f in ch
-            ]
-            lines.append(_md_table(["Control", "Title", "Severity", "Owner", "Due Date", "Action"], rows))
-        else:
-            lines.append("_No critical or high findings._")
-        lines.append("")
-
-        # ── Section 3: What Happens Next ────────────────────────────────────
-        lines.append("## What Happens Next")
-        lines.append("")
-        lines.append(
-            "1. **Review** the findings table above with your technical team.\n"
-            "2. **Prioritise** critical and high findings — these carry the highest risk.\n"
-            "3. **Assign owners** for each finding and confirm due dates.\n"
-            "4. **Remediate** using the action guidance in the findings table.\n"
-            "5. **Re-assess** after remediation to verify controls are passing.\n"
-            "6. **Escalate** any findings you cannot remediate within the due date to CorpIS."
-        )
-        lines.append("")
-
-        # ── Section 4: Controls Not Assessed via API ────────────────────────
-        na_controls = ctx.get("not_assessed_controls", [])
-        if na_controls:
-            lines.append("## Controls Not Assessed via API")
-            lines.append("")
-            lines.append(
-                f"The following {len(na_controls)} control(s) could not be evaluated by the automated collector "
-                "and are excluded from the score above. Manual review or alternative tooling is required."
-            )
-            lines.append("")
-            na_rows = [
-                [
-                    c["control_id"],
-                    c["title"],
-                    c["severity"].title(),
-                    c["reason"][:80],
-                    c["how_to_assess"][:120],
-                ]
-                for c in na_controls
-            ]
-            lines.append(
-                _md_table(
-                    ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"],
-                    na_rows,
-                )
-            )
-            lines.append("")
-
-        # ── Section 5: Appendix — Full Control Matrix ───────────────────────
-        lines.append("## Appendix: Full Control Matrix")
-        lines.append("")
-        rows = [
-            [
-                f.get("sbs_control_id", ""),
-                f.get("sbs_title", ""),
-                _STATUS_EMOJI.get(f.get("status", ""), f.get("status", "")),
-            ]
-            for f in ctx["all_findings"]
-        ]
-        lines.append(_md_table(["Control ID", "Title", "Status"], rows))
-        lines.append("")
-
-    else:  # security audience
-        # ── Section 1: Assessment Metadata ──────────────────────────────────
-        lines.append(f"# {ctx['title']}")
-        lines.append("")
-        lines.append("# Assessment Metadata")
-        lines.append("")
-        lines.append(
-            _md_table(
-                ["Field", "Value"],
-                [
-                    ["Assessment ID", ctx["assessment_id"]],
-                    ["Assessment Owner", ctx.get("assessment_owner", "")],
-                    ["Generated (UTC)", ctx["generated_at_utc"]],
-                    ["Org / Alias", ctx["org_alias"]],
-                    ["Catalog Version", ctx.get("catalog_version", "")],
-                    ["Framework", ctx.get("framework", "CSA_SSCF")],
-                ],
-            )
-        )
-        lines.append("")
-
-        # ── Section 2: Summary Metrics ──────────────────────────────────────
-        lines.append("## Summary Metrics")
-        lines.append("")
-        s = ctx["summary"]
-        metric_rows: list[list[str]] = [
-            ["Total Controls", str(s["total"])],
-            ["Pass", str(s["pass"])],
-            ["Fail", str(s["fail"])],
-            ["Partial", str(s["partial"])],
-            ["Not Applicable", str(s["not_applicable"])],
-        ]
-        if ctx.get("sscf_overall_score") is not None:
-            metric_rows.append(["SSCF Overall Score", f"{ctx['sscf_overall_score']:.0%}"])
-            metric_rows.append(["SSCF Overall Status", (ctx.get("sscf_overall_status") or "").upper()])
-        lines.append(_md_table(["Metric", "Value"], metric_rows))
-        lines.append("")
-
-        # ── Section 3: Full Control Matrix ──────────────────────────────────
-        lines.append("## Full Control Matrix")
-        lines.append("")
-        rows = []
-        for f in ctx["all_findings"]:
-            sscf_ids = ", ".join(f.get("sscf_control_ids", []))
-            rows.append(
-                [
-                    f.get("sbs_control_id", ""),
-                    f.get("sbs_title", ""),
-                    f.get("status", ""),
-                    f.get("severity", ""),
-                    sscf_ids,
-                ]
-            )
-        lines.append(
-            _md_table(
-                ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
-                rows,
-            )
-        )
-        lines.append("")
-
-        # ── Section 4: SSCF Domain Heatmap ──────────────────────────────────
-        lines.append("## SSCF Domain Heatmap")
-        lines.append("")
-        domains = ctx.get("sscf_domains", [])
-        if domains:
-            d_rows = []
-            for d in domains:
-                no_controls = (d.get("fail", 0) + d.get("partial", 0) + d.get("pass", 0)) == 0
-                d_rows.append(
-                    [
-                        d.get("domain_id", ""),
-                        d.get("domain_label", d.get("domain_id", "")),
-                        "N/A" if no_controls else f"{d.get('score', 0):.0%}",
-                        "N/A" if no_controls else (d.get("status") or "").upper(),
-                        "-" if no_controls else str(d.get("fail", 0)),
-                        "-" if no_controls else str(d.get("partial", 0)),
-                        "-" if no_controls else str(d.get("pass", 0)),
-                    ]
-                )
-            lines.append(
-                _md_table(
-                    ["Domain ID", "Domain", "Score", "Status", "Fail", "Partial", "Pass"],
-                    d_rows,
-                )
-            )
-        else:
-            lines.append("_SSCF benchmark not provided — run `sscf-benchmark` to generate domain heatmap._")
-        lines.append("")
-
-        # ── Section 5: NIST AI RMF Compliance Note ──────────────────────────
-        lines.append("## NIST AI RMF Compliance Note")
-        lines.append("")
-        nist = ctx.get("nist_rmf")
-        if nist:
-            review = nist.get("nist_ai_rmf_review", nist)
-            overall = str(review.get("overall", "")).upper()
-            if overall:
-                lines.append(f"**Overall Verdict:** {overall}  ")
-            for fn in ("govern", "map", "measure", "manage"):
-                entry = review.get(fn, {})
-                if isinstance(entry, dict):
-                    status = str(entry.get("status", "")).upper()
-                    notes = entry.get("notes", "")
-                    text = f"{status} -- {notes}" if notes else (status or "[not reported]")
-                else:
-                    text = str(entry) or "[not reported]"
-                lines.append(f"**{fn.upper()}:** {text}  ")
-            lines.append("")
-        else:
-            lines.append("_[PENDING NIST REVIEW]_")
-        lines.append("")
-
-        # ── Section 6: Controls Not Assessed via API ────────────────────────
-        na_controls = ctx.get("not_assessed_controls", [])
-        if na_controls:
-            lines.append("## Controls Not Assessed via API")
-            lines.append("")
-            lines.append(
-                f"The following {len(na_controls)} control(s) are outside the scope of the automated "
-                "sfdc-connect collector. They are excluded from all scores and SSCF domain calculations. "
-                "Each entry describes why the control cannot be assessed via API and what tooling or "
-                "process is required to evaluate it."
-            )
-            lines.append("")
-            na_rows = [
-                [
-                    c["control_id"],
-                    c["title"],
-                    c["severity"].title(),
-                    c["reason"],
-                    c["how_to_assess"],
-                ]
-                for c in na_controls
-            ]
-            lines.append(
-                _md_table(
-                    ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"],
-                    na_rows,
-                )
-            )
-            lines.append("")
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text("\n".join(lines), encoding="utf-8")
-    click.echo(f"  wrote Markdown report → {out_path}", err=True)
-
-
-# ---------------------------------------------------------------------------
-# DOCX writer
-# ---------------------------------------------------------------------------
-
-
-def _hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
-    return int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16)
-
-
-def _apply_cell_fill(cell: Any, fill_hex: str | None) -> None:
-    """Apply background shading to a docx table cell."""
-    if not fill_hex:
-        return
-    from docx.oxml import OxmlElement  # type: ignore
-    from docx.oxml.ns import qn  # type: ignore
-
-    tc_pr = cell._tc.get_or_add_tcPr()
-    shd = OxmlElement("w:shd")
-    shd.set(qn("w:val"), "clear")
-    shd.set(qn("w:color"), "auto")
-    shd.set(qn("w:fill"), fill_hex)
-    tc_pr.append(shd)
-
-
-def _docx_table(doc: Any, headers: list[str], rows: list[list[str]], status_col: int | None = None) -> None:
-    """Add a formatted table to the docx Document."""
-    from docx.enum.text import WD_ALIGN_PARAGRAPH  # type: ignore
-    from docx.shared import Pt  # type: ignore
-
-    table = doc.add_table(rows=1 + len(rows), cols=len(headers))
-    table.style = "Light List Accent 1"
-
-    # Header row
-    hdr_cells = table.rows[0].cells
-    for i, h in enumerate(headers):
-        hdr_cells[i].text = h
-        para = hdr_cells[i].paragraphs[0]
-        run = para.runs[0] if para.runs else para.add_run(h)
-        run.bold = True
-        run.font.size = Pt(9)
-
-    # Data rows
-    _STATUS_FILL = {"pass": _FILL_PASS, "partial": _FILL_PARTIAL, "fail": _FILL_FAIL}
-    for r_idx, row in enumerate(rows):
-        cells = table.rows[r_idx + 1].cells
-        for c_idx, val in enumerate(row):
-            cells[c_idx].text = str(val)
-            for para in cells[c_idx].paragraphs:
-                para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                for run in para.runs:
-                    run.font.size = Pt(8)
-        # Apply status shading if status_col is given
-        if status_col is not None and status_col < len(row):
-            status_val = str(row[status_col]).lower()
-            fill = _STATUS_FILL.get(status_val)
-            _apply_cell_fill(cells[status_col], fill)
-
-
-def _write_docx(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
-    """Write DOCX governance report to out_path."""
+def _run_pandoc(md_path: Path, docx_path: Path) -> None:
+    """Convert Markdown → DOCX via pandoc. Uses reference template if present."""
+    template = Path(__file__).parent / "report_template.docx"
+    cmd = ["pandoc", str(md_path), "-o", str(docx_path)]
+    if template.exists():
+        cmd += ["--reference-doc", str(template)]
     try:
-        from docx import Document  # type: ignore
-    except ImportError:
-        click.echo("ERROR: python-docx not available. Install docxtpl>=0.18.0.", err=True)
-        sys.exit(1)
-
-    doc = Document()
-    audience = ctx["audience"]
-
-    # Title
-    doc.add_heading(ctx["title"], level=0)
-    doc.add_paragraph(
-        f"Assessment ID: {ctx['assessment_id']}  |  Generated: {ctx['generated_at_utc']}  |  Org: {ctx['org_alias']}"
-    )
-
-    if audience == "app-owner":
-        # Executive Summary
-        doc.add_heading("Executive Summary", level=1)
-        doc.add_paragraph(_executive_summary_text(ctx))
-
-        s = ctx["summary"]
-        doc.add_heading("Summary Metrics", level=2)
-        _docx_table(
-            doc,
-            ["Total Controls", "Pass", "Fail", "Partial", "Not Applicable"],
-            [[s["total"], s["pass"], s["fail"], s["partial"], s["not_applicable"]]],
-        )
-
-        # Critical and High Findings
-        doc.add_heading("Critical and High Findings", level=1)
-        ch = ctx["critical_high_findings"]
-        if ch:
-            rows = [
-                [
-                    f["sbs_control_id"],
-                    f.get("sbs_title", ""),
-                    f.get("severity", "").title(),
-                    f.get("owner", ""),
-                    f.get("due_date", ""),
-                    f.get("remediation", "")[:150],
-                ]
-                for f in ch
-            ]
-            _docx_table(doc, ["Control", "Title", "Severity", "Owner", "Due Date", "Action"], rows)
-        else:
-            doc.add_paragraph("No critical or high findings.")
-
-        # What Happens Next
-        doc.add_heading("What Happens Next", level=1)
-        steps = [
-            "Review the findings table above with your technical team.",
-            "Prioritise critical and high findings — these carry the highest risk.",
-            "Assign owners for each finding and confirm due dates.",
-            "Remediate using the action guidance in the findings table.",
-            "Re-assess after remediation to verify controls are passing.",
-            "Escalate any findings you cannot remediate within the due date to CorpIS.",
-        ]
-        for i, step in enumerate(steps, 1):
-            doc.add_paragraph(f"{i}. {step}")
-
-        # Controls Not Assessed via API
-        na_controls = ctx.get("not_assessed_controls", [])
-        if na_controls:
-            doc.add_heading("Controls Not Assessed via API", level=1)
-            doc.add_paragraph(
-                f"The following {len(na_controls)} control(s) could not be evaluated by the automated "
-                "collector and are excluded from the score above. Manual review or alternative tooling is required."
-            )
-            na_rows = [
-                [c["control_id"], c["title"], c["severity"].title(), c["reason"][:80], c["how_to_assess"][:120]]
-                for c in na_controls
-            ]
-            _docx_table(doc, ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"], na_rows)
-
-        # Full Control Matrix
-        doc.add_heading("Appendix: Full Control Matrix", level=1)
-        rows = [[f.get("sbs_control_id", ""), f.get("sbs_title", ""), f.get("status", "")] for f in ctx["all_findings"]]
-        # status is col index 2
-        _docx_table(doc, ["Control ID", "Title", "Status"], rows, status_col=2)
-
-    else:  # security
-        # Assessment Metadata
-        doc.add_heading("Assessment Metadata", level=1)
-        _docx_table(
-            doc,
-            ["Field", "Value"],
-            [
-                ["Assessment ID", ctx["assessment_id"]],
-                ["Assessment Owner", ctx.get("assessment_owner", "")],
-                ["Generated (UTC)", ctx["generated_at_utc"]],
-                ["Org / Alias", ctx["org_alias"]],
-                ["Catalog Version", ctx.get("catalog_version", "")],
-                ["Framework", ctx.get("framework", "CSA_SSCF")],
-            ],
-        )
-
-        # Summary Metrics
-        doc.add_heading("Summary Metrics", level=1)
-        s = ctx["summary"]
-        metric_rows: list[list] = [
-            ["Total Controls", s["total"]],
-            ["Pass", s["pass"]],
-            ["Fail", s["fail"]],
-            ["Partial", s["partial"]],
-            ["Not Applicable", s["not_applicable"]],
-        ]
-        if ctx.get("sscf_overall_score") is not None:
-            metric_rows.append(["SSCF Overall Score", f"{ctx['sscf_overall_score']:.0%}"])
-            metric_rows.append(["SSCF Overall Status", (ctx.get("sscf_overall_status") or "").upper()])
-        _docx_table(doc, ["Metric", "Value"], metric_rows)
-
-        # Full Control Matrix
-        doc.add_heading("Full Control Matrix", level=1)
-        rows = []
-        for f in ctx["all_findings"]:
-            sscf_ids = ", ".join(f.get("sscf_control_ids", []))
-            rows.append(
-                [
-                    f.get("sbs_control_id", ""),
-                    f.get("sbs_title", ""),
-                    f.get("status", ""),
-                    f.get("severity", ""),
-                    sscf_ids,
-                ]
-            )
-        _docx_table(
-            doc,
-            ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
-            rows,
-            status_col=2,
-        )
-
-        # SSCF Domain Heatmap
-        doc.add_heading("SSCF Domain Heatmap", level=1)
-        domains = ctx.get("sscf_domains", [])
-        if domains:
-            d_rows = [
-                [
-                    d.get("domain_id", ""),
-                    d.get("domain_label", d.get("domain_id", "")),
-                    f"{d.get('score', 0):.0%}",
-                    (d.get("status") or "").upper(),
-                    d.get("fail", 0),
-                    d.get("partial", 0),
-                    d.get("pass", 0),
-                ]
-                for d in domains
-            ]
-            _docx_table(
-                doc,
-                ["Domain ID", "Domain", "Score", "Status", "Fail", "Partial", "Pass"],
-                d_rows,
-            )
-        else:
-            doc.add_paragraph("SSCF benchmark not provided.")
-
-        # NIST AI RMF — only render when data is present
-        nist = ctx.get("nist_rmf")
-        if nist:
-            review = nist.get("nist_ai_rmf_review", nist)
-            doc.add_heading("NIST AI RMF Compliance Note", level=1)
-            overall = (review.get("overall") or "").upper()
-            if overall:
-                doc.add_paragraph(f"Overall verdict: {overall}")
-            for fn in ("GOVERN", "MAP", "MEASURE", "MANAGE"):
-                entry = review.get(fn) or review.get(fn.lower()) or {}
-                if isinstance(entry, dict):
-                    status = (entry.get("status") or "").upper()
-                    notes = (entry.get("notes") or "").strip()
-                    text = f"{status} -- {notes}" if notes else (status or "[not reported]")
-                else:
-                    text = str(entry) or "[not reported]"
-                doc.add_paragraph(f"{fn}: {text}")
-            blocking = review.get("blocking_issues", [])
-            if blocking:
-                doc.add_heading("Blocking Issues", level=2)
-                for issue in blocking:
-                    doc.add_paragraph(f"- {issue}")
-
-        # Controls Not Assessed via API
-        na_controls = ctx.get("not_assessed_controls", [])
-        if na_controls:
-            doc.add_heading("Controls Not Assessed via API", level=1)
-            doc.add_paragraph(
-                f"{len(na_controls)} control(s) are outside the scope of the automated sfdc-connect collector "
-                "and are excluded from all scores and SSCF domain calculations. "
-                "Each entry below describes why the control cannot be assessed via API "
-                "and what tooling or process is required to evaluate it."
-            )
-            na_rows = [
-                [c["control_id"], c["title"], c["severity"].title(), c["reason"], c["how_to_assess"]]
-                for c in na_controls
-            ]
-            _docx_table(doc, ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"], na_rows)
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    doc.save(str(out_path))
-    click.echo(f"  wrote DOCX report → {out_path}", err=True)
-
-
-# ---------------------------------------------------------------------------
-# PDF writer
-# ---------------------------------------------------------------------------
-
-
-def _pdf_safe(text: str, max_len: int = 0) -> str:
-    """Encode text to Latin-1 safely (fpdf2 core fonts are Latin-1 only)."""
-    _UNICODE_MAP = {
-        "\u2014": " - ",  # em dash
-        "\u2013": "-",  # en dash
-        "\u2019": "'",  # right single quotation mark
-        "\u2018": "'",  # left single quotation mark
-        "\u201c": '"',  # left double quotation mark
-        "\u201d": '"',  # right double quotation mark
-        "\u2265": ">=",  # greater-than-or-equal (≥)
-        "\u2264": "<=",  # less-than-or-equal (≤)
-        "\u2192": "->",  # rightwards arrow (→)
-        "\u00d7": "x",  # multiplication sign (×)
-        "\u2022": "-",  # bullet (•)
-        "\u00b0": "deg",  # degree sign (°)
-    }
-    for ch, repl in _UNICODE_MAP.items():
-        text = text.replace(ch, repl)
-    out = text.encode("latin-1", errors="replace").decode("latin-1")
-    if max_len and len(out) > max_len:
-        out = out[: max_len - 3] + "..."
-    return out
-
-
-def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
-    """Write PDF governance report to out_path using fpdf2."""
-    try:
-        from fpdf import FPDF  # type: ignore
-    except ImportError:
-        click.echo("ERROR: fpdf2 not available. Run: pip install fpdf2>=2.8.0", err=True)
-        sys.exit(1)
-
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-
-    # --- Title block ---
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, _pdf_safe(ctx["title"]), new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.set_font("Helvetica", size=8)
-    pdf.cell(
-        0,
-        6,
-        _pdf_safe(
-            f"Assessment ID: {ctx['assessment_id']}  |  "
-            f"Generated: {ctx['generated_at_utc']}  |  Org: {ctx['org_alias']}"
-        ),
-        new_x="LMARGIN",
-        new_y="NEXT",
-        align="C",
-    )
-    pdf.ln(4)
-
-    # --- Helpers ---
-    def _section(title: str) -> None:
-        pdf.set_font("Helvetica", "B", 12)
-        pdf.set_fill_color(220, 230, 241)
-        pdf.cell(0, 8, _pdf_safe(title), new_x="LMARGIN", new_y="NEXT", fill=True)
-        pdf.set_font("Helvetica", size=9)
-        pdf.ln(2)
-
-    def _kv_table(rows: list[list[str]]) -> None:
-        key_w = 50.0
-        val_w = pdf.epw - key_w
-        line_h = 6.0
-        pdf.set_font("Helvetica", size=9)
-        lm = pdf.l_margin
-        for row in rows:
-            key_text = _pdf_safe(str(row[0]))
-            val_text = _pdf_safe(str(row[1]))
-            # Pre-measure to guard against mid-row page breaks (same pattern as _table wrap_col)
-            row_h = max(
-                pdf.multi_cell(val_w, line_h, val_text, dry_run=True, output="HEIGHT"),
-                line_h,
-            )
-            if pdf.will_page_break(row_h):
-                pdf.add_page()
-            y0 = pdf.get_y()
-            pdf.set_xy(lm + key_w, y0)
-            pdf.multi_cell(val_w, line_h, val_text, border=1)
-            pdf.set_xy(lm, y0)
-            pdf.cell(key_w, row_h, key_text, border=1)
-            pdf.set_y(y0 + row_h)
-        pdf.ln(2)
-
-    def _fit(text: str, width_mm: float) -> str:
-        """Truncate text to fit within width_mm at the current font using actual glyph widths."""
-        s = _pdf_safe(text)
-        margin = 1.0  # 1mm padding inside cell
-        if pdf.get_string_width(s) <= width_mm - margin:
-            return s
-        suffix = "..."
-        while s and pdf.get_string_width(s + suffix) > width_mm - margin:
-            s = s[:-1]
-        return s + suffix
-
-    def _table(
-        headers: list[str],
-        rows: list[list[str]],
-        col_widths: list[float] | None = None,
-        wrap_col: int | None = None,
-    ) -> None:
-        n = len(headers)
-        cw: list[float] = col_widths if col_widths else [pdf.epw / n] * n
-        lm = pdf.l_margin
-
-        pdf.set_font("Helvetica", "B", 8)
-        pdf.set_fill_color(220, 230, 241)
-        for i, h in enumerate(headers):
-            last = i == n - 1
-            nx, ny = ("LMARGIN", "NEXT") if last else ("RIGHT", "TOP")
-            pdf.cell(cw[i], 7, _fit(h, cw[i]), border=1, fill=True, new_x=nx, new_y=ny)
-
-        pdf.set_font("Helvetica", size=8)
-        for row in rows:
-            # Colour row by status value found anywhere in the row (case-insensitive)
-            status_val = next((str(c).lower() for c in row if str(c).lower() in ("fail", "partial", "pass")), "")
-            if status_val == "fail":
-                pdf.set_fill_color(255, 224, 224)
-                fill = True
-            elif status_val == "partial":
-                pdf.set_fill_color(255, 242, 204)
-                fill = True
-            else:
-                pdf.set_fill_color(255, 255, 255)
-                fill = False
-
-            nc = len(row)
-            if wrap_col is not None and wrap_col < nc:
-                # Pre-measure height so we can add a page break BEFORE rendering if needed.
-                # This prevents multi_cell from crossing a page boundary mid-row, which
-                # would leave the other cells' y0 on the wrong page.
-                wrap_text = _pdf_safe(str(row[wrap_col]))
-                row_h = max(
-                    pdf.multi_cell(cw[wrap_col], 5.0, wrap_text, dry_run=True, output="HEIGHT"),
-                    6.0,
-                )
-                if pdf.will_page_break(row_h):
-                    pdf.add_page()
-                x_pos = [lm + sum(cw[:i]) for i in range(nc)]
-                y0 = pdf.get_y()
-                # Render wrap column (always fits now — page break guard above)
-                pdf.set_xy(x_pos[wrap_col], y0)
-                pdf.multi_cell(cw[wrap_col], 5.0, wrap_text, border=1, fill=fill)
-                # Render all other columns at the same y0 spanning the measured height
-                for i, cell_val in enumerate(row):
-                    if i == wrap_col:
-                        continue
-                    w = cw[i] if i < len(cw) else pdf.epw / nc
-                    pdf.set_xy(x_pos[i], y0)
-                    pdf.cell(w, row_h, _fit(str(cell_val), w), border=1, fill=fill)
-                pdf.set_y(y0 + row_h)
-            else:
-                for i, cell in enumerate(row):
-                    last = i == nc - 1
-                    w = cw[i] if i < len(cw) else pdf.epw / nc
-                    pdf.cell(
-                        w,
-                        6,
-                        _fit(str(cell), w),
-                        border=1,
-                        fill=fill,
-                        new_x="LMARGIN" if last else "RIGHT",
-                        new_y="NEXT" if last else "TOP",
-                    )
-        pdf.ln(2)
-
-    # --- Assessment Metadata ---
-    _section("Assessment Metadata")
-    _kv_table(
-        [
-            ["Assessment ID", ctx["assessment_id"]],
-            ["Assessment Owner", ctx.get("assessment_owner", "")],
-            ["Generated (UTC)", ctx["generated_at_utc"]],
-            ["Org / Alias", ctx["org_alias"]],
-            ["Catalog Version", ctx.get("catalog_version", "")],
-            ["Framework", ctx.get("framework", "CSA_SSCF")],
-        ]
-    )
-
-    # --- Summary Metrics ---
-    _section("Summary Metrics")
-    s = ctx["summary"]
-    metric_rows: list[list[str]] = [
-        ["Total Controls", str(s["total"])],
-        ["Pass", str(s["pass"])],
-        ["Fail", str(s["fail"])],
-        ["Partial", str(s["partial"])],
-        ["Not Applicable", str(s["not_applicable"])],
-    ]
-    if ctx.get("sscf_overall_score") is not None:
-        metric_rows.append(["SSCF Overall Score", f"{ctx['sscf_overall_score']:.0%}"])
-        metric_rows.append(["SSCF Overall Status", (ctx.get("sscf_overall_status") or "").upper()])
-    _kv_table(metric_rows)
-
-    # --- Top Findings / Remediation Priorities ---
-    critical_high = ctx.get("critical_high_findings", [])
-    if critical_high:
-        _section("Top Findings — Remediation Priorities")
-        top_rows = []
-        for f in critical_high:
-            remediation = f.get("remediation", "") or ""
-            top_rows.append(
-                [
-                    f.get("sbs_control_id", ""),
-                    f.get("sbs_title", ""),
-                    f.get("severity", "").title(),
-                    remediation,
-                ]
-            )
-        _table(
-            ["SBS ID", "Title", "Severity", "Remediation Action"],
-            top_rows,
-            col_widths=[30.0, 76.0, 22.0, 62.0],
-            wrap_col=1,
-        )
-
-    # --- Full Control Matrix ---
-    _section("Full Control Matrix")
-    matrix_rows = []
-    for f in ctx["all_findings"]:
-        sscf_ids = ", ".join(f.get("sscf_control_ids", []))
-        raw_status = f.get("status", "")
-        display_status = raw_status.replace("_", " ").title()
-        matrix_rows.append(
-            [
-                f.get("sbs_control_id", ""),
-                f.get("sbs_title", ""),
-                display_status,
-                f.get("severity", "").title(),
-                sscf_ids,
-            ]
-        )
-    _table(
-        ["SBS ID", "Title", "Status", "Severity", "SSCF Controls"],
-        matrix_rows,
-        col_widths=[30.0, 82.0, 26.0, 20.0, 32.0],
-        wrap_col=1,
-    )
-
-    # --- SSCF Domain Heatmap ---
-    _section("SSCF Domain Heatmap")
-    domains = ctx.get("sscf_domains", [])
-    if domains:
-        d_rows = []
-        for d in domains:
-            scoreable = d.get("fail", 0) + d.get("partial", 0) + d.get("pass", 0)
-            if scoreable == 0:
-                # No controls assessed for this domain — show N/A rather than misleading 100% GREEN
-                d_rows.append(
-                    [
-                        d.get("domain_label", d.get("domain_id", "")),
-                        "N/A",
-                        "N/A",
-                        "-",
-                        "-",
-                        "-",
-                    ]
-                )
-            else:
-                d_rows.append(
-                    [
-                        d.get("domain_label", d.get("domain_id", "")),
-                        f"{d.get('score', 0):.0%}",
-                        (d.get("status") or "").upper(),
-                        str(d.get("fail", 0)),
-                        str(d.get("partial", 0)),
-                        str(d.get("pass", 0)),
-                    ]
-                )
-        _table(
-            ["Domain", "Score", "Status", "Fail", "Partial", "Pass"],
-            d_rows,
-            col_widths=[82.0, 22.0, 24.0, 22.0, 22.0, 18.0],
-        )
-    else:
-        pdf.set_font("Helvetica", size=9)
-        pdf.cell(0, 6, "SSCF benchmark not provided.", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(2)
-
-    # --- NIST AI RMF --- only render when data is present
-    nist = ctx.get("nist_rmf")
-    if nist:
-        _section("NIST AI RMF Compliance Note")
-        review = nist.get("nist_ai_rmf_review", nist)
-        overall = (review.get("overall") or "").upper()
-        nist_rows = []
-        if overall:
-            nist_rows.append(["Overall Verdict", overall])
-        for fn in ("GOVERN", "MAP", "MEASURE", "MANAGE"):
-            entry = review.get(fn) or review.get(fn.lower()) or {}
-            if isinstance(entry, dict):
-                status = (entry.get("status") or "").upper()
-                notes = (entry.get("notes") or "").strip()
-                text = f"{status} -- {notes}" if notes else (status or "[not reported]")
-            else:
-                text = str(entry) or "[not reported]"
-            nist_rows.append([fn, text])
-        _kv_table(nist_rows)
-        blocking = review.get("blocking_issues", [])
-        if blocking:
-            pdf.set_font("Helvetica", "B", 9)
-            pdf.cell(0, 6, "Blocking Issues:", new_x="LMARGIN", new_y="NEXT")
-            pdf.set_font("Helvetica", size=9)
-            for issue in blocking:
-                pdf.cell(0, 6, _pdf_safe(f"- {issue}"), new_x="LMARGIN", new_y="NEXT")
-
-    # --- Controls Not Assessed via API ---
-    na_controls = ctx.get("not_assessed_controls", [])
-    if na_controls:
-        _section("Controls Not Assessed via API")
-        pdf.set_font("Helvetica", size=9)
-        pdf.multi_cell(
-            0,
-            5,
-            _pdf_safe(
-                f"{len(na_controls)} control(s) are outside the scope of the automated sfdc-connect "
-                "collector and are excluded from all scores and SSCF domain calculations. "
-                "Each row below describes why the control cannot be assessed via API "
-                "and what tooling or process is required to evaluate it."
-            ),
-        )
-        pdf.ln(2)
-        na_rows = [
-            [
-                c["control_id"],
-                c["title"],
-                c["severity"].title(),
-                c["reason"],
-                c["how_to_assess"],
-            ]
-            for c in na_controls
-        ]
-        _table(
-            ["Control ID", "Title", "Severity", "Why Not Assessed", "How to Assess"],
-            na_rows,
-            col_widths=[28.0, 42.0, 20.0, 50.0, 50.0],
-            wrap_col=4,
-        )
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    pdf.output(str(out_path))
-    click.echo(f"  wrote PDF  report → {out_path}", err=True)
+        subprocess.run(cmd, check=True, capture_output=True)  # noqa: S603
+    except FileNotFoundError:
+        click.echo("WARNING: pandoc not found — DOCX not generated. Install pandoc to enable.", err=True)
+    except subprocess.CalledProcessError as exc:
+        click.echo(f"WARNING: pandoc failed: {exc.stderr.decode()}", err=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1155,123 +178,68 @@ def _write_pdf(ctx: dict[str, Any], out_path: Path) -> None:  # noqa: C901
 
 @click.group()
 def cli() -> None:
-    """report-gen — governance output skill (DOCX + Markdown)."""
+    """report-gen — LLM-driven governance report generator."""
 
 
 @cli.command()
-@click.option(
-    "--backlog",
-    required=True,
-    help="Path to backlog.json produced by oscal_gap_map.py.",
-)
+@click.option("--backlog", required=True, help="Path to backlog.json from oscal_gap_map.")
 @click.option(
     "--audience",
     required=True,
     type=click.Choice(["app-owner", "security"]),
-    help="'app-owner' = plain-language executive report. 'security' = technical security governance review.",
+    help="Report audience.",
 )
-@click.option(
-    "--out",
-    required=True,
-    help="Output file path. Extension determines format: .md or .docx.",
-)
-@click.option(
-    "--sscf-benchmark",
-    "sscf_benchmark",
-    default=None,
-    help="Optional path to sscf_report.json (adds domain heatmap to security report).",
-)
-@click.option(
-    "--nist-review",
-    "nist_review",
-    default=None,
-    help="Optional path to nist_review.json (adds NIST AI RMF section to security report).",
-)
-@click.option(
-    "--title",
-    default=None,
-    help="Custom report title (auto-generated if omitted).",
-)
-@click.option(
-    "--org-alias",
-    "org_alias",
-    default=None,
-    help="Org alias / identifier (falls back to assessment_id org field).",
-)
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Print what would be generated without writing any files.",
-)
+@click.option("--out", required=True, help="Output file path (.md).")
+@click.option("--sscf-benchmark", "sscf_benchmark", default=None, help="Path to sscf_report.json.")
+@click.option("--nist-review", "nist_review", default=None, help="Path to nist_review.json.")
+@click.option("--org-alias", "org_alias", default=None, help="Org alias for report header.")
+@click.option("--title", default=None, help="Custom report title.")
+@click.option("--dry-run", is_flag=True, help="Print plan without writing files.")
+@click.option("--mock-llm", is_flag=True, help="Use deterministic template output (no API call). For testing.")
 def generate(
     backlog: str,
     audience: str,
     out: str,
     sscf_benchmark: str | None,
     nist_review: str | None,
-    title: str | None,
     org_alias: str | None,
+    title: str | None,
     dry_run: bool,
+    mock_llm: bool,
 ) -> None:
-    """Generate a governance report from assessment backlog."""
-    backlog_data = _load_backlog(backlog)
-    sscf_data = _load_optional(sscf_benchmark)
-    nist_data = _load_optional(nist_review)
-
+    """Generate a governance report via LLM (Markdown + DOCX for security audience)."""
     out_path = Path(out)
-    if not out_path.is_absolute():
-        out_path = (_DELIVERABLES_DIR / out_path).resolve()
+    if not out_path.suffix:
+        out_path = out_path.with_suffix(".md")
 
-    ext = out_path.suffix.lower()
-    # security always generates MD + DOCX + PDF; app-owner uses the extension to pick format
-    if audience != "security" and ext not in (".md", ".docx"):
-        click.echo(f"ERROR: unsupported output format '{ext}'. Use .md or .docx.", err=True)
-        sys.exit(1)
-
-    assessment_id = backlog_data.get("assessment_id", "unknown")
-    resolved_org = org_alias or backlog_data.get("org", "unknown")
-    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
-
-    auto_title = (
-        f"Salesforce Security Assessment — {resolved_org} — {date_str}"
-        if audience == "app-owner"
-        else f"Salesforce Security Governance Assessment — {resolved_org} — {date_str}"
-    )
-    resolved_title = title or auto_title
+    org = org_alias or "unknown-org"
+    report_title = title or f"Salesforce Security Governance Assessment — {org}"
+    model = os.getenv("LLM_MODEL_REPORTER", "gpt-4o-mini")
 
     if dry_run:
-        base = out_path.with_suffix("")
-        out_desc = f"{base}.(md|docx|pdf)" if audience == "security" else str(out_path)
-        click.echo(
-            f"DRY RUN — would generate report(s):\n"
-            f"  assessment_id : {assessment_id}\n"
-            f"  audience      : {audience}\n"
-            f"  title         : {resolved_title}\n"
-            f"  output        : {out_desc}\n"
-            f"  sscf_benchmark: {sscf_benchmark or '(none)'}\n"
-            f"  nist_review   : {nist_review or '(none)'}"
-        )
+        click.echo(f"report-gen [DRY-RUN]: would write {out_path}", err=True)
+        if audience == "security":
+            click.echo(f"report-gen [DRY-RUN]: would also write {out_path.with_suffix('.docx')}", err=True)
         return
 
-    ctx = _build_context(backlog_data, sscf_data, nist_data, audience, resolved_title, resolved_org)
+    backlog_data = _load_json(backlog)
+    sscf_data = _load_json(sscf_benchmark) if sscf_benchmark else None
+    nist_data = _load_json(nist_review) if nist_review else None
 
-    click.echo(
-        f"  generating {ext[1:].upper()} report for audience={audience} assessment={assessment_id}",
-        err=True,
-    )
+    system_prompt = _SYSTEM_PROMPTS[audience]
+    user_msg = _build_user_message(backlog_data, sscf_data, nist_data, audience, org, report_title)
+
+    markdown = _call_llm(system_prompt, user_msg, model, mock=mock_llm)
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(markdown)
+    click.echo(f"report-gen: wrote {out_path}", err=True)
 
     if audience == "security":
-        base = out_path.with_suffix("")
-        _write_md(ctx, base.with_suffix(".md"))
-        _write_docx(ctx, base.with_suffix(".docx"))
-        _write_pdf(ctx, base.with_suffix(".pdf"))
-        click.echo(f"report-gen: done → {base.parent} (md + docx + pdf)")
-    elif ext == ".md":
-        _write_md(ctx, out_path)
-        click.echo(f"report-gen: done → {out_path}")
-    else:
-        _write_docx(ctx, out_path)
-        click.echo(f"report-gen: done → {out_path}")
+        docx_path = out_path.with_suffix(".docx")
+        _run_pandoc(out_path, docx_path)
+        if docx_path.exists():
+            click.echo(f"report-gen: wrote {docx_path}", err=True)
 
 
 if __name__ == "__main__":

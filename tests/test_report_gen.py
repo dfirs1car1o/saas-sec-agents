@@ -89,6 +89,7 @@ def test_app_owner_md(tmp_path: Path) -> None:
         "app-owner",
         "--out",
         str(out),
+        "--mock-llm",
     )
     assert result.returncode == 0, f"report-gen failed:\n{result.stderr}"
     assert out.exists(), "Markdown report not written"
@@ -129,6 +130,7 @@ def test_security_md(tmp_path: Path) -> None:
         str(out),
         "--sscf-benchmark",
         str(sscf_report),
+        "--mock-llm",
     )
     assert result.returncode == 0, f"report-gen (security) failed:\n{result.stderr}"
     assert out.exists(), "Security Markdown report not written"
@@ -154,7 +156,8 @@ def test_docx_created(tmp_path: Path) -> None:
     if not _BACKLOG.exists():
         pytest.skip(f"backlog file not found: {_BACKLOG}")
 
-    out = tmp_path / "report_app.docx"
+    # security audience triggers pandoc → DOCX conversion
+    out = tmp_path / "report_security.md"
     result = _run(
         PYTHON,
         "-m",
@@ -163,13 +166,15 @@ def test_docx_created(tmp_path: Path) -> None:
         "--backlog",
         str(_BACKLOG),
         "--audience",
-        "app-owner",
+        "security",
         "--out",
         str(out),
+        "--mock-llm",
     )
     assert result.returncode == 0, f"report-gen (docx) failed:\n{result.stderr}"
-    assert out.exists(), "DOCX report not written"
-    assert out.stat().st_size > 0, "DOCX file is empty"
+    docx_out = out.with_suffix(".docx")
+    assert docx_out.exists(), "DOCX report not written"
+    assert docx_out.stat().st_size > 0, "DOCX file is empty"
     # DOCX is a ZIP — verify magic bytes (PK header)
-    header = out.read_bytes()[:4]
+    header = docx_out.read_bytes()[:4]
     assert header == b"PK\x03\x04", f"Output is not a valid DOCX/ZIP: {header!r}"

@@ -132,20 +132,20 @@ def assess(gap_analysis: str | None, backlog: str | None, out: str, dry_run: boo
         click.echo(f"nist-review [DRY-RUN]: wrote stub verdict -> {out_path}", err=True)
         return
 
-    # Live mode: call Anthropic API with nist-reviewer system prompt
+    # Live mode: call OpenAI API with nist-reviewer system prompt
     if not gap_analysis or not backlog:
         click.echo("ERROR: --gap-analysis and --backlog are required for live mode.", err=True)
         sys.exit(1)
 
     try:
-        import anthropic
+        import openai
     except ImportError:
-        click.echo("ERROR: anthropic package not installed.", err=True)
+        click.echo("ERROR: openai package not installed.", err=True)
         sys.exit(1)
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        click.echo("ERROR: ANTHROPIC_API_KEY not set.", err=True)
+        click.echo("ERROR: OPENAI_API_KEY not set.", err=True)
         sys.exit(1)
 
     gap_data = _load_json(gap_analysis)
@@ -173,14 +173,16 @@ def assess(gap_analysis: str | None, backlog: str | None, out: str, dry_run: boo
         "Return ONLY the JSON verdict. No text outside the JSON object."
     )
 
-    client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
+    client = openai.OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=os.getenv("LLM_MODEL_ANALYST", "gpt-4o"),
         max_tokens=2048,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_msg}],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
+        ],
     )
-    raw = response.content[0].text.strip()
+    raw = response.choices[0].message.content.strip()
 
     # Strip markdown code fences (```json ... ``` or ``` ... ```)
     if raw.startswith("```"):

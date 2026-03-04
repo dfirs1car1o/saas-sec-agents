@@ -3,11 +3,11 @@ harness/loop.py — Agentic orchestration loop for OSCAL/SSCF assessments.
 
 Entry point:  agent-loop run [OPTIONS]
 
-The orchestrator (claude-opus-4-6) is called in a tool_use loop:
+The orchestrator (gpt-4o by default) is called in a tool_calls loop:
   1. Load agent config (mission.md + orchestrator.md as system prompt)
   2. Prepend prior org assessment memory to the first user message
-  3. Drive the Anthropic messages API until stop_reason == "end_turn"
-  4. Dispatch each tool_use block via harness.tools.dispatch()
+  3. Drive the OpenAI chat completions API until finish_reason == "stop"
+  4. Dispatch each tool call via harness.tools.dispatch()
   5. Gate on critical/fail findings before writing final output
   6. Persist assessment metrics to Qdrant via Mem0
 """
@@ -29,7 +29,7 @@ from harness.tools import ALL_TOOLS, dispatch
 
 _REPO = Path(__file__).resolve().parents[1]
 
-# Load .env at import time so ANTHROPIC_API_KEY and SF_* vars are in os.environ
+# Load .env at import time so OPENAI_API_KEY and SF_* vars are in os.environ
 # before Click reads envvar= options or os.getenv() is called anywhere.
 load_dotenv(_REPO / ".env")
 _MAX_TURNS = 20  # hard stop to prevent runaway loops
@@ -168,11 +168,11 @@ def _run_loop(
 ) -> dict[str, Any]:
     """Core agentic loop. Returns result dict with score, status, output paths."""
     try:
-        import anthropic
+        import openai
     except ImportError as exc:
-        raise RuntimeError("anthropic package not installed. Run: pip install anthropic") from exc
+        raise RuntimeError("openai package not installed. Run: pip install openai") from exc
 
-    client = anthropic.Anthropic(api_key=api_key or os.getenv("ANTHROPIC_API_KEY"))
+    client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
     # --- Memory: load prior assessments for this org ---
     mem_client = None
@@ -184,12 +184,15 @@ def _run_loop(
     except Exception as exc:  # noqa: BLE001
         click.echo(f"  [memory] unavailable: {exc}", err=True)
 
-    # --- Build initial user message ---
+    # --- Build initial messages (system prompt + user task) ---
     user_content = task
     if memory_context:
         user_content = f"{memory_context}\n\n---\n\n{task}"
 
-    messages: list[dict[str, Any]] = [{"role": "user", "content": user_content}]
+    messages: list[Any] = [
+        {"role": "system", "content": ORCHESTRATOR.system_prompt},
+        {"role": "user", "content": user_content},
+    ]
 
     # Track key output file paths as the pipeline progresses
     state: dict[str, Any] = {
@@ -204,60 +207,62 @@ def _run_loop(
     for turn in range(_MAX_TURNS):
         state["turns"] = turn + 1
 
-        response = client.messages.create(
+        response = client.chat.completions.create(
             model=ORCHESTRATOR.model,
             max_tokens=4096,
-            # cache_control marks the system prompt for prompt caching.
-            # Across the 20-turn ReAct loop the system prompt (mission.md +
-            # orchestrator.md, ~3 KB) is re-sent every turn. Caching it cuts
-            # token cost by ~90% on the system prompt portion after the first turn.
-            system=[
-                {
-                    "type": "text",
-                    "text": ORCHESTRATOR.system_prompt,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
             tools=ALL_TOOLS,
             messages=messages,
         )
 
-        if response.stop_reason == "end_turn":
-            # Extract final text summary
-            final_text = " ".join(block.text for block in response.content if hasattr(block, "text"))
-            state["summary"] = final_text
+        choice = response.choices[0]
+
+        if choice.finish_reason == "stop":
+            state["summary"] = choice.message.content or ""
             break
 
-        if response.stop_reason == "max_tokens":
+        if choice.finish_reason == "length":
             click.echo("WARNING: Response truncated (max_tokens reached).", err=True)
             state["summary"] = "[truncated]"
             break
 
-        if response.stop_reason != "tool_use":
-            click.echo(f"WARNING: Unexpected stop_reason: {response.stop_reason}", err=True)
-            state["summary"] = f"[stop: {response.stop_reason}]"
+        if choice.finish_reason != "tool_calls":
+            click.echo(f"WARNING: Unexpected finish_reason: {choice.finish_reason}", err=True)
+            state["summary"] = f"[stop: {choice.finish_reason}]"
             break
 
-        # --- Process tool_use blocks ---
-        tool_results: list[dict[str, Any]] = []
+        # --- Append assistant turn preserving tool_calls metadata ---
+        messages.append(
+            {
+                "role": "assistant",
+                "content": choice.message.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                    }
+                    for tc in choice.message.tool_calls
+                ],
+            }
+        )
 
-        for block in response.content:
-            if not hasattr(block, "type") or block.type != "tool_use":
-                continue
+        # --- Process each tool call; one tool message per call ---
+        for tc in choice.message.tool_calls:
+            name = tc.function.name
+            inp = json.loads(tc.function.arguments)
 
-            click.echo(f"  [tool] {block.name}({json.dumps(block.input, separators=(',', ':'))})", err=True)
+            click.echo(f"  [tool] {name}({json.dumps(inp, separators=(',', ':'))})", err=True)
 
             try:
-                result_str = dispatch(block.name, block.input)
+                result_str = dispatch(name, inp)
             except Exception as exc:  # noqa: BLE001
-                result_str = _handle_tool_error(block.name, block.input, exc)
+                result_str = _handle_tool_error(name, inp, exc)
 
             # Track output files for downstream steps and final gate
             try:
                 result_data = json.loads(result_str)
                 out_file = result_data.get("output_file")
                 if out_file:
-                    name = block.name
                     if name == "oscal_assess_assess":
                         state["gap_analysis"] = out_file
                         _log_expert_escalations(out_file, dry_run)
@@ -270,17 +275,7 @@ def _run_loop(
             except (json.JSONDecodeError, AttributeError):
                 pass
 
-            tool_results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": result_str,
-                }
-            )
-
-        # Append assistant turn + tool results as next user turn
-        messages.append({"role": "assistant", "content": response.content})
-        messages.append({"role": "user", "content": tool_results})
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": result_str})
 
     else:
         click.echo(f"WARNING: Reached max turns ({_MAX_TURNS}). Loop hard-stopped.", err=True)
@@ -349,14 +344,14 @@ def cli() -> None:
 @click.option(
     "--api-key",
     default=None,
-    envvar="ANTHROPIC_API_KEY",
-    help="Anthropic API key (defaults to ANTHROPIC_API_KEY env var).",
+    envvar="OPENAI_API_KEY",
+    help="OpenAI API key (defaults to OPENAI_API_KEY env var).",
 )
 def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | None, api_key: str | None) -> None:
     """Run the agentic assessment loop against a Salesforce org.
 
     Orchestrates: sfdc-connect → oscal-assess → oscal_gap_map → sscf-benchmark
-    via claude-opus-4-6 tool_use, with Mem0+Qdrant session memory.
+    via gpt-4o tool_calls, with Mem0+Qdrant session memory.
 
     Example (dry-run, no real org or API credits):
         agent-loop run --dry-run --env dev --org weak-org-dry-run
@@ -393,7 +388,7 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             f"   b. audience='security', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
             f"nist_review from step 5, "
             f"title='{governance_title} - {org_display}'. "
-            f"The security call automatically also writes .docx and .pdf to the same directory.\n\n"
+            f"The security call automatically also writes .docx to the same directory.\n\n"
             "Return a final summary with: overall_score, overall_status (red/amber/green), "
             "count of critical/fail findings, and the top 3 remediation priorities."
         )

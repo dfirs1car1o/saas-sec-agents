@@ -8,6 +8,7 @@ Mission always loads first — it takes precedence over role definitions.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -30,13 +31,17 @@ class AgentConfig:
     tool_names: list[str] = field(default_factory=list)
 
 
+_MODEL_ORCHESTRATOR = os.getenv("LLM_MODEL_ORCHESTRATOR", "gpt-5.2")
+_MODEL_ANALYST = os.getenv("LLM_MODEL_ANALYST", "gpt-5.2")
+_MODEL_REPORTER = os.getenv("LLM_MODEL_REPORTER", "gpt-5.2")
+
 # ---------------------------------------------------------------------------
 # Agent registry
 # ---------------------------------------------------------------------------
 
 ORCHESTRATOR = AgentConfig(
     name="orchestrator",
-    model="claude-opus-4-6",
+    model=_MODEL_ORCHESTRATOR,
     system_prompt=_load("orchestrator"),
     tool_names=[
         "sfdc_connect_collect",
@@ -47,10 +52,9 @@ ORCHESTRATOR = AgentConfig(
     ],
 )
 
-# Reporter uses the dated model ID for reproducibility across API releases.
 REPORTER = AgentConfig(
     name="reporter",
-    model="claude-haiku-4-5-20251001",
+    model=_MODEL_REPORTER,
     system_prompt=_load("reporter"),
     tool_names=[],
 )
@@ -59,7 +63,7 @@ REPORTER = AgentConfig(
 # Invoked by the orchestrator when CI/CD, workflow, or skill changes are reviewed.
 SECURITY_REVIEWER = AgentConfig(
     name="security-reviewer",
-    model="claude-sonnet-4-6",
+    model=_MODEL_ANALYST,
     system_prompt=_load("security-reviewer"),
     tool_names=[],
 )

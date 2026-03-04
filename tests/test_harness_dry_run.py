@@ -1,16 +1,16 @@
 """
-Smoke test: harness agentic loop with mocked Anthropic client.
+Smoke test: harness agentic loop with mocked OpenAI client.
 
 Verifies:
-  1. Correct tool dispatch order (sfdc_connect_collect → oscal_assess_assess → end_turn)
+  1. Correct tool dispatch order (sfdc_connect_collect → oscal_assess_assess → stop)
   2. Output file paths tracked in state
   3. memory save_assessment called with extracted score
-  4. Loop exits cleanly without real Salesforce org or Anthropic API credits
+  4. Loop exits cleanly without real Salesforce org or OpenAI API credits
 
 Mock sequence:
-  Turn 1: tool_use sfdc_connect_collect (dry_run=True)
-  Turn 2: tool_use oscal_assess_assess (dry_run=True)
-  Turn 3: end_turn with summary text
+  Turn 1: tool_calls sfdc_connect_collect (dry_run=True)
+  Turn 2: tool_calls oscal_assess_assess (dry_run=True)
+  Turn 3: stop with summary text
 """
 
 from __future__ import annotations
@@ -27,41 +27,47 @@ _REPO = Path(__file__).parent.parent
 
 
 # ---------------------------------------------------------------------------
-# Helpers — build realistic mock Anthropic responses
+# Helpers — build realistic mock OpenAI ChatCompletion responses
 # ---------------------------------------------------------------------------
 
 
 def _tool_use_response(tool_name: str, tool_id: str, tool_input: dict) -> MagicMock:
-    """Build a mock Anthropic Message with a single tool_use block."""
-    block = MagicMock()
-    block.type = "tool_use"
-    block.id = tool_id
-    block.name = tool_name
-    block.input = tool_input
+    """Build a mock OpenAI ChatCompletion with a tool_calls finish_reason."""
+    tc = MagicMock()
+    tc.id = tool_id
+    tc.function.name = tool_name
+    tc.function.arguments = json.dumps(tool_input)
+
+    msg = MagicMock()
+    msg.content = None
+    msg.tool_calls = [tc]
+
+    choice = MagicMock()
+    choice.finish_reason = "tool_calls"
+    choice.message = msg
 
     response = MagicMock()
-    response.stop_reason = "tool_use"
-    response.content = [block]
+    response.choices = [choice]
     return response
 
 
 def _end_turn_response(text: str) -> MagicMock:
-    """Build a mock Anthropic Message with a text end_turn."""
-    block = MagicMock()
-    block.type = "text"
-    block.text = text
-    # end_turn blocks don't have .name or .id
-    del block.name
-    del block.id
+    """Build a mock OpenAI ChatCompletion with a stop finish_reason."""
+    msg = MagicMock()
+    msg.content = text
+    msg.tool_calls = None
+
+    choice = MagicMock()
+    choice.finish_reason = "stop"
+    choice.message = msg
 
     response = MagicMock()
-    response.stop_reason = "end_turn"
-    response.content = [block]
+    response.choices = [choice]
     return response
 
 
 # ---------------------------------------------------------------------------
-# Test: two-tool loop → end_turn
+# Test: two-tool loop → stop
 # ---------------------------------------------------------------------------
 
 
@@ -108,8 +114,8 @@ def test_dry_run_loop_tool_dispatch_order(tmp_path: Path) -> None:
         _end_turn_response("Assessment complete. overall_score=34%, status=RED."),
     ]
 
-    mock_anthropic_client = MagicMock()
-    mock_anthropic_client.messages.create.side_effect = mock_responses
+    mock_openai_client = MagicMock()
+    mock_openai_client.chat.completions.create.side_effect = mock_responses
 
     sfdc_out = str(tmp_path / "sfdc_raw.json")
     dispatch_results = {
@@ -123,7 +129,7 @@ def test_dry_run_loop_tool_dispatch_order(tmp_path: Path) -> None:
     runner = CliRunner()
 
     with (
-        patch("anthropic.Anthropic", return_value=mock_anthropic_client),
+        patch("openai.OpenAI", return_value=mock_openai_client),
         patch("harness.loop.build_client") as mock_build,
         patch("harness.loop.load_memories", return_value="No prior assessments."),
         patch("harness.loop.save_assessment") as mock_save,
@@ -167,12 +173,12 @@ def test_tool_error_triggers_handler(tmp_path: Path) -> None:
     ]
 
     mock_client = MagicMock()
-    mock_client.messages.create.side_effect = mock_responses
+    mock_client.chat.completions.create.side_effect = mock_responses
 
     runner = CliRunner()
 
     with (
-        patch("anthropic.Anthropic", return_value=mock_client),
+        patch("openai.OpenAI", return_value=mock_client),
         patch("harness.loop.build_client", return_value=MagicMock()),
         patch("harness.loop.load_memories", return_value=""),
         patch("harness.loop.save_assessment"),
@@ -191,20 +197,20 @@ def test_tool_error_triggers_handler(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test: Anthropic client constructed with env key
+# Test: OpenAI client constructed with env key
 # ---------------------------------------------------------------------------
 
 
-def test_anthropic_client_uses_api_key(tmp_path: Path) -> None:
-    """ANTHROPIC_API_KEY env var is passed to the Anthropic client."""
+def test_openai_client_uses_api_key(tmp_path: Path) -> None:
+    """OPENAI_API_KEY env var is passed to the OpenAI client."""
     mock_responses = [_end_turn_response("No tools needed.")]
     mock_client = MagicMock()
-    mock_client.messages.create.side_effect = mock_responses
+    mock_client.chat.completions.create.side_effect = mock_responses
 
     runner = CliRunner()
 
     with (
-        patch("anthropic.Anthropic", return_value=mock_client) as mock_ctor,
+        patch("openai.OpenAI", return_value=mock_client) as mock_ctor,
         patch("harness.loop.build_client", return_value=MagicMock()),
         patch("harness.loop.load_memories", return_value=""),
         patch("harness.loop.save_assessment"),

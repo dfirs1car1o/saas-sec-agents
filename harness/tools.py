@@ -219,7 +219,21 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
 ]
 
-ALL_TOOLS = TOOL_SCHEMAS
+def _to_openai_tools(schemas: list[dict]) -> list[dict]:
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": s["name"],
+                "description": s["description"],
+                "parameters": s["input_schema"],
+            },
+        }
+        for s in schemas
+    ]
+
+
+ALL_TOOLS = _to_openai_tools(TOOL_SCHEMAS)
 
 
 # ---------------------------------------------------------------------------

@@ -3,21 +3,17 @@ roles:
   malware_analyst:
     allowed_models:
       - azure-openai
-      - anthropic
       - gemini
     primary: azure-openai
     fallbacks:
-      - anthropic
       - gemini
     max_tokens: 12000
     monthly_budget_usd: 500
   triage_analyst:
     allowed_models:
       - azure-openai
-      - anthropic
     primary: azure-openai
-    fallbacks:
-      - anthropic
+    fallbacks: []
     max_tokens: 6000
     monthly_budget_usd: 300
   report_writer:

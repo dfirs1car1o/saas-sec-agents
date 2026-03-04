@@ -182,17 +182,20 @@ def check_env_vars(suite: CheckSuite) -> None:
         ("SF_USERNAME", "Salesforce username", True),
         ("SF_PASSWORD", "Salesforce password", True),
         ("SF_SECURITY_TOKEN", "Salesforce security token", True),
-        ("ANTHROPIC_API_KEY", "Anthropic API key", True),
+        ("OPENAI_API_KEY", "OpenAI API key", True),
         ("SF_DOMAIN", "Salesforce domain (optional)", False),
         ("SF_INSTANCE_URL", "Salesforce instance URL (optional)", False),
         ("SF_AUTH_METHOD", "Auth method: soap (default) or jwt (optional)", False),
         ("SF_CONSUMER_KEY", "JWT: Connected App Consumer Key (optional)", False),
         ("SF_PRIVATE_KEY_PATH", "JWT: RSA private key path (optional)", False),
+        ("LLM_MODEL_ORCHESTRATOR", "LLM orchestrator model override (optional)", False),
+        ("LLM_MODEL_ANALYST", "LLM analyst model override (optional)", False),
+        ("LLM_MODEL_REPORTER", "LLM reporter model override (optional)", False),
     ]
 
     for key, description, hard in checks:
         val = env_values.get(key, "")
-        if val and not val.startswith("your") and not val.startswith("sk-ant-..."):
+        if val and not val.startswith("your") and not val.startswith("sk-..."):
             masked = val[:4] + "****" if len(val) > 4 else "****"
             suite.add(CheckResult(key, "pass", f"{description} — set ({masked})", hard=hard))
         elif hard:
@@ -254,7 +257,7 @@ def check_python_package(
 
 def check_python_packages(suite: CheckSuite) -> None:
     hard_packages = [
-        ("anthropic", "anthropic", "0.40.0", True),
+        ("openai", "openai", "1.0.0", True),
         ("simple-salesforce", "simple_salesforce", "1.12.6", True),
         ("click", "click", "8.1.0", True),
         ("pydantic", "pydantic", "2.8.0", True),
@@ -380,19 +383,19 @@ def check_docs_generated_dir(suite: CheckSuite) -> None:
         )
 
 
-def check_anthropic_api_key_format(suite: CheckSuite) -> None:
-    key = os.getenv("ANTHROPIC_API_KEY", "")
+def check_openai_api_key_format(suite: CheckSuite) -> None:
+    key = os.getenv("OPENAI_API_KEY", "")
     if not key:
         # Already caught in check_env_vars
         return
-    if key.startswith("sk-ant-"):
-        suite.add(CheckResult("anthropic-key-format", "pass", "API key format looks correct"))
+    if key.startswith("sk-"):
+        suite.add(CheckResult("openai-key-format", "pass", "API key format looks correct"))
     else:
         suite.add(
             CheckResult(
-                "anthropic-key-format",
+                "openai-key-format",
                 "warn",
-                "ANTHROPIC_API_KEY doesn't start with 'sk-ant-' — double-check it's a valid key",
+                "OPENAI_API_KEY doesn't start with 'sk-' — double-check it's a valid key",
                 hard=False,
             )
         )
@@ -416,7 +419,7 @@ def attempt_fix(suite: CheckSuite) -> None:
             "SF_USERNAME",
             "SF_PASSWORD",
             "SF_SECURITY_TOKEN",
-            "ANTHROPIC_API_KEY",
+            "OPENAI_API_KEY",
             "repo-layout",
             "SF_AUTH_METHOD",
             "SF_CONSUMER_KEY",
@@ -526,7 +529,7 @@ Examples:
     print(header("Environment Variables (.env)"))
     check_env_file(suite)
     check_env_vars(suite)
-    check_anthropic_api_key_format(suite)
+    check_openai_api_key_format(suite)
 
     print(header("Python Packages"))
     check_python_packages(suite)
