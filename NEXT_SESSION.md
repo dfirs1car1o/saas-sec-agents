@@ -1,4 +1,4 @@
-# Next Session Checkpoint — 2026-03-05
+# Next Session Checkpoint — 2026-03-06
 
 ## Session Summary
 
@@ -12,6 +12,10 @@ This session completed:
 - **Orchestrator stop prompt** — task prompt now explicitly tells LLM to stop after step 6b (was re-running benchmark/nist to pull metrics)
 - **Dry-run passed** — 11 turns, exit 0, all artifacts written
 - **Live run passed** — cyber-coach-dev: 48.4% RED, 1 critical (SBS-AUTH-001), all reports written
+- **Executive report rewrite** — Python-rendered scorecard, domain posture chart, top-10 priority findings, full sorted control matrix; LLM writes narrative only
+- **Results banner** — `agent-loop run` now prints full absolute paths to all 7 generated artifacts after every run
+- **Wiki complete** — all 14 pages audited and updated; macOS Silicon + Linux/WSL2 setup guides added
+- **3 CI failures fixed** (`d52e09d`) — ruff format (4 files), validate_env cred_skip (OPENAI_API_KEY missing), test_docx_created pandoc guard
 
 ---
 
@@ -31,6 +35,9 @@ This session completed:
 | Wiki onboarding | ✅ Done | macOS Silicon + Linux + WSL2 platform sections |
 | sfdc-expert agent | ✅ Done | agents/sfdc-expert.md + apex-scripts/README.md |
 | SDK Migration | ✅ Done | anthropic → openai; gpt-5.2 defaults; LLM report writer |
+| Executive reports | ✅ Done | Python-rendered scorecard, domain chart, sorted matrix |
+| Wiki 14 pages | ✅ Done | All pages audited; macOS + Linux setup guides added |
+| CI all green | ✅ Done | ruff format, validate_env, test_docx_created fixed |
 | Docker MCP Gateway | ✅ Done | Brave Search running on localhost:8000/sse |
 | API compat fixes | ✅ Done | max_completion_tokens, max_retries, loop stop |
 | --mock-llm | ✅ Done | Offline test mode for report-gen |
@@ -65,7 +72,7 @@ docker run -d --name mcp-gateway \
 ## Current State
 
 - **Branch:** `main` (clean — all committed)
-- **Last commit:** `c43dc07`
+- **Last commit:** `d52e09d` — CI fixes (ruff format, validate_env, test_docx)
 - **Tests:** 12/12 passing
 - **Local path:** `/Users/jerijuar/saas-sec-agents`
 - **Org:** cyber-coach-dev (`orgfarm-7ecec127cc-dev-ed.develop.my.salesforce.com`)
