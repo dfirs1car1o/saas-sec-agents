@@ -101,8 +101,7 @@ def _build_user_message(
 
     if not_applicable:
         na_lines = [
-            f"- {i.get('control_id', '?')}: {i.get('reason', 'Not assessable via API')}"
-            for i in not_applicable
+            f"- {i.get('control_id', '?')}: {i.get('reason', 'Not assessable via API')}" for i in not_applicable
         ]
         lines.append("\n## Controls Not Assessed via API")
         lines.extend(na_lines)
@@ -114,7 +113,8 @@ def _build_user_message(
 _MOCK_TEMPLATES: dict[str, str] = {
     "app-owner": (
         "# Executive Summary\n\nMock report for testing.\n\n"
-        "## Critical and High Findings\n\n| Control | Status | Action |\n|---|---|---|\n| SBS-AUTH-001 | Fail | Enable MFA |\n\n"
+        "## Critical and High Findings\n\n"
+        "| Control | Status | Action |\n|---|---|---|\n| SBS-AUTH-001 | Fail | Enable MFA |\n\n"
         "## What Happens Next\n\nRemediate items above within SLA windows.\n\n"
         "## Appendix: Full Control Matrix\n\n| Control | Status |\n|---|---|\n| SBS-AUTH-001 | Fail |\n"
     ),
