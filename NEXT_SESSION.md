@@ -1,19 +1,11 @@
-# Next Session Checkpoint — 2026-03-03
+# Next Session Checkpoint — 2026-03-04
 
 ## Session Summary
 
 This session completed:
-- **JWT Bearer Auth** (`SF_AUTH_METHOD=jwt`) — full implementation in sfdc-connect, live verified against cyber-coach-dev org
-- **SOQL query fixes** — 5 broken field names fixed (SecuritySettings Metadata blob, event-monitoring GROUP BY, transaction-security IsEnabled, integrations AuthenticationProtocol, oauth PermittedUsersPolicyEnum)
-- **NIST max_tokens fix** — bumped 1024→2048; LLM was cutting JSON mid-response, all 4 dimensions now return real verdicts
-- **NIST regex fallback** — added re.search() fallback for responses with markdown fence preamble
-- **First live full pipeline run** — 48.4% RED, 1 critical fail (SBS-AUTH-001), NIST verdict: block (4 issues)
-- **4 GitHub Issues opened** — #10, #11, #12, #13 (NIST MANAGE/MAP/GOVERN/MEASURE fixes)
-- **Issue #10 fixed** — `due_date` auto-populated in oscal-assess (critical=7d, high=30d, moderate=90d, low=180d)
-- **Issue #11 fixed** — `data_source` + `ai_generated_findings_notice` added to gap_analysis.json output
-- **CI ruff fix** — harness/ files reformatted (loop.py, memory.py, tools.py)
-- **Not Assessed Controls section** — PDF/DOCX/MD reports now include a dedicated section listing the 15 API-unassessable controls with reason + how-to-assess guidance
-- **manual_controls_questionnaire.py** — new script for collecting manual evidence for those 15 controls; supports interactive + `--answers` file + `--merge` back into gap_analysis
+- **Issue #12 fixed** — `assessment_owner` named individual field added to oscal-assess (`--assessment-owner` flag), flows through `gap_analysis.json` → `backlog.json` → report metadata (MD/DOCX/PDF)
+- **Issue #13 fixed** — `mapping_confidence` variance: `pass`/`fail` → `high`, `partial` → `medium`, `not_applicable` → `low` (replaces uniform `"high"` across all 45 findings)
+- **All 4 NIST issues closed** — #10 #11 #12 #13 all resolved
 
 ---
 
@@ -31,24 +23,27 @@ This session completed:
 | Live run | ✅ Done | First real org assessment complete |
 | NIST #10/#11 | ✅ Done | due_date auto-populated, data_source declared |
 | Not Assessed section | ✅ Done | PDF/DOCX/MD all include not-assessed controls block |
+| NIST #12/#13 | ✅ Done | assessment_owner field + mapping_confidence variance |
 
 ---
 
-## Open GitHub Issues
+## GitHub Issues — All Resolved
 
 | Issue | Title | Priority | Status |
 |---|---|---|---|
 | #10 | NIST MANAGE-BLOCK: Assign due_date to all critical/high fail findings | P1 | ✅ Fixed (commit 257bd76) |
 | #11 | NIST MAP-BLOCK: Declare live vs mock collection in assessment output | P1 | ✅ Fixed (commit 257bd76) |
-| #12 | NIST GOVERN-PARTIAL: Replace team-level owner with named individual | P2 | Open |
-| #13 | NIST MEASURE-PARTIAL: Recalibrate mapping_confidence variance | P2 | Open |
+| #12 | NIST GOVERN-PARTIAL: Replace team-level owner with named individual | P2 | ✅ Fixed (commit faab601) |
+| #13 | NIST MEASURE-PARTIAL: Recalibrate mapping_confidence variance | P2 | ✅ Fixed (commit faab601) |
+
+**No open issues.**
 
 ---
 
 ## Current State
 
 - **Branch:** `main`
-- **Last commit:** `7c4e5ac`
+- **Last commit:** `faab601`
 - **Local path:** `/Users/jerijuar/saas-sec-agents`
 - **Tests:** 12/12 passing
 - **CI:** All workflows green (ci, codeql, security-checks, sbom, actions-security, diagram)
@@ -63,8 +58,8 @@ This session completed:
 agent-loop run --env dev --org cyber-coach-dev --approve-critical
    │
    ├── 1. sfdc_connect_collect     → sfdc_raw.json
-   ├── 2. oscal_assess_assess      → gap_analysis.json  (+ data_source, due_date, ai_notice)
-   ├── 3. oscal_gap_map            → backlog.json + matrix.md
+   ├── 2. oscal_assess_assess      → gap_analysis.json  (+ data_source, due_date, ai_notice, assessment_owner)
+   ├── 3. oscal_gap_map            → backlog.json + matrix.md  (+ assessment_owner, confidence variance)
    ├── 4. sscf_benchmark_benchmark → sscf_report.json
    ├── 5. nist_review_assess       → nist_review.json
    ├── 6. report_gen_generate      (audience=app-owner)  → {org}_remediation_report.md
@@ -73,8 +68,9 @@ agent-loop run --env dev --org cyber-coach-dev --approve-critical
 
 All outputs: `docs/oscal-salesforce-poc/generated/<org>/<date>/`
 
-Reports now include a "Controls Not Assessed via API" section with reason + how-to-assess for
-all 15 not_applicable controls.
+Reports include:
+- "Controls Not Assessed via API" section (15 API-unassessable controls, reason + how-to-assess)
+- Assessment Metadata table with Assessment Owner row
 
 ---
 
@@ -99,11 +95,11 @@ python3 scripts/manual_controls_questionnaire.py --org cyber-coach-dev \
 
 | Domain | Score | Status |
 |---|---|---|
-| logging_monitoring | 0% | 🔴 RED |
-| configuration_hardening | 33% | 🔴 RED |
-| identity_access_management | 50% | 🟡 AMBER |
-| data_security_privacy | 50% | 🟡 AMBER |
-| cryptography_key_management | 70% | 🟡 AMBER |
+| logging_monitoring | 0% | RED |
+| configuration_hardening | 33% | RED |
+| identity_access_management | 50% | AMBER |
+| data_security_privacy | 50% | AMBER |
+| cryptography_key_management | 70% | AMBER |
 | governance_risk_compliance | N/A | — |
 | threat_detection_response | N/A | — |
 
