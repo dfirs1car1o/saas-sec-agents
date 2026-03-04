@@ -219,6 +219,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
 ]
 
+
 def _to_openai_tools(schemas: list[dict]) -> list[dict]:
     return [
         {

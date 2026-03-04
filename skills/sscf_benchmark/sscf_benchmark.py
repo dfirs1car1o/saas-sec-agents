@@ -328,8 +328,7 @@ def benchmark(
     for d in report["domains"]:
         score_str = f"{int(d['score'] * 100)}%" if d["score"] is not None else "N/A"
         click.echo(
-            f"    {d['domain']}: {score_str} [{d['status'].upper()}]"
-            f" ({d['pass']}P/{d['partial']}p/{d['fail']}F)",
+            f"    {d['domain']}: {score_str} [{d['status'].upper()}] ({d['pass']}P/{d['partial']}p/{d['fail']}F)",
             err=True,
         )
 

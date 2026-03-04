@@ -469,11 +469,11 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
     click.echo("📁  RESULTS")
     click.echo("─" * 60)
     _file_labels = [
-        ("gap_analysis",       "Gap analysis  "),
-        ("backlog",            "Backlog       "),
-        ("sscf_report",        "SSCF report   "),
-        ("nist_review",        "NIST review   "),
-        ("report_app_owner",   "App owner MD  "),
+        ("gap_analysis", "Gap analysis  "),
+        ("backlog", "Backlog       "),
+        ("sscf_report", "SSCF report   "),
+        ("nist_review", "NIST review   "),
+        ("report_app_owner", "App owner MD  "),
         ("report_security_md", "Security MD   "),
         ("report_security_docx", "Security DOCX "),
     ]

@@ -134,16 +134,13 @@ def _build_user_message(
             lines.append(f"AMBER domains: {', '.join(amber)}")
 
     # Critical and high fails for narrative context
-    priority = [
-        i for i in assessed
-        if i.get("status") == "fail" and i.get("severity") in ("critical", "high")
-    ]
+    priority = [i for i in assessed if i.get("status") == "fail" and i.get("severity") in ("critical", "high")]
     if priority:
         lines.append(f"\nCritical/High failures ({len(priority)}):")
         for i in priority:
             lines.append(
-                f"  - {i.get('sbs_control_id','?')} [{i.get('severity','?').upper()}]: "
-                f"{i.get('sbs_title', i.get('remediation',''))[:80]}"
+                f"  - {i.get('sbs_control_id', '?')} [{i.get('severity', '?').upper()}]: "
+                f"{i.get('sbs_title', i.get('remediation', ''))[:80]}"
             )
 
     if nist:
@@ -151,8 +148,8 @@ def _build_user_message(
         overall = review.get("overall", "unknown")
         lines.append(
             f"\nNIST AI RMF context: overall={overall} "
-            f"(govern={review.get('govern',{}).get('status','?')}, "
-            f"manage={review.get('manage',{}).get('status','?')})"
+            f"(govern={review.get('govern', {}).get('status', '?')}, "
+            f"manage={review.get('manage', {}).get('status', '?')})"
         )
 
     lines.append(
@@ -217,8 +214,7 @@ def _render_executive_scorecard(backlog: dict, sscf: dict | None, org: str, titl
             )
     lines += [
         "",
-        f"*{len(assessed)} controls assessed · {na_count} not assessable via API · "
-        f"{len(items)} total in catalog*",
+        f"*{len(assessed)} controls assessed · {na_count} not assessable via API · {len(items)} total in catalog*",
         "",
     ]
     return "\n".join(lines)
@@ -288,8 +284,7 @@ def _render_priority_findings(backlog: dict, n: int = 10) -> str:
         action = action[:70] + "…" if len(action) > 70 else action
         due = item.get("due_date") or "—"
         lines.append(
-            f"| {idx} | `{cid}` | {sev_icon} {sev.capitalize()} "
-            f"| {sta_icon} {sta.capitalize()} | {action} | {due} |"
+            f"| {idx} | `{cid}` | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {action} | {due} |"
         )
 
     lines.append("")
@@ -317,8 +312,7 @@ def _render_full_matrix(backlog: dict) -> str:
         due = item.get("due_date") or "—"
         owner = item.get("owner", "—")
         lines.append(
-            f"| `{cid}` | {sev_icon} {sev.capitalize()} "
-            f"| {sta_icon} {sta.capitalize()} | {conf} | {due} | {owner} |"
+            f"| `{cid}` | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {conf} | {due} | {owner} |"
         )
 
     lines.append("")

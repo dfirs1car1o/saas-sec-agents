@@ -9,6 +9,7 @@ Uses the real salesforce_oscal_backlog_latest.json already in the repo.
 All tests are skipped if that file is not present (matches pipeline smoke pattern).
 """
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -153,6 +154,8 @@ def test_security_md(tmp_path: Path) -> None:
 def test_docx_created(tmp_path: Path) -> None:
     if not _BACKLOG.exists():
         pytest.skip(f"backlog file not found: {_BACKLOG}")
+    if shutil.which("pandoc") is None:
+        pytest.skip("pandoc not installed — DOCX conversion unavailable")
 
     # security audience triggers pandoc → DOCX conversion
     out = tmp_path / "report_security.md"
