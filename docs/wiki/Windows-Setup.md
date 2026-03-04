@@ -19,7 +19,7 @@ This guide is written for a corporate Windows machine where:
 | Docker | ❌ Not needed | `QDRANT_IN_MEMORY=1` replaces it |
 | WSL | ❌ Not needed | Pipeline is pure Python |
 | Node.js | ❌ Not needed | |
-| Claude Code CLI | ❌ Not needed | Only `ANTHROPIC_API_KEY` is required |
+| Claude Code CLI | ❌ Not needed | Only `OPENAI_API_KEY` is required |
 
 ---
 
@@ -87,7 +87,7 @@ pip install -e .
 pip install pytest pytest-mock PyYAML click
 ```
 
-This installs all pipeline tools (`sfdc-connect`, `oscal-assess`, `sscf-benchmark`, `report-gen`, `agent-loop`) as runnable commands.
+This installs all pipeline tools (`sfdc-connect`, `oscal-assess`, `sscf-benchmark`, `nist-review`, `report-gen`, `agent-loop`) as runnable commands.
 
 Verify:
 ```powershell
@@ -115,26 +115,34 @@ copy .env.example .env
 Now open `.env` in VS Code and fill in your values:
 
 ```ini
-# ── Anthropic (required for agent-loop) ──────────────────────
-ANTHROPIC_API_KEY=sk-ant-...
+# ── OpenAI (required for agent-loop) ─────────────────────────
+OPENAI_API_KEY=sk-...
 
-# ── Salesforce org credentials ────────────────────────────────
+# ── Salesforce auth — JWT (preferred) ────────────────────────
+SF_AUTH_METHOD=jwt
 SF_USERNAME=your.name@yourcompany.com
-SF_PASSWORD=YourSalesforcePassword
-SF_SECURITY_TOKEN=YourSecurityToken
-SF_DOMAIN=test           # "test" for sandbox orgs (recommended starting point); use "login" for production
-SF_INSTANCE_URL=https://yourorg--sandbox.sandbox.my.salesforce.com
+SF_CONSUMER_KEY=3MVG9...
+SF_PRIVATE_KEY_PATH=C:\Users\YourName\.ssh\salesforce_jwt_private.pem
+SF_DOMAIN=login           # "login" for production, "test" for sandbox
+
+# ── Salesforce auth — SOAP (username/password alternative) ───
+# SF_AUTH_METHOD=soap
+# SF_USERNAME=your.name@yourcompany.com
+# SF_PASSWORD=YourSalesforcePassword
+# SF_SECURITY_TOKEN=YourSecurityToken
+# SF_DOMAIN=test
 
 # ── Session memory (no Docker needed) ─────────────────────────
 QDRANT_IN_MEMORY=1
+MEMORY_ENABLED=0
 ```
 
 > **Where to get these values:**
-> - `ANTHROPIC_API_KEY` — from https://console.anthropic.com → API Keys
-> - `SF_USERNAME` / `SF_PASSWORD` — your Salesforce sandbox login credentials (same as production unless your admin set a separate sandbox user)
-> - `SF_SECURITY_TOKEN` — in Salesforce sandbox: **Settings → My Personal Information → Reset My Security Token** (token is emailed to you). Leave blank if your org uses trusted IP ranges. Note: sandbox and production have separate security tokens.
-> - `SF_DOMAIN` — use `test` for sandbox (default), `login` for production
-> - `SF_INSTANCE_URL` — the URL you use to log into the **sandbox** (e.g., `https://yourorg--dev.sandbox.my.salesforce.com`). Find it by logging into the sandbox and copying the browser URL.
+> - `OPENAI_API_KEY` — from [platform.openai.com](https://platform.openai.com) → API Keys
+> - `SF_USERNAME` — your Salesforce login username
+> - `SF_CONSUMER_KEY` — from Salesforce Setup → App Manager → your Connected App → Consumer Key
+> - `SF_PRIVATE_KEY_PATH` — path to the private key PEM file. For JWT setup, see [JWT Auth Setup](Configuration-Reference#salesforce-auth--jwt-preferred)
+> - `SF_DOMAIN` — use `test` for sandbox, `login` for production
 
 > **Security:** `.env` is in `.gitignore` — it will never be committed to Git. Never share it or paste it anywhere.
 
@@ -151,7 +159,7 @@ Expected output:
   PASS  [python] Python 3.11.x
   PASS  [git] git version 2.x.x
   PASS  [.env] .env file exists
-  PASS  [ANTHROPIC_API_KEY] Anthropic API key — set (sk-a****)
+  PASS  [OPENAI_API_KEY] OpenAI API key — set (sk-****)
   PASS  [SF_USERNAME] Salesforce username — set (your*****)
   PASS  [qdrant] QDRANT_IN_MEMORY=1 — in-process Qdrant, no Docker container needed
   PASS  [sfdc-connect-module] sfdc-connect --help OK
@@ -176,19 +184,20 @@ agent-loop [DRY-RUN]: org=test-org env=dev
   [tool] oscal_assess_assess(...)
   [tool] oscal_gap_map(...)
   [tool] sscf_benchmark_benchmark(...)
+  [tool] nist_review_assess(...)
   [tool] report_gen_generate(...)  ← app-owner report
   [tool] report_gen_generate(...)  ← security report
 
 ============================================================
-Assessment complete (5 turn(s))
+Assessment complete (7 turn(s))
 overall_score : 34.8%
-critical_fails: 4
+critical_fails: 0
 ============================================================
 ```
 
 Reports are written to:
 ```
-docs\oscal-salesforce-poc\generated\test-org\
+docs\oscal-salesforce-poc\generated\test-org\<date>\
 ```
 
 Open these in VS Code to review the output before running live.
@@ -198,7 +207,7 @@ Open these in VS Code to review the output before running live.
 ## Step 9 — Run Against Your Real Salesforce Org
 
 ```powershell
-agent-loop run --env prod --org your-org-name
+agent-loop run --env prod --org your-org-name --approve-critical
 ```
 
 Replace `your-org-name` with any label you want (used for output folder naming).
@@ -208,10 +217,7 @@ For a **sandbox**:
 agent-loop run --env dev --org your-org-sandbox
 ```
 
-> **Critical findings gate:** If the pipeline finds `status=fail AND severity=critical` findings, it will stop and ask for review. To approve and continue:
-> ```powershell
-> agent-loop run --env prod --org your-org-name --approve-critical
-> ```
+> **Critical findings gate:** If the pipeline finds `status=fail AND severity=critical` findings, it will stop and ask for review. To approve and continue, add `--approve-critical`.
 
 ---
 
@@ -220,15 +226,16 @@ agent-loop run --env dev --org your-org-sandbox
 After a live run, open the reports directly in VS Code:
 
 ```
-docs\oscal-salesforce-poc\generated\your-org-name\
-  ├── sfdc_raw.json           ← raw Salesforce config snapshot
-  ├── gap_analysis.json       ← control findings (pass/fail/partial)
-  ├── backlog.json            ← remediation backlog
-  ├── sscf_report.json        ← SSCF domain scorecard
-  ├── report_app_owner.md     ← app owner remediation report
-  ├── report_security.md      ← security governance report (Markdown)
-  ├── report_security.docx    ← security governance report (Word)
-  └── loop_result.json        ← run metadata
+docs\oscal-salesforce-poc\generated\your-org-name\<date>\
+  ├── sfdc_raw.json                  ← raw Salesforce config snapshot
+  ├── gap_analysis.json              ← control findings (pass/fail/partial)
+  ├── backlog.json                   ← remediation backlog
+  ├── sscf_report.json               ← SSCF domain scorecard
+  ├── nist_review.json               ← NIST AI RMF governance verdict
+  ├── {org}_remediation_report.md    ← app owner remediation report
+  ├── {org}_security_assessment.md   ← security governance report (Markdown)
+  ├── {org}_security_assessment.docx ← security governance report (Word)
+  └── loop_result.json               ← run metadata
 ```
 
 The `.docx` file can be opened directly in Microsoft Word. The `.md` files render in VS Code with **Ctrl+Shift+V**.
@@ -286,11 +293,12 @@ pip install -e . --trusted-host pypi.org --trusted-host files.pythonhosted.org
 
 Ask IT for your proxy address if unsure.
 
-### Salesforce login fails
+### Salesforce JWT login fails
 
-- Double-check `SF_DOMAIN=login` for production, `SF_DOMAIN=test` for sandbox
-- Security token: reset it at **Salesforce → Settings → Reset My Security Token**
-- If your company uses SSO to log into Salesforce, you may need a **connected app API user** with username/password auth — ask your Salesforce admin
+- Verify `SF_DOMAIN=login` for production, `SF_DOMAIN=test` for sandbox
+- Check the private key path uses Windows-style separators or raw string: `C:\\Users\\...` or `C:/Users/...`
+- Verify the Connected App has "Use digital signatures" enabled in Salesforce
+- If your company uses SSO, you may need a dedicated API user — ask your Salesforce admin
 
 ### PowerShell execution policy error
 
@@ -313,5 +321,5 @@ The pipeline uses Python's `pathlib` internally, which handles Windows paths cor
 - No Salesforce data is written — **read-only** against your org
 - All output stays inside the `docs\oscal-salesforce-poc\generated\` folder
 - The only outbound connections are:
-  - `api.anthropic.com` (LLM calls using your API key)
+  - `api.openai.com` (LLM calls using your API key)
   - Your Salesforce org's REST/Tooling API endpoints

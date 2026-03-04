@@ -10,26 +10,48 @@ All environment variables, configuration files, and YAML schemas used by this sy
 
 | Variable | Description | Example |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key for LLM calls | `sk-ant-api03-...` |
+| `OPENAI_API_KEY` | OpenAI API key for all LLM calls | `sk-...` |
 | `SF_USERNAME` | Salesforce login username | `admin@mycompany.com` |
+| `SF_AUTH_METHOD` | Auth method: `jwt` (preferred) or `soap` | `jwt` |
+
+### Salesforce Auth — JWT (Preferred)
+
+| Variable | Description | Example |
+|---|---|---|
+| `SF_CONSUMER_KEY` | Connected app consumer key | `3MVG9...` |
+| `SF_PRIVATE_KEY_PATH` | Path to JWT private key PEM file | `/home/user/sf.pem` |
+| `SF_DOMAIN` | `login` for production, `test` for sandbox | `login` |
+
+### Salesforce Auth — SOAP (Username/Password)
+
+| Variable | Description | Example |
+|---|---|---|
 | `SF_PASSWORD` | Salesforce login password | `MyPassword123` |
-| `SF_SECURITY_TOKEN` | Salesforce security token (appended to password for non-trusted IPs) | `AbcDef123...` |
+| `SF_SECURITY_TOKEN` | Security token (appended to password for non-trusted IPs) | `AbcDef123...` |
+| `SF_DOMAIN` | `login` for production, `test` for sandbox | `login` |
 
 ### Optional / Override
 
 | Variable | Default | Description |
 |---|---|---|
-| `SF_DOMAIN` | `login` | Use `test` for sandbox orgs |
 | `SF_INSTANCE_URL` | Auto-detected | Override if using a custom domain |
-| `SFDC_ORG_ALIAS` | `default` | Used in output file path naming |
 | `QDRANT_IN_MEMORY` | `1` | `1` = in-process (no Docker); `0` = use QDRANT_HOST |
 | `QDRANT_HOST` | unset | Qdrant container hostname (only if `QDRANT_IN_MEMORY=0`) |
 | `QDRANT_PORT` | `6333` | Qdrant container port |
+| `MEMORY_ENABLED` | `0` | Set to `1` to enable Mem0 session memory |
+| `LLM_MODEL_ORCHESTRATOR` | `gpt-5.2` | Override orchestrator model |
+| `LLM_MODEL_ANALYST` | `gpt-5.2` | Override analyst/assessor model |
+| `LLM_MODEL_REPORTER` | `gpt-4o-mini` | Override reporter model |
 
-### QDRANT_IN_MEMORY Values
+### Azure OpenAI Government (FedRAMP / IL5)
 
-All of these are treated as "enabled":
-- `1`, `true`, `yes`, `on` (case-insensitive)
+To route all calls through Azure OpenAI instead of the public OpenAI API, set:
+
+| Variable | Description |
+|---|---|
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI key |
+| `AZURE_OPENAI_ENDPOINT` | e.g., `https://myresource.openai.azure.com/` |
+| `AZURE_OPENAI_API_VERSION` | e.g., `2025-01-01-preview` |
 
 ---
 
@@ -107,7 +129,7 @@ domains:
 
 **Status values:** `pass` | `fail` | `partial` | `not_applicable`
 
-**Severity values:** `critical` | `high` | `medium` | `low`
+**Severity values:** `critical` | `high` | `moderate` | `low`
 
 ---
 
@@ -143,7 +165,7 @@ Every file in `agents/` has YAML frontmatter:
 name: agent-name
 description: |
   What this agent does and when to invoke it.
-model: claude-sonnet-4-6
+model: gpt-5.2
 tools:
   - sfdc_connect_collect
   - oscal_assess_assess
@@ -153,9 +175,8 @@ proactive_triggers:
 ```
 
 **Model options:**
-- `claude-opus-4-6` — orchestrator only
-- `claude-sonnet-4-6` — collector, assessor, nist-reviewer, security-reviewer
-- `claude-haiku-4-5-20251001` — reporter (use dated ID for reproducibility)
+- `gpt-5.2` — orchestrator, collector, assessor, nist-reviewer, security-reviewer, sfdc-expert
+- `gpt-4o-mini` — reporter (cost-efficient for templated narrative output)
 
 ---
 
@@ -167,6 +188,7 @@ proactive_triggers:
 sfdc-connect = "skills.sfdc_connect.sfdc_connect:cli"
 oscal-assess  = "skills.oscal_assess.oscal_assess:cli"
 sscf-benchmark = "skills.sscf_benchmark.sscf_benchmark:cli"
+nist-review   = "skills.nist_review.nist_review:cli"
 agent-loop    = "harness.loop:cli"
 report-gen    = "skills.report_gen.report_gen:cli"
 

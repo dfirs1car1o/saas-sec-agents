@@ -17,7 +17,7 @@ All actions are pinned to full commit SHAs for supply chain security.
 | `pip-audit` | `pip-audit --desc on` | All PRs + push to main | Any installed package has a known CVE |
 | `validate-env` | `validate_env.py --ci` | All PRs + push to main | Missing required repo files or Python packages |
 | `license-check` | `pip-licenses` | All PRs + push to main | GPL/AGPL/LGPL dependency detected (not in allowlist) |
-| `pytest` | `pytest tests/ -v` | All PRs + push to main | Any test fails |
+| `pytest` | `pytest tests/ -v` | All PRs + push to main | Any test fails (12 tests total) |
 
 **Fix `ruff` failures:**
 ```bash
@@ -40,7 +40,7 @@ python3 scripts/validate_env.py --fix
 - If a new GPL/LGPL dep appeared: find the transitive dep and replace it
 - If LGPL is acceptable: add to `lgpl_allowlist` in `ci.yml` with review comment
 
-**Current LGPL allowlist:** `fpdf2` (LGPL-3.0) is explicitly allowed — it is used for PDF generation and is acceptable for internal tooling.
+**Current LGPL allowlist:** None — PDF generation was removed; all reports use pandoc (MIT) for DOCX conversion.
 
 ---
 
@@ -152,6 +152,17 @@ These are **informational only** — they don't block merging. They appear as an
 
 ---
 
+## CodeRabbit Pro
+
+This repo uses **CodeRabbit Pro** for AI-powered code review on every PR. CodeRabbit posts:
+- Summary of changes
+- Potential bugs and security issues
+- Code quality suggestions
+
+CodeRabbit runs automatically — no setup required for contributors. Reviews appear as PR comments from the `coderabbitai` bot.
+
+---
+
 ## All-Green Checklist Before Merging
 
 ```
@@ -160,12 +171,13 @@ These are **informational only** — they don't block merging. They appear as an
 □ pip-audit — no CVEs
 □ validate-env — all non-credential checks pass
 □ license-check — no unapproved copyleft
-□ pytest — 9/9 pass
+□ pytest — 12/12 pass
 □ Bandit SAST — no HIGH findings
 □ Secret scan (gitleaks) — no credentials found
 □ zizmor — no HIGH workflow findings
 □ actionlint — no syntax errors
 □ CodeQL — no injection/traversal patterns
 □ Dependency Review — no new HIGH/CRITICAL CVEs (if pyproject.toml changed)
+□ CodeRabbit Pro — review addressed
 □ 1 PR review — required by branch protection
 ```

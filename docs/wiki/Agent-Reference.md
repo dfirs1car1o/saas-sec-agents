@@ -1,6 +1,6 @@
 # Agent Reference
 
-All 6 agents in the system. Each has a definition file in `agents/` with YAML frontmatter and a full role description.
+All 7 agents in the system. Each has a definition file in `agents/` with YAML frontmatter and a full role description.
 
 ---
 
@@ -9,7 +9,7 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/orchestrator.md` |
-| **Model** | `claude-opus-4-6` |
+| **Model** | `gpt-5.2` |
 | **Tools** | All 5 CLI skills |
 | **Invoked by** | Human (entry point for all requests) |
 
@@ -31,13 +31,14 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 
 | Request | Sequence |
 |---|---|
-| Full org assessment | sfdc-connect → oscal-assess → gap_map → sscf-benchmark → report-gen × 2 |
+| Full org assessment | sfdc-connect → oscal-assess → gap_map → sscf-benchmark → nist-review → report-gen × 2 |
 | Gap map from existing JSON | gap_map → sscf-benchmark → report-gen |
 | Report refresh | report-gen × 2 |
 | NIST AI RMF validation | nist-reviewer (text) |
 | CI/CD security review | security-reviewer (text) |
 | New skill added | security-reviewer (text) → review subprocess dispatcher |
 | Control research | assessor context, no tools |
+| Apex / complex SFDC question | sfdc-expert (on-call) |
 
 ---
 
@@ -46,7 +47,7 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/collector.md` |
-| **Model** | `claude-sonnet-4-6` |
+| **Model** | `gpt-5.2` |
 | **Tools** | `sfdc-connect` |
 | **Invoked by** | Orchestrator |
 
@@ -61,7 +62,7 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/assessor.md` |
-| **Model** | `claude-sonnet-4-6` |
+| **Model** | `gpt-5.2` |
 | **Tools** | `oscal-assess`, `oscal_gap_map` |
 | **Invoked by** | Orchestrator |
 
@@ -76,13 +77,13 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/reporter.md` |
-| **Model** | `claude-haiku-4-5-20251001` |
+| **Model** | `gpt-4o-mini` |
 | **Tools** | `report-gen` |
 | **Invoked by** | Orchestrator (after assessor completes) |
 
-**Role:** Generates governance outputs. Two runs per assessment: once for `app-owner` (Markdown), once for `security` (Markdown + DOCX + PDF).
+**Role:** Generates governance outputs. Two runs per assessment: once for `app-owner` (Markdown), once for `security` (Markdown + DOCX).
 
-**Why Haiku?** Report generation is templated output from structured data — low complexity, high volume. Haiku is the fastest and cheapest model for this task.
+**Why gpt-4o-mini?** Report generation is narrative output from structured data — low complexity, high volume. gpt-4o-mini is the fastest and most cost-efficient model for this task.
 
 ---
 
@@ -91,7 +92,7 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/nist-reviewer.md` |
-| **Model** | `claude-sonnet-4-6` |
+| **Model** | `gpt-5.2` |
 | **Tools** | None (text analysis only) |
 | **Invoked by** | Orchestrator (final validation step) |
 
@@ -100,6 +101,8 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 - Bias and fairness considerations in AI-generated findings
 - Accountability trail (assessment_id, generated_at_utc, evidence_ref)
 - Risk categorization alignment
+
+**Verdicts:** `pass` → `flag` (review required) → `block` (do not distribute). A `block` verdict prepends ⛔ banner to both reports; `flag` prepends 🚩.
 
 **Why no tools?** Review is analytical. Giving it tool access would risk accidental state modification.
 
@@ -110,7 +113,7 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/security-reviewer.md` |
-| **Model** | `claude-sonnet-4-6` |
+| **Model** | `gpt-5.2` |
 | **Tools** | None (text analysis only) |
 | **Invoked by** | Orchestrator on CI/CD, workflow, or skill changes |
 
@@ -135,6 +138,21 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
 
 ---
 
+## SFDC Expert
+
+| Field | Value |
+|---|---|
+| **File** | `agents/sfdc-expert.md` |
+| **Model** | `gpt-5.2` |
+| **Tools** | None (text analysis + code generation only) |
+| **Invoked by** | Orchestrator when findings have `needs_expert_review=true` |
+
+**Role:** On-call Salesforce specialist. Handles complex questions that the assessor cannot resolve through CLI tools — Apex code review, Flow/Process Builder security issues, SOQL injection patterns, and Connected App scope analysis. See `apex-scripts/README.md` for Apex security patterns.
+
+**Outputs:** Plain-text analysis and Apex code snippets (never executed — for human review only).
+
+---
+
 ## Adding a New Agent
 
 1. Create `agents/<name>.md` with YAML frontmatter:
@@ -142,7 +160,7 @@ All 6 agents in the system. Each has a definition file in `agents/` with YAML fr
    ---
    name: my-agent
    description: What it does and when to use it
-   model: claude-sonnet-4-6
+   model: gpt-5.2
    tools: []
    ---
    ```

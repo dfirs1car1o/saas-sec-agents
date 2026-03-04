@@ -37,9 +37,25 @@ sfdc-connect auth --dry-run   # test auth only, no collection
 | REST `NetworkAccess` | Trusted IP ranges | ACS controls |
 | REST `ConnectedApp` | OAuth clients, scopes, token policy | OAUTH controls |
 
-### Auth Method
+### Auth Methods
 
-`simple-salesforce` with username + password + security token. Credentials from `SF_USERNAME`, `SF_PASSWORD`, `SF_SECURITY_TOKEN`, `SF_DOMAIN`.
+**JWT Bearer (preferred — no password stored):**
+```bash
+SF_AUTH_METHOD=jwt
+SF_USERNAME=user@org.com
+SF_CONSUMER_KEY=3MVG9...
+SF_PRIVATE_KEY_PATH=/path/to/private.pem
+SF_DOMAIN=login
+```
+
+**SOAP (username/password):**
+```bash
+SF_AUTH_METHOD=soap   # or omit (default)
+SF_USERNAME=user@org.com
+SF_PASSWORD=...
+SF_SECURITY_TOKEN=...
+SF_DOMAIN=login
+```
 
 ---
 
@@ -72,12 +88,14 @@ oscal-assess assess --collector-output sfdc_raw.json --org my-org [--out PATH]
 {
   "assessment_id": "sfdc-assess-my-org-dev",
   "generated_at_utc": "2026-03-02T15:00:00Z",
+  "assessment_owner": "SaaS Security Architect",
   "findings": [
     {
       "control_id": "SBS-AUTH-001",
       "status": "fail",
       "severity": "critical",
       "owner": "security-team",
+      "due_date": "2026-03-09",
       "evidence_ref": "collector://salesforce/dev/SBS-AUTH-001/snapshot-2026-03-02"
     }
   ]
@@ -95,19 +113,20 @@ oscal-assess assess --collector-output sfdc_raw.json --org my-org [--out PATH]
 ### Commands
 
 ```bash
-sscf-benchmark benchmark --backlog backlog.json --org my-org [--out PATH]
+sscf-benchmark benchmark --backlog backlog.json --org my-org [--out PATH] [--threshold 0.80]
 ```
 
 ### Scoring
 
 ```
-domain_score = (pass_count + 0.5 * partial_count) / total_controls_in_domain
-overall_score = weighted_average(domain_scores)
+domain_score = (pass_count + 0.5 * partial_count) / total_assessed_controls
+overall_score = weighted_average(domain_scores, excluding not_assessed domains)
 
-Status:
-  overall_score >= 0.70 → GREEN
-  0.40 <= overall_score < 0.70 → AMBER
-  overall_score < 0.40 → RED
+Status (default threshold=0.80):
+  domain_score >= threshold → GREEN
+  0.50 <= domain_score < threshold → AMBER
+  domain_score < 0.50 → RED
+  no findings mapped → NOT ASSESSED (excluded from overall score)
 ```
 
 ### Output
@@ -115,15 +134,21 @@ Status:
 `sscf_report.json`:
 ```json
 {
-  "org": "my-org",
   "overall_score": 0.348,
-  "overall_status": "RED",
-  "domain_scores": {
-    "IAM": 0.25,
-    "DATA": 0.40,
-    "OPS": 0.50
-  },
-  "top_gaps": ["SBS-AUTH-001", "SBS-ACS-001", "SBS-OAUTH-001"]
+  "overall_status": "red",
+  "domains": [
+    {
+      "domain": "identity_access_management",
+      "score": 0.34,
+      "status": "red",
+      "pass": 2, "partial": 3, "fail": 6, "not_applicable": 0
+    },
+    {
+      "domain": "governance_risk_compliance",
+      "score": null,
+      "status": "not_assessed"
+    }
+  ]
 }
 ```
 
@@ -141,30 +166,52 @@ Status:
 # App owner report (Markdown)
 report-gen generate \
     --backlog backlog.json \
-    --sscf-report sscf_report.json \
+    --sscf-benchmark sscf_report.json \
+    --nist-review nist_review.json \
     --audience app-owner \
-    --org my-org \
+    --org-alias my-org \
     --out report-app-owner.md
 
-# Security governance report (Markdown + DOCX + PDF)
+# Security governance report (Markdown + DOCX)
 report-gen generate \
     --backlog backlog.json \
-    --sscf-report sscf_report.json \
+    --sscf-benchmark sscf_report.json \
+    --nist-review nist_review.json \
     --audience security \
-    --org my-org \
+    --org-alias my-org \
     --out report-security.md
+
+# Offline / CI mode (no OpenAI API call)
+report-gen generate --backlog backlog.json --audience security --out report.md --mock-llm
 ```
 
 ### Audiences
 
 | Audience | Formats | Contents |
 |---|---|---|
-| `app-owner` | Markdown | Remediation backlog, control gaps by severity, owner assignments |
-| `security` | Markdown + DOCX + PDF | Executive summary, SSCF heatmap, full finding details, NIST AI RMF note |
+| `app-owner` | Markdown | Executive Scorecard, Immediate Actions, plain-language narrative, Full Control Matrix |
+| `security` | Markdown + DOCX | All of the above + Domain Posture chart + NIST AI RMF Governance Review |
 
-### DOCX Template Engine
+### Report Structure
 
-Uses `docxtpl` (LGPL-2.1, Python Jinja2 wrapper for python-docx). Template: `skills/report_gen/templates/security_report.docx`.
+```
+[Gate banner]                  ← ⛔ block / 🚩 flag if NIST verdict requires it
+Executive Scorecard            ← overall score + severity × status matrix  [HARNESS]
+Domain Posture (ASCII chart)   ← bar chart of SSCF domain scores           [HARNESS]
+Immediate Actions (Top 10)     ← sorted critical/fail findings             [HARNESS]
+Executive Summary + Analysis   ← LLM narrative only                        [LLM]
+Full Control Matrix            ← complete sorted findings table             [HARNESS]
+NIST AI RMF Governance Review  ← function table + blockers + recs          [HARNESS]
+```
+
+### DOCX Generation
+
+Uses `pandoc` (MIT) to convert Markdown → DOCX. A reference template (`skills/report_gen/report_template.docx`) is used if present for styling. Requires `pandoc` on your PATH:
+
+```bash
+brew install pandoc    # macOS
+apt install pandoc     # Linux
+```
 
 ---
 
@@ -180,7 +227,7 @@ python3 scripts/oscal_gap_map.py \
     --out-json backlog.json
 ```
 
-Maps `gap_analysis.json` findings to SSCF controls using `config/oscal-salesforce/sbs_to_sscf_mapping.yaml`. Produces `backlog.json` with remediation items and SSCF control references.
+Maps `gap_analysis.json` findings to SSCF controls using `config/oscal-salesforce/sbs_to_sscf_mapping.yaml`. Produces `backlog.json` with remediation items, SSCF control references, and `mapping_confidence` (high/medium/low).
 
 Controls starting with `SBS-` are looked up directly — no `control_mapping.yaml` needed.
 
@@ -222,7 +269,7 @@ nist-review assess \
     "map":     { "status": "pass|partial|fail", "notes": "..." },
     "measure": { "status": "pass|partial|fail", "notes": "..." },
     "manage":  { "status": "pass|partial|fail", "notes": "..." },
-    "overall": "clear|flag|block",
+    "overall": "pass|flag|block",
     "blocking_issues": [],
     "recommendations": ["..."]
   }
@@ -231,8 +278,8 @@ nist-review assess \
 
 ### Live mode
 
-In live mode (`--dry-run` omitted), calls `claude-sonnet-4-6` with `agents/nist-reviewer.md` as system prompt. Input JSONs are truncated to 6 000 chars each to stay within the token budget. Requires `ANTHROPIC_API_KEY`.
+In live mode, calls `gpt-5.2` with `agents/nist-reviewer.md` as system prompt. Input JSONs are truncated to 6 000 chars each to stay within the token budget. Requires `OPENAI_API_KEY`.
 
 ### Dry-run mode
 
-Emits a realistic weak-org stub verdict: GOVERN=pass, MAP=partial, MEASURE=pass, MANAGE=partial, overall=flag. Does not call the Anthropic API.
+Emits a realistic weak-org stub verdict: GOVERN=pass, MAP=partial, MEASURE=pass, MANAGE=partial, overall=flag. Does not call the OpenAI API.

@@ -72,7 +72,7 @@ Produces a synthetic weak-org snapshot (no real Salesforce connection needed).
 oscal-assess assess --collector-output sfdc_raw.json --org my-org --out gap_analysis.json
 ```
 
-**Output:** `gap_analysis.json` — findings array with `control_id`, `status`, `severity`, `owner`, `evidence_ref`.
+**Output:** `gap_analysis.json` — findings array with `control_id`, `status`, `severity`, `owner`, `evidence_ref`, `due_date`.
 
 ---
 
@@ -106,8 +106,9 @@ python3 scripts/oscal_gap_map.py \
 
 **Scoring:**
 - Per-domain score: `(pass + 0.5*partial) / total_controls_in_domain`
-- Overall score: weighted average across all domains
-- Status thresholds: RED < 40%, AMBER 40–70%, GREEN > 70%
+- Overall score: weighted average across all assessed domains
+- Status thresholds: RED < 40%, AMBER 40–80%, GREEN ≥ 80% (configurable via `--threshold`)
+- Domains with no mapped findings show as `N/A / NOT ASSESSED` (not counted against the score)
 
 **Command:**
 ```bash
@@ -117,7 +118,7 @@ sscf-benchmark benchmark \
     --out sscf_report.json
 ```
 
-**Output:** `sscf_report.json` — domain scores, overall score, overall status, top gaps.
+**Output:** `sscf_report.json` — domain scores, overall score, overall status, per-domain control detail.
 
 ---
 
@@ -142,7 +143,7 @@ nist-review assess \
     --out nist_review.json
 ```
 
-**Output:** `nist_review.json` — structured verdict with per-function status (pass/partial/fail), overall verdict (clear/flag/block), blocking issues list, and recommendations.
+**Output:** `nist_review.json` — structured verdict with per-function status (pass/partial/fail), overall verdict (pass/flag/block), blocking issues list, and recommendations.
 
 **Dry-run mode:**
 ```bash
@@ -152,7 +153,7 @@ nist-review assess \
     --out nist_review.json \
     --dry-run
 ```
-Produces a realistic stub verdict (GOVERN=pass, MAP=partial, MEASURE=pass, MANAGE=partial, overall=flag) without calling the Anthropic API.
+Produces a realistic stub verdict (GOVERN=pass, MAP=partial, MEASURE=pass, MANAGE=partial, overall=flag) without calling the OpenAI API.
 
 ---
 
@@ -164,13 +165,14 @@ Produces a realistic stub verdict (GOVERN=pass, MAP=partial, MEASURE=pass, MANAG
 ```bash
 report-gen generate \
     --backlog backlog.json \
-    --sscf-report sscf_report.json \
+    --sscf-benchmark sscf_report.json \
+    --nist-review nist_review.json \
     --audience app-owner \
-    --org my-org \
+    --org-alias my-org \
     --out my-org_remediation_report.md
 ```
 
-**Output:** `{org}_remediation_report.md` — plain-language remediation backlog with control gaps and severity breakdown.
+**Output:** `{org}_remediation_report.md` with Executive Scorecard, Immediate Actions, plain-language narrative, and Full Control Matrix.
 
 ---
 
@@ -182,29 +184,30 @@ report-gen generate \
 ```bash
 report-gen generate \
     --backlog backlog.json \
-    --sscf-report sscf_report.json \
+    --sscf-benchmark sscf_report.json \
+    --nist-review nist_review.json \
     --audience security \
-    --org my-org \
-    --out my-org_security_assessment.md  # also writes .docx and .pdf
+    --org-alias my-org \
+    --out my-org_security_assessment.md   # also writes .docx
 ```
 
-**Output:** `{org}_security_assessment.md`, `{org}_security_assessment.docx`, `{org}_security_assessment.pdf` — full SSCF heatmap, NIST AI RMF note, executive summary, and finding details.
+**Output:** `{org}_security_assessment.md` + `{org}_security_assessment.docx` — SSCF domain bar chart, full control matrix, NIST AI RMF governance review, executive summary, and risk analysis.
 
 ---
 
 ## Orchestrated Pipeline (agent-loop)
 
-All 7 stages above run automatically via `agent-loop`. The `claude-opus-4-6` orchestrator decides the sequence, passes outputs between tools, and enforces quality gates.
+All 7 stages above run automatically via `agent-loop`. The `gpt-5.2` orchestrator decides the sequence, passes outputs between tools, and enforces quality gates.
 
 ```bash
 # Full live run
-agent-loop run --env prod --org mycompany
+agent-loop run --env prod --org mycompany --approve-critical
 
 # Dry-run (no Salesforce, no real API spend on tools)
 agent-loop run --dry-run --env dev --org test-org
 ```
 
-**Turn budget:** 20 turns max. Typical full pipeline: 7–9 turns.
+**Turn budget:** 12 turns max. Typical full pipeline: 7–9 turns.
 
 **Quality gates the orchestrator enforces:**
 1. `critical/fail` findings require `--approve-critical` to proceed on live runs
@@ -219,8 +222,8 @@ agent-loop run --dry-run --env dev --org test-org
 
 | Score | Status | Meaning |
 |---|---|---|
-| > 70% | GREEN | Most controls met; minor gaps |
-| 40–70% | AMBER | Significant gaps; remediation plan required |
+| ≥ 80% | GREEN | Most controls met; minor gaps |
+| 40–79% | AMBER | Significant gaps; remediation plan required |
 | < 40% | RED | Critical posture deficiencies; immediate action required |
 
 A dry-run with the synthetic weak-org stub produces ~34.8% RED — this is intentional to test the full alert path.

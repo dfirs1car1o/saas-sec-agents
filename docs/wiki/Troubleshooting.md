@@ -13,21 +13,28 @@ Then verify: `which agent-loop`
 
 ---
 
-## `ANTHROPIC_API_KEY not set` or `AuthenticationError`
+## `OPENAI_API_KEY not set` or `AuthenticationError`
 
-1. Check `.env` has `ANTHROPIC_API_KEY=sk-ant-...`
+1. Check `.env` has `OPENAI_API_KEY=sk-...`
 2. Verify `load_dotenv` is being called: `harness/loop.py` calls `load_dotenv(_REPO / ".env")` at import time
-3. Check the key starts with `sk-ant-` — Anthropic API keys use this prefix
-4. Check the key hasn't expired or been revoked at console.anthropic.com
+3. Check the key starts with `sk-` — OpenAI API keys use this prefix
+4. Check the key hasn't expired or been revoked at [platform.openai.com](https://platform.openai.com) → API Keys
 
 ---
 
 ## `Salesforce login failed` / `SalesforceAuthenticationFailed`
 
+**For SOAP auth (username/password):**
 1. Check `SF_USERNAME`, `SF_PASSWORD`, `SF_SECURITY_TOKEN` are set correctly in `.env`
 2. For sandbox orgs: `SF_DOMAIN=test` (not `login`)
 3. Security token: append it to your password if your org's IP isn't trusted, or leave blank if it is
-4. Try authenticating manually: `sfdc-connect auth --dry-run`
+
+**For JWT auth:**
+1. Check `SF_AUTH_METHOD=jwt`, `SF_CONSUMER_KEY`, and `SF_PRIVATE_KEY_PATH` are all set
+2. Verify the private key file exists and is readable: `ls -la $SF_PRIVATE_KEY_PATH`
+3. Verify the Connected App in Salesforce has "Use digital signatures" enabled and your certificate uploaded
+4. Developer Edition orgs: use `SF_DOMAIN=login` (not `test`)
+5. Try authenticating manually: `sfdc-connect auth --dry-run`
 
 ---
 
@@ -76,21 +83,14 @@ If you're calling CLIs directly, add `--org my-org` to each command.
 
 ---
 
-## `max_tokens reached` or loop stops early
+## `Reached max turns (12)` warning
 
-The orchestrator hit the `max_tokens=4096` limit on a single response. This is rare but can happen on very verbose tool outputs.
+The pipeline ran 12 turns without completing. Most common cause: the orchestrator made extra diagnostic tool calls after finishing the pipeline.
 
-Workaround:
-- Retry — the loop will usually recover
-- Use `--task` to provide a more focused task prompt with fewer pipeline stages
-
----
-
-## `Reached max turns (20)` warning
-
-The pipeline ran 20 turns without completing. Most common cause: the orchestrator is waiting for human input it can't get.
-
-Fix: If running dry-run, the task prompt should already include the dry-run bypass instruction. Check `harness/loop.py` task construction for the `dry_gate_note` string.
+Fixes:
+- Re-run — the LLM usually completes within budget on retry
+- Check that the task prompt ends with "After step 6b, STOP calling tools immediately" (see `harness/loop.py`)
+- If consistently hitting the limit, check `_MAX_TURNS` in `harness/loop.py` and bump to 14
 
 ---
 
@@ -113,7 +113,7 @@ Note: `[tool.uv]` dev-dependencies in `pyproject.toml` are not installed by plai
 
 This is expected in CI — the environment check job intentionally skips credential checks:
 ```python
-cred_skip = {"SF_USERNAME", "SF_PASSWORD", "SF_SECURITY_TOKEN", "ANTHROPIC_API_KEY", ...}
+cred_skip = {"SF_USERNAME", "SF_PASSWORD", "SF_SECURITY_TOKEN", "OPENAI_API_KEY", ...}
 ```
 
 If non-credential checks fail (e.g., `repo-layout`, `sfdc-connect-module`), run:

@@ -2,76 +2,71 @@
 
 ## Design Philosophy
 
-**OpenClaw**: CLIs not MCPs. Every tool is a Python CLI callable from the shell. No hidden MCP state. No Docker-required infrastructure. The agent loop is a standard Anthropic `tool_use` ReAct loop.
+**OpenClaw**: CLIs not MCPs. Every tool is a Python CLI callable from the shell. No hidden MCP state. No Docker-required infrastructure. The agent loop is an OpenAI `tool_use` ReAct loop.
 
 ---
 
 ## System Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    agent-loop (claude-opus-4-6)          │
-│                     Anthropic tool_use ReAct loop        │
-│                     max 20 turns, prompt-cached          │
-└──────────┬──────────┬──────────┬───────────┬────────────┘
-           │          │          │           │
-    ┌──────▼──┐ ┌─────▼──┐ ┌────▼──┐ ┌─────▼────┐
-    │sfdc-    │ │oscal-  │ │oscal_ │ │sscf-     │
-    │connect  │ │assess  │ │gap_map│ │benchmark │
-    │(collect)│ │(assess)│ │(map)  │ │(score)   │
-    └──────┬──┘ └─────┬──┘ └────┬──┘ └─────┬────┘
-           │          │          │           │
-    sfdc_  │  gap_    │  back-   │  sscf_   │
-    raw.   │  analysis│  log.    │  report. │
-    json   │  .json   │  json    │  json    │
-           └──────────┴──────────┴──────────┘
-                              │
-                    ┌─────────▼──────────┐
-                    │   report-gen        │
-                    │  (claude-haiku-4-5) │
-                    │  app-owner MD       │
-                    │  security MD + DOCX  │
-                    └─────────┬──────────┘
-                              │
-                    ┌─────────▼──────────┐
-                    │   nist-reviewer     │
-                    │  (sonnet-4-6)       │
-                    │  NIST AI RMF gate   │
-                    └────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│              agent-loop (gpt-5.2 orchestrator)                │
+│              OpenAI tool_use ReAct loop, max 12 turns         │
+└──────┬──────────┬──────────┬──────────┬──────────┬───────────┘
+       │          │          │          │          │
+ ┌─────▼──┐ ┌────▼───┐ ┌────▼──┐ ┌─────▼────┐ ┌──▼────────┐
+ │sfdc-   │ │oscal-  │ │oscal_ │ │sscf-     │ │nist-      │
+ │connect │ │assess  │ │gap_map│ │benchmark │ │review     │
+ │(collect)│ │(assess)│ │(map)  │ │(score)   │ │(validate) │
+ └─────┬──┘ └────┬───┘ └────┬──┘ └─────┬────┘ └──┬────────┘
+       │         │           │          │          │
+  sfdc_raw  gap_analysis  backlog   sscf_report  nist_review
+  .json      .json         .json     .json        .json
+       └─────────┴───────────┴──────────┴──────────┘
+                                    │
+                          ┌─────────▼──────────┐
+                          │   report-gen        │
+                          │  (gpt-4o-mini)      │
+                          │  app-owner MD       │
+                          │  security MD + DOCX │
+                          └────────────────────┘
 ```
 
 ---
 
 ## Agent Architecture
 
-### 6 Agents
+### 7 Agents
 
 | Agent | Model | Role | Tools |
 |---|---|---|---|
-| `orchestrator` | claude-opus-4-6 | Routes tasks, manages the ReAct loop, quality gates | All 5 CLI tools |
-| `collector` | claude-sonnet-4-6 | Extracts Salesforce org config via REST/Metadata API | sfdc-connect |
-| `assessor` | claude-sonnet-4-6 | Maps findings to OSCAL/SBS/SSCF controls | oscal-assess, oscal_gap_map |
-| `reporter` | claude-haiku-4-5-20251001 | Generates DOCX/MD governance outputs | report-gen |
-| `nist-reviewer` | claude-sonnet-4-6 | Validates outputs against NIST AI RMF | None (text analysis) |
-| `security-reviewer` | claude-sonnet-4-6 | AppSec + DevSecOps review of CI/CD and skills | None (text analysis) |
+| `orchestrator` | gpt-5.2 | Routes tasks, manages the ReAct loop, quality gates | All 5 CLI tools |
+| `collector` | gpt-5.2 | Extracts Salesforce org config via REST/Metadata API | sfdc-connect |
+| `assessor` | gpt-5.2 | Maps findings to OSCAL/SBS/SSCF controls | oscal-assess, oscal_gap_map |
+| `reporter` | gpt-4o-mini | Generates DOCX/MD governance outputs | report-gen |
+| `nist-reviewer` | gpt-5.2 | Validates outputs against NIST AI RMF | None (text analysis) |
+| `security-reviewer` | gpt-5.2 | AppSec + DevSecOps review of CI/CD and skills | None (text analysis) |
+| `sfdc-expert` | gpt-5.2 | On-call Salesforce/Apex specialist | None (text + code) |
 
 ### Model Assignment Rationale
 
-- **Opus** for the orchestrator: complex routing with incomplete information, quality gates, final assembly
-- **Sonnet** for analytical work: API extraction, control mapping, regulatory QA, security review
-- **Haiku** for templated output: structured data → formatted report (low-complexity, high-volume)
-- **No tools for review agents**: text-only analysis prevents accidental state modification
+- **gpt-5.2** for all analytical and orchestration work: complex routing, API extraction, control mapping, regulatory QA, security review
+- **gpt-4o-mini** for templated output: structured data → formatted report (low-complexity, high-volume, cost-efficient)
+- **No tools for review/expert agents**: text-only analysis prevents accidental state modification
+
+> **Note:** This repo migrated from Anthropic Claude models to OpenAI models following a government supply chain risk designation that classified Claude as a restricted dependency. Azure OpenAI Government is supported as a drop-in via `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT`.
 
 ---
 
-## 4 Skills (CLI Tools)
+## 5 Skills (CLI Tools)
 
 | Skill | Binary | Purpose |
 |---|---|---|
-| `sfdc-connect` | `skills/sfdc_connect/sfdc_connect.py` | Authenticates to Salesforce org via REST; collects SecuritySettings, Auth providers, Permission Sets, Network Access, Connected Apps, Profiles |
+| `sfdc-connect` | `skills/sfdc_connect/sfdc_connect.py` | Authenticates to Salesforce org via REST/JWT; collects SecuritySettings, Auth providers, Permission Sets, Network Access, Connected Apps, Profiles |
 | `oscal-assess` | `skills/oscal_assess/oscal_assess.py` | Evaluates 45 SBS controls against collected org data; produces findings with status (pass/fail/partial/not_applicable) and severity |
 | `sscf-benchmark` | `skills/sscf_benchmark/sscf_benchmark.py` | Maps SBS findings to SSCF domains; calculates domain scores and overall posture (RED/AMBER/GREEN) |
-| `report-gen` | `skills/report_gen/report_gen.py` | Generates audience-specific outputs: app-owner Markdown, security Markdown + DOCX + PDF |
+| `nist-review` | `skills/nist_review/nist_review.py` | Validates assessment outputs against NIST AI RMF 1.0 (govern/map/measure/manage); issues pass/flag/block verdict |
+| `report-gen` | `skills/report_gen/report_gen.py` | Generates audience-specific outputs: app-owner Markdown, security Markdown + DOCX |
 
 ---
 
@@ -86,13 +81,30 @@ sfdc-connect collect
                     → backlog.json (remediation items)
                         → sscf-benchmark benchmark
                             → sscf_report.json (domain scorecard)
-                                → report-gen generate
-                                    → report-app-owner.md
-                                    → report-security.md
-                                    → report-security.docx
+                                → nist-review assess
+                                    → nist_review.json (governance verdict)
+                                        → report-gen generate
+                                            → {org}_remediation_report.md (app-owner)
+                                            → {org}_security_assessment.md + .docx (security)
 ```
 
-All outputs land in `docs/oscal-salesforce-poc/generated/<org>/`.
+All outputs land in `docs/oscal-salesforce-poc/generated/<org>/<date>/`.
+
+---
+
+## Report Structure
+
+Reports are assembled from deterministic Python-rendered sections plus a focused LLM narrative:
+
+```
+[Gate banner]                  ← ⛔ block / 🚩 flag if NIST verdict requires it
+Executive Scorecard            ← overall score + severity × status matrix  [HARNESS]
+Domain Posture (ASCII chart)   ← bar chart of all SSCF domain scores       [HARNESS]
+Immediate Actions              ← top-10 critical/fail findings sorted       [HARNESS]
+Executive Summary + Analysis   ← LLM narrative (2 sections only)           [LLM]
+Full Control Matrix            ← complete sorted findings table             [HARNESS]
+NIST AI RMF Governance Review  ← function table + blockers + recs          [HARNESS]
+```
 
 ---
 
@@ -119,7 +131,7 @@ Salesforce Config
        ↓
   SSCF Control Index (config/sscf_control_index.yaml)
        ↓
-  Domain Scores (Access Control, Identity, Data, etc.)
+  Domain Scores (IAM, Data Security, Configuration Hardening, etc.)
 ```
 
 ---
@@ -131,7 +143,8 @@ Salesforce Config
 | `mission.md` | Agent identity + authorized scope (loaded every session) |
 | `AGENTS.md` | Canonical agent roster |
 | `agents/orchestrator.md` | Orchestrator routing table and quality gates |
-| `config/sscf_control_index.yaml` | 45 SSCF controls |
+| `config/sscf_control_index.yaml` | SSCF control index |
 | `config/oscal-salesforce/sbs_source.yaml` | SBS control catalog |
 | `schemas/baseline_assessment_schema.json` | Required output schema |
 | `docs/oscal-salesforce-poc/generated/` | All assessment outputs |
+| `docs/architecture.png` | Auto-generated reference architecture diagram |

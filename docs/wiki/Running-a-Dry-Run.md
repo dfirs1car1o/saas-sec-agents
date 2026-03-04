@@ -6,7 +6,7 @@ A dry run executes the **full 7-stage pipeline** — orchestrator, all tool call
 
 ## Prerequisites
 
-- `ANTHROPIC_API_KEY` set in `.env` (the LLM calls are real — only the Salesforce connection is mocked)
+- `OPENAI_API_KEY` set in `.env` (the LLM calls are real — only the Salesforce connection is mocked)
 - `QDRANT_IN_MEMORY=1` set in `.env` (no Docker needed)
 - Package installed: `pip install -e .`
 
@@ -37,7 +37,7 @@ agent-loop [DRY-RUN]: org=test-org env=dev
   [tool] sscf_benchmark_benchmark({"org":"test-org","backlog":"...backlog.json"})
   → writes: docs/oscal-salesforce-poc/generated/test-org/sscf_report.json
 
-  [tool] nist_review_assess({"org":"test-org","gap_analysis":"...gap_analysis.json","backlog":"...backlog.json","dry_run":true})
+  [tool] nist_review_assess({"org":"test-org","gap_analysis":"...","backlog":"...","dry_run":true})
   → writes: docs/oscal-salesforce-poc/generated/test-org/nist_review.json
 
   [tool] report_gen_generate({"org":"test-org","audience":"app-owner",...})
@@ -52,9 +52,6 @@ Assessment complete (7 turn(s))
 overall_score : 34.8%
 critical_fails: 0
 ============================================================
-
-Orchestrator summary:
-[Full summary of findings and remediation priorities]
 
 Result written → docs/oscal-salesforce-poc/generated/test-org/loop_result.json
 ```
@@ -71,7 +68,7 @@ Result written → docs/oscal-salesforce-poc/generated/test-org/loop_result.json
 
 | What's real | What's simulated |
 |---|---|
-| Anthropic API calls (LLM reasoning) | Salesforce REST/Tooling API calls |
+| OpenAI API calls (LLM reasoning) | Salesforce REST/Tooling API calls |
 | All file I/O (reports written to disk) | SecuritySettings query |
 | Memory read/write (Qdrant in-memory) | ConnectedApp query |
 | All CLI tool execution | AuthProvider query |
@@ -101,15 +98,16 @@ The dry-run stub is defined in `skills/sfdc_connect/sfdc_connect.py` and produce
 To test just the pipeline logic without any API calls:
 
 ```bash
-QDRANT_IN_MEMORY=1 pytest tests/ -v
+pytest tests/ -v
 ```
 
 This runs:
 - `tests/test_pipeline_smoke.py` — 3 tests covering dry-run assess, gap map, benchmark
 - `tests/test_report_gen.py` — 3 tests covering app-owner MD, security MD, DOCX
 - `tests/test_harness_dry_run.py` — 3 tests covering loop tool dispatch, error handler, API key handling
+- `tests/test_sfdc_connect_jwt.py` — 3 tests covering JWT auth resolution and env validation
 
-All 9 tests pass without any environment variables or API keys.
+**All 12 tests pass without any environment variables or API keys.**
 
 ---
 
@@ -117,7 +115,7 @@ All 9 tests pass without any environment variables or API keys.
 
 ```bash
 # Run against prod org
-agent-loop run --env prod --org mycompany-prod
+agent-loop run --env prod --org mycompany-prod --approve-critical
 
 # Run against dev sandbox
 agent-loop run --env dev --org mycompany-dev
