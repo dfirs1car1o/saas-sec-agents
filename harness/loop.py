@@ -32,7 +32,7 @@ _REPO = Path(__file__).resolve().parents[1]
 # Load .env at import time so OPENAI_API_KEY and SF_* vars are in os.environ
 # before Click reads envvar= options or os.getenv() is called anywhere.
 load_dotenv(_REPO / ".env")
-_MAX_TURNS = 12  # hard stop: 7 pipeline steps + LLM-only turns (summary, gate, etc.)
+_MAX_TURNS = 14  # hard stop: 7 pipeline steps + LLM-only turns; extra headroom for finish() call
 
 # ---------------------------------------------------------------------------
 # Expert-review escalation helper
@@ -250,6 +250,7 @@ def _run_loop(
         )
 
         # --- Process each tool call; one tool message per call ---
+        pipeline_done = False
         for tc in choice.message.tool_calls:
             name = tc.function.name
             inp = json.loads(tc.function.arguments)
@@ -264,6 +265,9 @@ def _run_loop(
             # Track output files for downstream steps and final gate
             try:
                 result_data = json.loads(result_str)
+                if result_data.get("pipeline_complete"):
+                    state["summary"] = result_data.get("summary", "Pipeline complete.")
+                    pipeline_done = True
                 out_file = result_data.get("output_file")
                 if out_file:
                     if name == "oscal_assess_assess":
@@ -288,6 +292,10 @@ def _run_loop(
                 pass
 
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": result_str})
+
+        if pipeline_done:
+            click.echo("  [loop] finish() called — pipeline complete.", err=True)
+            break
 
     else:
         click.echo(f"WARNING: Reached max turns ({_MAX_TURNS}). Loop hard-stopped.", err=True)
@@ -401,9 +409,9 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             f"nist_review from step 5, "
             f"title='{governance_title} - {org_display}'. "
             f"The security call automatically also writes .docx to the same directory.\n\n"
-            "After step 6b completes, STOP calling tools immediately. "
-            "The harness extracts overall_score, critical_fails, and output paths automatically. "
-            "Return a brief text summary of what was completed and which files were written."
+            "After step 6b completes, call finish() with a one-sentence summary of what was done. "
+            "The finish() tool signals the harness to stop the loop. "
+            "Do NOT call any further tools after finish()."
         )
 
     click.echo(f"  task: {task[:120]}{'...' if len(task) > 120 else ''}", err=True)

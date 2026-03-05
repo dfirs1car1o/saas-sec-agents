@@ -327,14 +327,17 @@ def collect_integrations(sf: Any) -> dict:
     )
 
     try:
-        data["remote_site_settings"] = sf.query_all(
+        # RemoteProxy is a Tooling API metadata object — not queryable via standard SOQL
+        _rss_query = (
             "SELECT Id, SiteName, EndpointUrl, IsActive, DisableProtocolSecurity FROM RemoteProxy ORDER BY SiteName"
         )
-    except Exception:
+        tooling_result = sf.restful("tooling/query", params={"q": _rss_query})
+        data["remote_site_settings"] = tooling_result
+    except Exception as exc:
         data["remote_site_settings"] = {
             "totalSize": 0,
             "records": [],
-            "note": "RemoteSiteSettings not queryable via SOQL in this org — check Setup > Remote Site Settings",
+            "note": f"RemoteSiteSettings not queryable via Tooling API ({exc}) — check Setup > Remote Site Settings",
         }
 
     return data

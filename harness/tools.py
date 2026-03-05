@@ -27,6 +27,24 @@ _PYTHON = sys.executable
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
+        "name": "finish",
+        "description": (
+            "Signal that the assessment pipeline is complete and no further tool calls are needed. "
+            "Call this immediately after the final report_gen_generate (security audience) tool call succeeds. "
+            "Do NOT call any other tools after calling finish()."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "description": "One-sentence summary of what was completed and which output files were written.",
+                }
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "sfdc_connect_collect",
         "description": (
             "Collect security-relevant configuration from a Salesforce org (read-only). "
@@ -461,6 +479,11 @@ def _dispatch_sfdc_expert(inp: dict[str, Any], out_dir: Path) -> str:  # noqa: A
     )
 
 
+def _dispatch_finish(inp: dict[str, Any], out_dir: Path) -> str:  # noqa: ARG001
+    """Sentinel: orchestrator signals pipeline is complete. Loop will break immediately."""
+    return json.dumps({"status": "ok", "pipeline_complete": True, "summary": inp.get("summary", "")})
+
+
 def _dispatch_sscf_benchmark(inp: dict[str, Any], out_dir: Path) -> str:
     out_path = inp.get("out") or str(out_dir / "sscf_report.json")
     sscf_index = _REPO / "config/sscf_control_index.yaml"
@@ -485,6 +508,7 @@ def _dispatch_sscf_benchmark(inp: dict[str, Any], out_dir: Path) -> str:
 # ---------------------------------------------------------------------------
 
 _DISPATCHERS = {
+    "finish": _dispatch_finish,
     "sfdc_connect_collect": _dispatch_sfdc_connect,
     "oscal_assess_assess": _dispatch_oscal_assess,
     "oscal_gap_map": _dispatch_gap_map,
