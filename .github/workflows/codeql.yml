@@ -36,6 +36,13 @@ jobs:
               - config
               - contexts
               - agents
+            query-filters:
+              # workday_connect writes password POLICY values (Minimum_Password_Length,
+              # Password_Expiration_Days) as security assessment evidence — not credentials.
+              # client_secret is del'd after token acquisition and never stored in output.
+              - exclude:
+                  id: py/clear-text-storage-sensitive-data
+                  path: skills/workday_connect/workday_connect.py
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@c793b717bc78562f491db7b0e93a3a178b099162  # v4
