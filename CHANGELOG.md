@@ -11,6 +11,18 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ## [Unreleased]
 
+### 2026-03-07 — GPT-5.3 upgrade, dry-run validated
+
+#### Changed
+- `harness/agents.py` — default model upgraded from `gpt-5.2` → `gpt-5.3-chat-latest` (released 2026-03-03); overridable via `LLM_MODEL_*` env vars
+- All docs, wiki pages, agent frontmatter, README, AGENTS.md updated to new model name
+- `.env.example` — ready-to-uncomment GPT-5.4 block added for when API model ID is published
+
+#### Validated
+- Dry-run clean on `gpt-5.3-chat-latest`: 8 turns, `finish()` called, all 7 artifacts written including DOCX
+
+---
+
 ### 2026-03-07 — OSCAL catalogs, schema v2, Workday blueprint
 
 #### Added
