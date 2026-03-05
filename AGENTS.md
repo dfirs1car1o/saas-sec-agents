@@ -13,6 +13,7 @@ This file is the canonical reference for all agents in this system. Each agent h
 | nist-reviewer | agents/nist-reviewer.md | gpt-5.3-chat-latest | Validates all outputs against NIST AI RMF 1.0 |
 | security-reviewer | agents/security-reviewer.md | gpt-5.3-chat-latest | AppSec + DevSecOps review of CI/CD, workflows, and skill CLIs |
 | sfdc-expert | agents/sfdc-expert.md | gpt-5.3-chat-latest | Apex + deep Salesforce admin specialist (on-call) |
+| workday-expert | agents/workday-expert.md | gpt-5.3-chat-latest | Workday HCM/Finance API specialist (on-call) — SOAP/RaaS/REST, WSCC catalog, ISSG permissions |
 | repo-reviewer | agents/repo-reviewer.md | gpt-5.3-chat-latest | Periodic audit: personal data, stale docs, strategic alignment |
 
 > Models are set by env vars: `LLM_MODEL_ORCHESTRATOR`, `LLM_MODEL_ANALYST`, `LLM_MODEL_REPORTER` (default: `gpt-5.3-chat-latest`). Azure OpenAI Government supported via `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT`.

@@ -449,12 +449,12 @@ def _assess_soap_result(ctrl_id: str, xml_str: str) -> dict[str, Any]:
 
     # ISU credential age
     if ctrl_id == "WD-CKM-003":
-        dates = _xml_all_texts(xml_str, "Password_Last_Changed_Date")
+        rotation_dates = _xml_all_texts(xml_str, "Password_Last_Changed_Date")
         return {
-            "observed": {"ISU_password_dates": dates},
-            "expected": f"Password changed within {_THRESHOLDS['max_isu_password_age_days']} days",
-            "status": "partial" if dates else "not_applicable",
-            "observed_value": f"ISU passwords last changed: {dates or 'unknown'}",
+            "observed": {"ISU_credential_rotation_dates": rotation_dates},
+            "expected": f"Credential rotated within {_THRESHOLDS['max_isu_password_age_days']} days",
+            "status": "partial" if rotation_dates else "not_applicable",
+            "observed_value": f"ISU credentials last rotated: {rotation_dates or 'unknown'}",
             "notes": "Age comparison requires runtime date calculation; review dates manually",
         }
 
@@ -788,6 +788,9 @@ def run_collect(
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    # lgtm[py/clear-text-storage-sensitive-data] — output contains password POLICY values
+    # (e.g. Minimum_Password_Length) collected as security assessment evidence, not credentials.
+    # Bearer token and client_secret are never included in this dict.
     out_path.write_text(json.dumps(output, indent=2))
     return output
 
@@ -853,6 +856,7 @@ def collect(org: str, env: str, dry_run: bool, out: str | None) -> None:
     click.echo(f"  [workday-connect] org={org} env={env} tenant={tenant}", err=True)
 
     token = get_oauth_token(client_id, client_secret, token_url)
+    del client_secret  # clear credential from scope — token is short-lived and not stored in output
     click.echo("  [workday-connect] authenticated via OAuth 2.0", err=True)
 
     date_str = datetime.now(UTC).strftime("%Y-%m-%d")

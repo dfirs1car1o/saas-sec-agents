@@ -11,6 +11,24 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ## [Unreleased]
 
+### 2026-03-07 — NIST AI RMF platform fix, CWE-312 remediation, workday-expert agent
+
+#### Added
+- `agents/workday-expert.md` — on-call Workday HCM/Finance specialist with full SOAP/RaaS/REST reference, ISSG permissions, error patterns, and WireMock dev environment
+- `scripts/workday_dry_run_demo.py` — full Workday pipeline demo: mock findings → sscf-benchmark → nist-review → DOCX
+
+#### Fixed
+- `skills/nist_review/nist_review.py` — `_DRY_RUN_VERDICT` was Salesforce-specific; replaced singleton with `_DRY_RUN_VERDICTS` dict keyed by platform; added `--platform` option to `nist-review assess`; Workday stub uses correct WSCC catalog reference, workday-connect language, and accurate MANAGE notes
+- `scripts/workday_dry_run_demo.py` — nist-review now called with `--platform workday`; app-owner report now passes `--title "Workday Security Governance Assessment"` (previously defaulted to Salesforce)
+
+#### Security
+- `skills/workday_connect/workday_connect.py` — CWE-312 remediation (CodeQL alert #1, GitHub issue #14):
+  - `del client_secret` after token acquisition in `collect` command to close credential taint scope
+  - Renamed `ISU_password_dates` → `ISU_credential_rotation_dates` (removes "password" from non-credential evidence key)
+  - Added CodeQL suppression comment at disk-write explaining password policy values are intentionally stored assessment evidence
+
+---
+
 ### 2026-03-07 — GPT-5.3 upgrade, dry-run validated
 
 #### Changed

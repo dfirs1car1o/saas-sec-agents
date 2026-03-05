@@ -29,55 +29,112 @@ load_dotenv(_REPO / ".env")
 # Dry-run stub verdict (realistic weak-org scenario)
 # ---------------------------------------------------------------------------
 
-_DRY_RUN_VERDICT: dict[str, Any] = {
-    "nist_ai_rmf_review": {
-        "assessment_id": "sfdc-assess-dry-run",
-        "reviewed_at_utc": "",  # filled at runtime
-        "reviewer": "nist-reviewer",
-        "govern": {
-            "status": "pass",
-            "notes": (
-                "Human accountability defined in mission.md. "
-                "Assessment scope bounded to sfdc-connect collector output only. "
-                "Override and escalation path documented via --approve-critical flag."
-            ),
-        },
-        "map": {
-            "status": "partial",
-            "notes": (
-                "Dry-run mode clearly noted; no live Salesforce API call made. "
-                "AI-generated findings distinguished from human-verified via dry_run flag in assessment_id. "
-                "SBS catalog version (0.4.0) documented. "
-                "Stub scenario limitations explicitly disclosed in assessment metadata."
-            ),
-        },
-        "measure": {
-            "status": "pass",
-            "notes": (
-                "Mapping confidence tracked via status/severity per finding. "
-                "Unmapped controls explicitly listed as not_applicable (13 findings). "
-                "SSCF heatmap complete across all 7 domains. "
-                "2 domains (Governance Risk Compliance, Threat Detection Response) "
-                "have no assessed controls in current SBS catalog -- noted as N/A."
-            ),
-        },
-        "manage": {
-            "status": "partial",
-            "notes": (
-                "Critical findings (4) flagged for human review gate. "
-                "Remediation actions provided for all critical/high findings. "
-                "Owner and due_date fields absent in dry-run stub scenario -- "
-                "required before live assessment delivery to governance committee."
-            ),
-        },
-        "overall": "flag",
-        "blocking_issues": [],
-        "recommendations": [
-            "Add owner and due_date to all critical/fail backlog items before live delivery.",
-            "Replace dry-run stub with live sfdc-connect collection before governance committee review.",
-        ],
-    }
+_DRY_RUN_VERDICTS: dict[str, dict[str, Any]] = {
+    "salesforce": {
+        "nist_ai_rmf_review": {
+            "assessment_id": "sfdc-assess-dry-run",
+            "reviewed_at_utc": "",  # filled at runtime
+            "reviewer": "nist-reviewer",
+            "govern": {
+                "status": "pass",
+                "notes": (
+                    "Human accountability defined in mission.md. "
+                    "Assessment scope bounded to sfdc-connect collector output only. "
+                    "Override and escalation path documented via --approve-critical flag."
+                ),
+            },
+            "map": {
+                "status": "partial",
+                "notes": (
+                    "Dry-run mode clearly noted; no live Salesforce API call made. "
+                    "AI-generated findings distinguished from human-verified via dry_run flag in assessment_id. "
+                    "SBS catalog version (0.4.0) documented. "
+                    "Stub scenario limitations explicitly disclosed in assessment metadata."
+                ),
+            },
+            "measure": {
+                "status": "pass",
+                "notes": (
+                    "Mapping confidence tracked via status/severity per finding. "
+                    "Unmapped controls explicitly listed as not_applicable (13 findings). "
+                    "SSCF heatmap complete across all 7 domains. "
+                    "2 domains (Governance Risk Compliance, Threat Detection Response) "
+                    "have no assessed controls in current SBS catalog -- noted as N/A."
+                ),
+            },
+            "manage": {
+                "status": "partial",
+                "notes": (
+                    "Critical findings (4) flagged for human review gate. "
+                    "Remediation actions provided for all critical/high findings. "
+                    "Owner and due_date fields absent in dry-run stub scenario -- "
+                    "required before live assessment delivery to governance committee."
+                ),
+            },
+            "overall": "flag",
+            "blocking_issues": [],
+            "recommendations": [
+                "Add owner and due_date to all critical/fail backlog items before live delivery.",
+                "Replace dry-run stub with live sfdc-connect collection before governance committee review.",
+            ],
+        }
+    },
+    "workday": {
+        "nist_ai_rmf_review": {
+            "assessment_id": "wd-assess-dry-run",
+            "reviewed_at_utc": "",  # filled at runtime
+            "reviewer": "nist-reviewer",
+            "govern": {
+                "status": "pass",
+                "notes": (
+                    "Human accountability defined in mission.md. "
+                    "Assessment scope bounded to workday-connect collector output only. "
+                    "Override and escalation path documented via --approve-critical flag."
+                ),
+            },
+            "map": {
+                "status": "partial",
+                "notes": (
+                    "Dry-run mode clearly noted; no live Workday API call made. "
+                    "AI-generated findings distinguished from human-verified via dry_run flag in assessment_id. "
+                    "Workday Security Control Catalog (WSCC) v0.2.0 documented. "
+                    "Stub scenario limitations explicitly disclosed in assessment metadata. "
+                    "9 manual controls (TDR, CKM-002, CON-005, LOG-001/003/005, GOV-001) "
+                    "not assessable via API -- require Workday admin confirmation."
+                ),
+            },
+            "measure": {
+                "status": "pass",
+                "notes": (
+                    "Mapping confidence tracked via status/severity per finding. "
+                    "Unmapped controls explicitly listed as not_applicable (9 findings). "
+                    "SSCF heatmap complete across assessed domains. "
+                    "Threat Detection Response domain is manual-only -- noted as N/A. "
+                    "Due dates populated for all critical/high/moderate fail findings."
+                ),
+            },
+            "manage": {
+                "status": "partial",
+                "notes": (
+                    "4 critical findings (2 fail, 2 partial) flagged for human review gate. "
+                    "Due dates assigned to all fail findings per severity SLA. "
+                    "Partial findings require RaaS report access before definitive pass/fail -- "
+                    "provision workday-connect ISSG with required domain permissions before live run."
+                ),
+            },
+            "overall": "flag",
+            "blocking_issues": [],
+            "recommendations": [
+                "Provision workday-connect ISSG with domain permissions for RaaS reports before live run.",
+                "Replace dry-run stub with live workday-connect collection before governance committee review.",
+                "Assign named assessment owner (individual) rather than team label for governance traceability.",
+            ],
+        }
+    },
 }
+
+# Keep backward-compat alias (used by existing callers that don't pass --platform)
+_DRY_RUN_VERDICT = _DRY_RUN_VERDICTS["salesforce"]
 
 
 # ---------------------------------------------------------------------------
@@ -112,19 +169,29 @@ def cli() -> None:
 @click.option("--backlog", default=None, help="Path to backlog.json.")
 @click.option("--out", required=True, help="Output path for nist_review.json.")
 @click.option("--dry-run", is_flag=True, help="Produce realistic stub verdict without calling the API.")
-def assess(gap_analysis: str | None, backlog: str | None, out: str, dry_run: bool) -> None:
+@click.option(
+    "--platform",
+    default="salesforce",
+    type=click.Choice(["salesforce", "workday"]),
+    help="Platform being assessed — selects the correct dry-run stub language.",
+)
+def assess(
+    gap_analysis: str | None, backlog: str | None, out: str, dry_run: bool, platform: str
+) -> None:
     """Run NIST AI RMF review against assessment outputs."""
     out_path = Path(out)
 
     if dry_run:
         import copy
 
-        verdict = copy.deepcopy(_DRY_RUN_VERDICT)
+        stub = _DRY_RUN_VERDICTS.get(platform, _DRY_RUN_VERDICT)
+        verdict = copy.deepcopy(stub)
         verdict["nist_ai_rmf_review"]["reviewed_at_utc"] = datetime.now(UTC).isoformat()
         if gap_analysis:
             try:
                 data = _load_json(gap_analysis)
-                verdict["nist_ai_rmf_review"]["assessment_id"] = data.get("assessment_id", "sfdc-assess-dry-run")
+                default_id = f"{platform}-assess-dry-run"
+                verdict["nist_ai_rmf_review"]["assessment_id"] = data.get("assessment_id", default_id)
             except SystemExit:
                 pass
         out_path.parent.mkdir(parents=True, exist_ok=True)
