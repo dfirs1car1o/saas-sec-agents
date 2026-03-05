@@ -5,7 +5,7 @@ description: |
   stale documentation, strategic misalignment, and code quality improvements.
   Produces a structured report with severity-graded findings and actionable fixes.
   Runs on-demand — not part of the standard assessment pipeline.
-model: gpt-5.2
+model: gpt-5.3-chat-latest
 tools: []
 proactive_triggers:
   - "Before a major release or version tag"

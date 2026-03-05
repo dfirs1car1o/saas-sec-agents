@@ -197,7 +197,7 @@ report-gen generate \
 
 ## Orchestrated Pipeline (agent-loop)
 
-All 7 stages above run automatically via `agent-loop`. The `gpt-5.2` orchestrator decides the sequence, passes outputs between tools, and enforces quality gates.
+All 7 stages above run automatically via `agent-loop`. The `gpt-5.3-chat-latest` orchestrator decides the sequence, passes outputs between tools, and enforces quality gates.
 
 ```bash
 # Full live run

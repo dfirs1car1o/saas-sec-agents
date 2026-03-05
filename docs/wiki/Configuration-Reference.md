@@ -39,8 +39,8 @@ All environment variables, configuration files, and YAML schemas used by this sy
 | `QDRANT_HOST` | unset | Qdrant container hostname (only if `QDRANT_IN_MEMORY=0`) |
 | `QDRANT_PORT` | `6333` | Qdrant container port |
 | `MEMORY_ENABLED` | `0` | Set to `1` to enable Mem0 session memory |
-| `LLM_MODEL_ORCHESTRATOR` | `gpt-5.2` | Override orchestrator model |
-| `LLM_MODEL_ANALYST` | `gpt-5.2` | Override analyst/assessor model |
+| `LLM_MODEL_ORCHESTRATOR` | `gpt-5.3-chat-latest` | Override orchestrator model |
+| `LLM_MODEL_ANALYST` | `gpt-5.3-chat-latest` | Override analyst/assessor model |
 | `LLM_MODEL_REPORTER` | `gpt-4o-mini` | Override reporter model |
 
 ### Azure OpenAI Government (FedRAMP / IL5)
@@ -206,7 +206,7 @@ Every file in `agents/` has YAML frontmatter:
 name: agent-name
 description: |
   What this agent does and when to invoke it.
-model: gpt-5.2
+model: gpt-5.3-chat-latest
 tools:
   - sfdc_connect_collect
   - oscal_assess_assess
@@ -216,7 +216,7 @@ proactive_triggers:
 ```
 
 **Model options:**
-- `gpt-5.2` — orchestrator, collector, assessor, nist-reviewer, security-reviewer, sfdc-expert
+- `gpt-5.3-chat-latest` — orchestrator, collector, assessor, nist-reviewer, security-reviewer, sfdc-expert
 - `gpt-4o-mini` — reporter (cost-efficient for templated narrative output)
 
 ---

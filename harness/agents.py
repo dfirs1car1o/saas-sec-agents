@@ -31,9 +31,9 @@ class AgentConfig:
     tool_names: list[str] = field(default_factory=list)
 
 
-_MODEL_ORCHESTRATOR = os.getenv("LLM_MODEL_ORCHESTRATOR", "gpt-5.2")
-_MODEL_ANALYST = os.getenv("LLM_MODEL_ANALYST", "gpt-5.2")
-_MODEL_REPORTER = os.getenv("LLM_MODEL_REPORTER", "gpt-5.2")
+_MODEL_ORCHESTRATOR = os.getenv("LLM_MODEL_ORCHESTRATOR", "gpt-5.3-chat-latest")
+_MODEL_ANALYST = os.getenv("LLM_MODEL_ANALYST", "gpt-5.3-chat-latest")
+_MODEL_REPORTER = os.getenv("LLM_MODEL_REPORTER", "gpt-5.3-chat-latest")
 
 # ---------------------------------------------------------------------------
 # Agent registry

@@ -64,14 +64,14 @@ def main() -> None:
 
         # ── Agent Layer ──────────────────────────────────────────────────────
         with Cluster("Agent Layer  (OpenAI API)"):
-            orchestrator = Server("Orchestrator\ngpt-5.2")
+            orchestrator = Server("Orchestrator\ngpt-5.3-chat-latest")
             with Cluster("Sub-Agents"):
-                collector = Server("Collector\ngpt-5.2")
-                assessor = Server("Assessor\ngpt-5.2")
-                nist_reviewer = Server("NIST Reviewer\ngpt-5.2")
+                collector = Server("Collector\ngpt-5.3-chat-latest")
+                assessor = Server("Assessor\ngpt-5.3-chat-latest")
+                nist_reviewer = Server("NIST Reviewer\ngpt-5.3-chat-latest")
                 reporter = Server("Reporter\ngpt-4o-mini")
-                security_reviewer = Server("Security Reviewer\ngpt-5.2")
-                sfdc_expert = Server("SFDC Expert\ngpt-5.2")  # on-call specialist
+                security_reviewer = Server("Security Reviewer\ngpt-5.3-chat-latest")
+                sfdc_expert = Server("SFDC Expert\ngpt-5.3-chat-latest")  # on-call specialist
 
         # ── Skill CLIs ───────────────────────────────────────────────────────
         with Cluster("Skill CLIs  (Python)"):

@@ -32,7 +32,7 @@ This system connects to SaaS platforms, runs OSCAL and CSA SSCF security assessm
 
 Platform controls chain through **platform OSCAL catalog → SSCF → CCM v4.1 → regulatory crosswalk** (SOX, HIPAA, SOC2, ISO 27001, NIST 800-53, PCI DSS, GDPR) automatically.
 
-The pipeline is fully agentic: `gpt-5.2` orchestrates 5 CLI tools and 7 specialist agents over a 14-turn ReAct loop. No human input needed once triggered.
+The pipeline is fully agentic: `gpt-5.3-chat-latest` orchestrates 5 CLI tools and 7 specialist agents over a 14-turn ReAct loop. No human input needed once triggered.
 
 ---
 
@@ -73,7 +73,7 @@ agent-loop run --dry-run --env dev --org test-org
 | NIST review | ✅ Done | nist-review skill, 7-step pipeline, gate logic |
 | JWT Auth | ✅ Done | JWT Bearer flow, live verified |
 | sfdc-expert | ✅ Done | On-call Apex/SFDC specialist agent |
-| SDK Migration | ✅ Done | Anthropic → OpenAI (gpt-5.2 / gpt-4o-mini) |
+| SDK Migration | ✅ Done | Anthropic → OpenAI (gpt-5.3-chat-latest / gpt-4o-mini) |
 | Executive reports | ✅ Done | Python-rendered scorecard, domain chart, sorted matrix |
 | finish() tool | ✅ Done | Orchestrator exits cleanly; _MAX_TURNS→14 |
 | OSCAL Catalogs | ✅ Done | SSCF catalog, SBS catalog, Workday catalog — all OSCAL 1.1.2 |

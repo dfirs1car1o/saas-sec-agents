@@ -9,7 +9,7 @@ All 7 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/orchestrator.md` |
-| **Model** | `gpt-5.2` |
+| **Model** | `gpt-5.3-chat-latest` |
 | **Tools** | All 5 CLI skills |
 | **Invoked by** | Human (entry point for all requests) |
 
@@ -47,7 +47,7 @@ All 7 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/collector.md` |
-| **Model** | `gpt-5.2` |
+| **Model** | `gpt-5.3-chat-latest` |
 | **Tools** | `sfdc-connect` |
 | **Invoked by** | Orchestrator |
 
@@ -62,7 +62,7 @@ All 7 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/assessor.md` |
-| **Model** | `gpt-5.2` |
+| **Model** | `gpt-5.3-chat-latest` |
 | **Tools** | `oscal-assess`, `oscal_gap_map` |
 | **Invoked by** | Orchestrator |
 
@@ -92,7 +92,7 @@ All 7 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/nist-reviewer.md` |
-| **Model** | `gpt-5.2` |
+| **Model** | `gpt-5.3-chat-latest` |
 | **Tools** | None (text analysis only) |
 | **Invoked by** | Orchestrator (final validation step) |
 
@@ -113,7 +113,7 @@ All 7 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/security-reviewer.md` |
-| **Model** | `gpt-5.2` |
+| **Model** | `gpt-5.3-chat-latest` |
 | **Tools** | None (text analysis only) |
 | **Invoked by** | Orchestrator on CI/CD, workflow, or skill changes |
 
@@ -143,7 +143,7 @@ All 7 agents in the system. Each has a definition file in `agents/` with YAML fr
 | Field | Value |
 |---|---|
 | **File** | `agents/sfdc-expert.md` |
-| **Model** | `gpt-5.2` |
+| **Model** | `gpt-5.3-chat-latest` |
 | **Tools** | None (text analysis + code generation only) |
 | **Invoked by** | Orchestrator when findings have `needs_expert_review=true` |
 
@@ -160,7 +160,7 @@ All 7 agents in the system. Each has a definition file in `agents/` with YAML fr
    ---
    name: my-agent
    description: What it does and when to use it
-   model: gpt-5.2
+   model: gpt-5.3-chat-latest
    tools: []
    ---
    ```

@@ -10,7 +10,7 @@
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│              agent-loop (gpt-5.2 orchestrator)                │
+│              agent-loop (gpt-5.3-chat-latest orchestrator)                │
 │              OpenAI tool_use ReAct loop, max 14 turns         │
 └──────┬──────────┬──────────┬──────────┬──────────┬───────────┘
        │          │          │          │          │
@@ -40,17 +40,17 @@
 
 | Agent | Model | Role | Tools |
 |---|---|---|---|
-| `orchestrator` | gpt-5.2 | Routes tasks, manages the ReAct loop, quality gates | All 5 CLI tools |
-| `collector` | gpt-5.2 | Extracts Salesforce org config via REST/Metadata API | sfdc-connect |
-| `assessor` | gpt-5.2 | Maps findings to OSCAL/SBS/SSCF controls | oscal-assess, oscal_gap_map |
+| `orchestrator` | gpt-5.3-chat-latest | Routes tasks, manages the ReAct loop, quality gates | All 5 CLI tools |
+| `collector` | gpt-5.3-chat-latest | Extracts Salesforce org config via REST/Metadata API | sfdc-connect |
+| `assessor` | gpt-5.3-chat-latest | Maps findings to OSCAL/SBS/SSCF controls | oscal-assess, oscal_gap_map |
 | `reporter` | gpt-4o-mini | Generates DOCX/MD governance outputs | report-gen |
-| `nist-reviewer` | gpt-5.2 | Validates outputs against NIST AI RMF | None (text analysis) |
-| `security-reviewer` | gpt-5.2 | AppSec + DevSecOps review of CI/CD and skills | None (text analysis) |
-| `sfdc-expert` | gpt-5.2 | On-call Salesforce/Apex specialist | None (text + code) |
+| `nist-reviewer` | gpt-5.3-chat-latest | Validates outputs against NIST AI RMF | None (text analysis) |
+| `security-reviewer` | gpt-5.3-chat-latest | AppSec + DevSecOps review of CI/CD and skills | None (text analysis) |
+| `sfdc-expert` | gpt-5.3-chat-latest | On-call Salesforce/Apex specialist | None (text + code) |
 
 ### Model Assignment Rationale
 
-- **gpt-5.2** for all analytical and orchestration work: complex routing, API extraction, control mapping, regulatory QA, security review
+- **gpt-5.3-chat-latest** for all analytical and orchestration work: complex routing, API extraction, control mapping, regulatory QA, security review
 - **gpt-4o-mini** for templated output: structured data → formatted report (low-complexity, high-volume, cost-efficient)
 - **No tools for review/expert agents**: text-only analysis prevents accidental state modification
 

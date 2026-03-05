@@ -6,16 +6,16 @@ This file is the canonical reference for all agents in this system. Each agent h
 
 | Agent | File | Model | Primary Role |
 |---|---|---|---|
-| orchestrator | agents/orchestrator.md | gpt-5.2 | Routes tasks, manages 14-turn ReAct loop, calls finish() to exit |
-| collector | agents/collector.md | gpt-5.2 | Extracts SaaS org config via API and CLI |
-| assessor | agents/assessor.md | gpt-5.2 | Maps findings to OSCAL/SBS/SSCF controls |
-| reporter | agents/reporter.md | gpt-5.2 | Generates DOCX/MD governance outputs |
-| nist-reviewer | agents/nist-reviewer.md | gpt-5.2 | Validates all outputs against NIST AI RMF 1.0 |
-| security-reviewer | agents/security-reviewer.md | gpt-5.2 | AppSec + DevSecOps review of CI/CD, workflows, and skill CLIs |
-| sfdc-expert | agents/sfdc-expert.md | gpt-5.2 | Apex + deep Salesforce admin specialist (on-call) |
-| repo-reviewer | agents/repo-reviewer.md | gpt-5.2 | Periodic audit: personal data, stale docs, strategic alignment |
+| orchestrator | agents/orchestrator.md | gpt-5.3-chat-latest | Routes tasks, manages 14-turn ReAct loop, calls finish() to exit |
+| collector | agents/collector.md | gpt-5.3-chat-latest | Extracts SaaS org config via API and CLI |
+| assessor | agents/assessor.md | gpt-5.3-chat-latest | Maps findings to OSCAL/SBS/SSCF controls |
+| reporter | agents/reporter.md | gpt-5.3-chat-latest | Generates DOCX/MD governance outputs |
+| nist-reviewer | agents/nist-reviewer.md | gpt-5.3-chat-latest | Validates all outputs against NIST AI RMF 1.0 |
+| security-reviewer | agents/security-reviewer.md | gpt-5.3-chat-latest | AppSec + DevSecOps review of CI/CD, workflows, and skill CLIs |
+| sfdc-expert | agents/sfdc-expert.md | gpt-5.3-chat-latest | Apex + deep Salesforce admin specialist (on-call) |
+| repo-reviewer | agents/repo-reviewer.md | gpt-5.3-chat-latest | Periodic audit: personal data, stale docs, strategic alignment |
 
-> Models are set by env vars: `LLM_MODEL_ORCHESTRATOR`, `LLM_MODEL_ANALYST`, `LLM_MODEL_REPORTER` (default: `gpt-5.2`). Azure OpenAI Government supported via `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT`.
+> Models are set by env vars: `LLM_MODEL_ORCHESTRATOR`, `LLM_MODEL_ANALYST`, `LLM_MODEL_REPORTER` (default: `gpt-5.3-chat-latest`). Azure OpenAI Government supported via `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT`.
 
 ## Skill Roster
 
