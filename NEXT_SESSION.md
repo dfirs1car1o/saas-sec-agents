@@ -17,6 +17,8 @@ This session completed:
 - **Wiki complete** — all 14 pages audited and updated; macOS Silicon + Linux/WSL2 setup guides added
 - **3 CI failures fixed** (`d52e09d`) — ruff format (4 files), validate_env cred_skip (OPENAI_API_KEY missing), test_docx_created pandoc guard
 - **CorpIS scrub** (`5b5b456`) — replaced all internal "CorpIS" labels with "Security Team" across 31 files (contexts, skills, docs, configs, generated reports)
+- **Gemini MCP installed** — `@rlabs-inc/gemini-mcp` added globally with `GEMINI_TOOL_PRESET=research`; active on next session restart
+- **multi-agent repo deleted** — local `/Users/jerijuar/Documents/0-JJ-Code/multi-agent` removed; no dependencies on saas-sec-agents
 
 ---
 
@@ -40,9 +42,23 @@ This session completed:
 | Wiki 14 pages | ✅ Done | All pages audited; macOS + Linux setup guides added |
 | CI all green | ✅ Done | ruff format, validate_env, test_docx_created fixed |
 | CorpIS scrub | ✅ Done | "Security Team" replaces all internal CorpIS labels (31 files) |
+| Gemini MCP | ✅ Done | @rlabs-inc/gemini-mcp installed globally, research preset |
 | Docker MCP Gateway | ✅ Done | Brave Search running on localhost:8000/sse |
 | API compat fixes | ✅ Done | max_completion_tokens, max_retries, loop stop |
 | --mock-llm | ✅ Done | Offline test mode for report-gen |
+
+---
+
+## IMPORTANT: Session Restart Prompt
+
+Paste this exactly when you start a new session:
+
+```
+Continue work on saas-sec-agents. Read NEXT_SESSION.md for full context.
+Key things to know: repo is at /Users/jerijuar/saas-sec-agents on main branch (clean).
+Gemini MCP is now installed globally — test it's working.
+Run: pytest tests/ -v && python3 scripts/validate_env.py to confirm environment is healthy.
+```
 
 ---
 
