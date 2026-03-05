@@ -11,6 +11,40 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ## [Unreleased]
 
+### 2026-03-07 — OSCAL catalogs, schema v2, Workday blueprint
+
+#### Added
+- `config/sscf/sscf_catalog.json` — OSCAL 1.1.2 SSCF catalog (7 domain groups, 14 controls with full statement/guidance/objective parts)
+- `config/sscf/sscf_to_ccm_mapping.yaml` — SSCF→CCM v4.1 bridge; 14 entries with `regulatory_highlights` (SOX, HIPAA, SOC2, ISO 27001, NIST 800-53, PCI DSS, GDPR)
+- `config/ccm/ccm_v4.1_oscal_ref.yaml` — Reference pointer to CSA CCM v4.1 published OSCAL catalog (197 controls, 17 regulatory standards); no copy needed
+- `config/oscal-salesforce/sbs_catalog.json` — SBS OSCAL 1.1.2 catalog (11 groups, 45 controls); generated from `sbs_controls.json`
+- `config/oscal-salesforce/sbs_profile.json` — OSCAL profile expressing SBS as implementation of SSCF catalog
+- `scripts/generate_sbs_oscal_catalog.py` — Python conversion script: `sbs_controls.json` → OSCAL 1.1.2 catalog
+- `config/workday/workday_catalog.json` v0.2.0 — OSCAL 1.1.2 Workday Security Control Catalog (30 controls, 7 domain groups, full audit procedures/remediation, soap/raas/manual/rest collection methods)
+- `config/workday/workday_to_sscf_mapping.yaml` — All 30 Workday controls mapped to SSCF domains and control IDs
+- `skills/workday_connect/BLUEPRINT.md` — Full Workday connector specification (ISU/ISSG setup, OAuth 2.0 auth, per-control API reference, graceful degradation, WireMock dev environment)
+- `skills/workday_connect/__init__.py` — Package placeholder
+
+#### Changed
+- `schemas/baseline_assessment_schema.json` → v2: added `schema_version` (const "2.0"), `assessment_owner`, `data_source`, `ai_generated_findings_notice`, `oscal_catalog_ref`, `assessment_scope`, `mapping_confidence`, `ccm_controls`, `platform_data`; fixed severity enum `"medium"` → `"moderate"`
+- `config/workday/workday_catalog.json`: upgraded auth from WS-Security BasicAuth to OAuth 2.0 Client Credentials (universal); WD-IAM-007 changed from `soap` to `rest` (`/staffing/v6/workers`)
+
+#### Security
+- Workday connector protocol hardened: OAuth 2.0 Client Credentials replaces WS-Security BasicAuth; no password credentials transmitted; all transports (REST, SOAP, RaaS) use short-lived Bearer tokens
+
+### 2026-03-07 — Open issues resolved (commit 48bc739)
+
+#### Added
+- `harness/tools.py` — `finish()` tool: orchestrator calls to signal pipeline completion; loop breaks on `pipeline_complete: true` sentinel
+- `harness/loop.py` — `pipeline_complete` sentinel detection; `_MAX_TURNS` bumped 12→14
+
+#### Fixed
+- `skills/sfdc_connect/sfdc_connect.py` — `collect_integrations()` now uses Tooling API for RemoteProxy/RemoteSiteSettings before SOQL fallback
+- `agents/orchestrator.md` — routing table corrected; `.pdf` removed; `finish()` added at end of sequence
+
+#### Changed
+- `.github/CODEOWNERS` — `@compliance-rehab` added to `skills/**` and `config/**`
+
 ### 2026-03-03
 - feat: add `nist-review` CLI skill (`skills/nist_review/`) with dry-run and live Anthropic mode
 - feat: wire `nist_review_assess` as pipeline step 5 in `harness/loop.py`

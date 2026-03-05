@@ -57,71 +57,93 @@ To route all calls through Azure OpenAI instead of the public OpenAI API, set:
 
 ## Configuration Files
 
-### `config/oscal-salesforce/sbs_source.yaml`
+### OSCAL Catalogs
 
-**Purpose:** Defines the 45 SBS (Salesforce Baseline Security) controls.
+| File | Platform | Controls | Format |
+|---|---|---|---|
+| `config/oscal-salesforce/sbs_catalog.json` | Salesforce | 45 SBS controls | OSCAL 1.1.2 |
+| `config/workday/workday_catalog.json` | Workday | 30 WSCC controls | OSCAL 1.1.2 |
+| `config/sscf/sscf_catalog.json` | Platform-agnostic | 14 SSCF controls | OSCAL 1.1.2 |
+| `config/ccm/ccm_v4.1_oscal_ref.yaml` | Reference | 197 CCM v4.1 controls | Reference pointer |
 
-**Schema:**
+### SSCF and CCM Mapping Files
+
+| File | Purpose |
+|---|---|
+| `config/oscal-salesforce/sbs_to_sscf_mapping.yaml` | SBS control → SSCF domain + control ID |
+| `config/workday/workday_to_sscf_mapping.yaml` | Workday control → SSCF domain + control ID |
+| `config/sscf/sscf_to_ccm_mapping.yaml` | SSCF control → CCM v4.1 controls + regulatory highlights |
+| `config/sscf_control_index.yaml` | Legacy SSCF control index (superseded by sscf_catalog.json) |
+
+### `config/oscal-salesforce/sbs_to_sscf_mapping.yaml` schema
+
 ```yaml
-controls:
-  - id: SBS-AUTH-001
-    title: "MFA Enforcement"
-    description: "..."
-    category: AUTH
-    severity: critical
+version: 1
+framework: CSA_SSCF
+platform: salesforce
+control_overrides:
+  SBS-AUTH-001:
+    - sscf_domain: identity_access_management
+      sscf_control_id: SSCF-IAM-001
+      mapping_strength: direct
+      rationale: "..."
 ```
 
-### `config/oscal-salesforce/sbs_to_sscf_mapping.yaml`
+### `config/sscf/sscf_to_ccm_mapping.yaml` schema
 
-**Purpose:** Maps SBS control categories to SSCF domains.
-
-**Schema:**
 ```yaml
-SBS-AUTH:
-  sscf_domain: IAM
-  sscf_controls:
-    - IAM-001
-    - IAM-002
-```
-
-### `config/oscal-salesforce/control_mapping.yaml`
-
-**Purpose:** Detailed control-level mapping for the gap map script.
-
-### `config/sscf_control_index.yaml`
-
-**Purpose:** Canonical SSCF control reference. Source of truth for all SSCF control IDs and domain assignments.
-
-**Schema:**
-```yaml
-domains:
-  - id: IAM
-    name: "Identity and Access Management"
-    controls:
-      - id: IAM-001
-        title: "..."
-        weight: 1.0
+SSCF-IAM-001:
+  ccm_controls:
+    - id: IAM-01
+      domain: Identity & Access Management
+      regulatory_highlights:
+        - SOC2_CC6.1
+        - HIPAA_164.312d
+        - ISO27001_A.9.4.2
 ```
 
 ---
 
 ## Output Schema
 
-### `schemas/baseline_assessment_schema.json`
+### `schemas/baseline_assessment_schema.json` (v2)
 
-**Required fields on every finding:**
+Platform-agnostic assessment schema. Supports Salesforce, Workday, and future platforms.
+
+**Top-level required fields:**
 
 ```json
 {
-  "assessment_id": "sfdc-assess-myorg-prod-loop",
-  "generated_at_utc": "2026-03-02T15:00:00Z",
-  "findings": [
+  "schema_version": "2.0",
+  "assessment_id": "wd-assess-20260307-001",
+  "platform": "workday",
+  "assessment_time_utc": "2026-03-07T12:00:00Z",
+  "assessor": "workday-connect v0.1.0",
+  "oscal_catalog_ref": "config/workday/workday_catalog.json",
+  "assessment_owner": "Jane Smith",
+  "data_source": "workday-connect SOAP WWS v40.0 + RaaS",
+  "findings": [...]
+}
+```
+
+**Per-finding required fields:**
+
+```json
+{
+  "control_id": "WD-IAM-001",
+  "status": "fail",
+  "severity": "critical",
+  "evidence_source": "RaaS Security_Group_Domain_Access_Audit",
+  "sscf_mappings": [
     {
-      "control_id": "SBS-AUTH-001",
-      "status": "fail",
-      "severity": "critical",
-      "owner": "security-team",
-      "evidence_ref": "collector://salesforce/prod/SBS-AUTH-001/snapshot-2026-03-02"
+      "sscf_domain": "identity_access_management",
+      "sscf_control_id": "SSCF-IAM-002",
+      "mapping_strength": "direct",
+      "mapping_confidence": "high",
+      "rationale": "...",
+      "ccm_controls": [
+        { "id": "IAM-01", "domain": "Identity & Access Management", "regulatory_highlights": ["SOC2_CC6.1"] }
+      ]
     }
   ]
 }
@@ -130,6 +152,25 @@ domains:
 **Status values:** `pass` | `fail` | `partial` | `not_applicable`
 
 **Severity values:** `critical` | `high` | `moderate` | `low`
+
+**Platform values:** `salesforce` | `workday` | `servicenow`
+
+---
+
+## Workday Environment Variables
+
+Required when running `workday-connect` (Phase E):
+
+| Variable | Description |
+|---|---|
+| `WD_TENANT` | Workday tenant ID (e.g., `acme_dpt1`) |
+| `WD_CLIENT_ID` | OAuth 2.0 API client ID (from Workday API Client registration) |
+| `WD_CLIENT_SECRET` | OAuth 2.0 client secret (never logged) |
+| `WD_TOKEN_URL` | Token endpoint (`https://{tenant}.workday.com/ccx/oauth2/{tenant}/token`) |
+| `WD_API_VERSION` | WWS SOAP version (default: `v40.0`) |
+| `WD_BASE_URL` | Override base URL (default: `https://{tenant}.workday.com`); set to `http://localhost:8080` for WireMock |
+
+Auth method: **OAuth 2.0 Client Credentials** — no password credentials. All transports (REST, SOAP, RaaS) use short-lived Bearer tokens.
 
 ---
 

@@ -8,12 +8,12 @@ SaaS Security multi-agent AI system for OSCAL and CSA SSCF assessments across Sa
 
 A read-only, fully automated assessment pipeline that:
 
-1. Connects to Salesforce orgs (JWT or SOAP auth) and extracts security-relevant configuration
-2. Maps findings to the Security Benchmark for Salesforce (SBS), OSCAL catalogs, and CSA SSCF domains
+1. Connects to SaaS platforms (Salesforce now; Workday blueprint complete) and extracts security-relevant configuration
+2. Maps findings to platform OSCAL catalogs → CSA SSCF domains → CCM v4.1 → SOX/HIPAA/SOC2 regulatory crosswalk
 3. Generates structured evidence artifacts (JSON, Markdown, DOCX) for governance review
 4. Validates AI-assisted outputs against NIST AI RMF 1.0 with blocking gate logic before delivery
 
-This system **never writes to any Salesforce org**. All evidence stays in `docs/oscal-salesforce-poc/generated/`.
+This system **never writes to any SaaS org**. All evidence stays in `docs/oscal-salesforce-poc/generated/`.
 
 ## Quick Start
 
@@ -87,6 +87,7 @@ All tools are CLI-based Python scripts. Each supports `--help` and `--dry-run`.
 | `sscf-benchmark` | `skills/sscf_benchmark/` | Scores findings by CSA SSCF domain (red/amber/green) |
 | `nist-review` | `skills/nist_review/` | NIST AI RMF 1.0 governance gate (govern/map/measure/manage) |
 | `report-gen` | `skills/report_gen/` | Generates executive Markdown + DOCX reports |
+| `workday-connect` | `skills/workday_connect/` | **Blueprint complete** — Workday HCM/Finance collector (Phase E, implementation pending) |
 
 ### Report Structure
 
@@ -104,29 +105,43 @@ NIST AI RMF Governance Review  ← govern/map/measure/manage function table + bl
 
 ## Control Frameworks
 
+All platform controls chain through SSCF → CCM v4.1 → regulatory crosswalk (SOX, HIPAA, SOC2 TSC, ISO 27001, NIST 800-53, PCI DSS, GDPR).
+
 | Framework | Version | Config File |
 |---|---|---|
-| Security Benchmark for Salesforce (SBS) | v0.4.1 | `config/oscal-salesforce/sbs_source.yaml` |
-| CSA SSCF | current | `config/sscf_control_index.yaml` |
-| OSCAL gap mapping | — | `config/oscal-salesforce/control_mapping.yaml` |
+| Security Benchmark for Salesforce (SBS) | v0.4.1 | `config/oscal-salesforce/sbs_catalog.json` (OSCAL 1.1.2) |
+| Workday Security Control Catalog (WSCC) | v0.2.0 | `config/workday/workday_catalog.json` (OSCAL 1.1.2, 30 controls) |
+| CSA SSCF | current | `config/sscf/sscf_catalog.json` (OSCAL 1.1.2, 14 controls) |
+| CSA CCM | v4.1 | `config/ccm/ccm_v4.1_oscal_ref.yaml` (reference; 197 controls) |
 | NIST AI RMF | 1.0 | Applied by `nist-review` skill |
 
 ## Repository Layout
 
 ```
 agents/                   ← Agent definitions (YAML frontmatter + role docs)
-config/                   ← Control framework configs and SSCF/SBS mappings
+config/
+  oscal-salesforce/       ← SBS OSCAL catalog (45 controls) + SSCF mapping
+  sscf/                   ← SSCF OSCAL catalog (14 controls) + CCM bridge
+  ccm/                    ← CCM v4.1 reference pointer
+  workday/                ← Workday OSCAL catalog (30 controls) + SSCF mapping
 contexts/                 ← System prompts for assess/review/research modes
 docs/
   architecture.png        ← Auto-generated reference architecture diagram
   oscal-salesforce-poc/   ← Generated evidence, deliverables, runbooks
+  wiki/                   ← Full wiki (14 pages; mirrors GitHub wiki)
 harness/                  ← agent-loop CLI (loop.py, tools.py, agents.py, memory.py)
 hooks/                    ← Session lifecycle scripts (start/end/compact)
 mission.md                ← Agent identity and authorized scope
-prompts/                  ← Prompting playbook and anti-patterns
-schemas/                  ← Output schema definitions
-scripts/                  ← oscal_gap_map.py, gen_diagram.py, validate_env.py
-skills/                   ← Skill CLIs (sfdc-connect, oscal-assess, sscf-benchmark, ...)
+schemas/
+  baseline_assessment_schema.json  ← v2 platform-agnostic assessment schema
+scripts/                  ← oscal_gap_map.py, generate_sbs_oscal_catalog.py, validate_env.py
+skills/
+  sfdc_connect/           ← Salesforce collector
+  oscal_assess/           ← OSCAL gap assessor
+  sscf_benchmark/         ← SSCF domain scorer
+  nist_review/            ← NIST AI RMF gate
+  report_gen/             ← Governance report generator
+  workday_connect/        ← Workday collector (blueprint; Phase E)
 tests/                    ← pytest suite (12 tests, fully offline with --mock-llm)
 ```
 

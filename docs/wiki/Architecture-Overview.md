@@ -11,7 +11,7 @@
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │              agent-loop (gpt-5.2 orchestrator)                │
-│              OpenAI tool_use ReAct loop, max 12 turns         │
+│              OpenAI tool_use ReAct loop, max 14 turns         │
 └──────┬──────────┬──────────┬──────────┬──────────┬───────────┘
        │          │          │          │          │
  ┌─────▼──┐ ┌────▼───┐ ┌────▼──┐ ┌─────▼────┐ ┌──▼────────┐
@@ -123,13 +123,23 @@ For persistent cross-session memory, run a Qdrant container and set `QDRANT_HOST
 ## Control Mapping Architecture
 
 ```
-Salesforce Config
+Platform Config (Salesforce or Workday)
        ↓
-  SBS Controls (45 controls in config/oscal-salesforce/sbs_source.yaml)
+  Platform OSCAL Catalog
+    SBS: config/oscal-salesforce/sbs_catalog.json    (45 controls, OSCAL 1.1.2)
+    WD:  config/workday/workday_catalog.json          (30 controls, OSCAL 1.1.2)
        ↓
-  SBS → SSCF mapping (config/oscal-salesforce/sbs_to_sscf_mapping.yaml)
+  Platform → SSCF mapping
+    SBS: config/oscal-salesforce/sbs_to_sscf_mapping.yaml
+    WD:  config/workday/workday_to_sscf_mapping.yaml
        ↓
-  SSCF Control Index (config/sscf_control_index.yaml)
+  SSCF Catalog (config/sscf/sscf_catalog.json — 14 controls, OSCAL 1.1.2)
+       ↓
+  SSCF → CCM v4.1 bridge (config/sscf/sscf_to_ccm_mapping.yaml)
+       ↓
+  CCM v4.1 (config/ccm/ccm_v4.1_oscal_ref.yaml — 197 controls)
+       ↓
+  Regulatory crosswalk: SOX · HIPAA · SOC2 TSC · ISO 27001 · NIST 800-53 · PCI DSS · GDPR
        ↓
   Domain Scores (IAM, Data Security, Configuration Hardening, etc.)
 ```
@@ -142,9 +152,13 @@ Salesforce Config
 |---|---|
 | `mission.md` | Agent identity + authorized scope (loaded every session) |
 | `AGENTS.md` | Canonical agent roster |
-| `agents/orchestrator.md` | Orchestrator routing table and quality gates |
-| `config/sscf_control_index.yaml` | SSCF control index |
-| `config/oscal-salesforce/sbs_source.yaml` | SBS control catalog |
-| `schemas/baseline_assessment_schema.json` | Required output schema |
+| `agents/orchestrator.md` | Orchestrator routing table, quality gates, finish() trigger |
+| `config/sscf/sscf_catalog.json` | SSCF OSCAL 1.1.2 catalog (14 controls) |
+| `config/sscf/sscf_to_ccm_mapping.yaml` | SSCF→CCM v4.1 bridge |
+| `config/oscal-salesforce/sbs_catalog.json` | SBS OSCAL 1.1.2 catalog (45 controls) |
+| `config/workday/workday_catalog.json` | Workday OSCAL 1.1.2 catalog (30 controls) |
+| `config/workday/workday_to_sscf_mapping.yaml` | Workday→SSCF mappings |
+| `schemas/baseline_assessment_schema.json` | v2 platform-agnostic assessment schema |
+| `skills/workday_connect/BLUEPRINT.md` | Workday connector specification |
 | `docs/oscal-salesforce-poc/generated/` | All assessment outputs |
 | `docs/architecture.png` | Auto-generated reference architecture diagram |

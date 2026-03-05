@@ -1,6 +1,6 @@
 # Skill Reference
 
-All 5 CLI skills. Each is a Python CLI installed by `pip install -e .` and callable from the shell or from the agent orchestrator via `tool_use`.
+All CLI skills. Each is a Python CLI installed by `pip install -e .` and callable from the shell or from the agent orchestrator via `tool_use`.
 
 ---
 
@@ -283,3 +283,65 @@ In live mode, calls `gpt-5.2` with `agents/nist-reviewer.md` as system prompt. I
 ### Dry-run mode
 
 Emits a realistic weak-org stub verdict: GOVERN=pass, MAP=partial, MEASURE=pass, MANAGE=partial, overall=flag. Does not call the OpenAI API.
+
+---
+
+## workday-connect (Blueprint — Phase E)
+
+**File:** `skills/workday_connect/workday_connect.py` (not yet implemented)
+**Spec:** `skills/workday_connect/BLUEPRINT.md`
+**Purpose:** Authenticates to a Workday HCM/Finance tenant and collects security-relevant configuration across 30 controls.
+
+### Auth
+
+OAuth 2.0 Client Credentials — no password credentials. All calls (REST, SOAP, RaaS) use short-lived Bearer tokens.
+
+```bash
+WD_TENANT=acme_dpt1
+WD_CLIENT_ID=...
+WD_CLIENT_SECRET=...   # never logged
+WD_TOKEN_URL=https://acme_dpt1.workday.com/ccx/oauth2/acme_dpt1/token
+```
+
+### Collection methods
+
+| Method | Transport | Count |
+|---|---|---|
+| `rest` | GET JSON with Bearer | 1 control (WD-IAM-007: `/staffing/v6/workers`) |
+| `soap+oauth` | POST SOAP XML with Bearer | 25 controls (security config endpoints) |
+| `raas` | GET JSON with Bearer | 3 controls (pre-configured custom reports) |
+| `manual` | N/A | 1 control (WD-CKM-002 BYOK) |
+
+### Graceful degradation
+
+- RaaS report not pre-configured → `not_applicable + raas_available: false`
+- SOAP permission denied → `partial`
+- Manual controls → always `not_applicable`
+
+### Dev without a live tenant
+
+Use WireMock:
+```bash
+docker run -d --name workday-mock -p 8080:8080 \
+  -v ./tests/workday_mocks:/home/wiremock/mappings wiremock/wiremock:latest
+# Set WD_BASE_URL=http://localhost:8080 in .env
+```
+
+Stub files: `tests/workday_mocks/` — one JSON file per SOAP operation, REST endpoint, and RaaS report.
+
+### Output
+
+`docs/oscal-salesforce-poc/generated/workday_raw.json` — `baseline_assessment_schema.json` v2 compliant, `"platform": "workday"`.
+
+---
+
+## generate_sbs_oscal_catalog.py (Script)
+
+**File:** `scripts/generate_sbs_oscal_catalog.py`
+**Purpose:** Converts `docs/oscal-salesforce-poc/generated/sbs_controls.json` → OSCAL 1.1.2 `config/oscal-salesforce/sbs_catalog.json`.
+
+```bash
+python3 scripts/generate_sbs_oscal_catalog.py [--dry-run]
+```
+
+Maps custom JSON fields to OSCAL parts: `statement`, `guidance`, `objective` (audit procedure), `implementation-guidance` (remediation), `default-value`. Groups controls by category. Adds `sscf-control` prop and SSCF catalog link from `sbs_to_sscf_mapping.yaml`.

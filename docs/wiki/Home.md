@@ -26,11 +26,13 @@ Welcome to the **SaaS Security Multi-Agent System** wiki. Fully automated AI pip
 
 ## What This Repo Does
 
-This system connects to Salesforce orgs, runs OSCAL and CSA SSCF security assessments, and generates governance outputs for:
+This system connects to SaaS platforms, runs OSCAL and CSA SSCF security assessments, and generates governance outputs for:
 - **Application owners** — remediation backlog with priority actions and due dates (Markdown)
 - **Security governance review** — full DOCX + Markdown report with Executive Scorecard, Domain Posture chart, NIST AI RMF review, and sorted control matrix
 
-The pipeline is fully agentic: `gpt-5.2` orchestrates 5 CLI tools and 7 specialist agents over a 12-turn ReAct loop. No human input needed once triggered.
+Platform controls chain through **platform OSCAL catalog → SSCF → CCM v4.1 → regulatory crosswalk** (SOX, HIPAA, SOC2, ISO 27001, NIST 800-53, PCI DSS, GDPR) automatically.
+
+The pipeline is fully agentic: `gpt-5.2` orchestrates 5 CLI tools and 7 specialist agents over a 14-turn ReAct loop. No human input needed once triggered.
 
 ---
 
@@ -73,3 +75,9 @@ agent-loop run --dry-run --env dev --org test-org
 | sfdc-expert | ✅ Done | On-call Apex/SFDC specialist agent |
 | SDK Migration | ✅ Done | Anthropic → OpenAI (gpt-5.2 / gpt-4o-mini) |
 | Executive reports | ✅ Done | Python-rendered scorecard, domain chart, sorted matrix |
+| finish() tool | ✅ Done | Orchestrator exits cleanly; _MAX_TURNS→14 |
+| OSCAL Catalogs | ✅ Done | SSCF catalog, SBS catalog, Workday catalog — all OSCAL 1.1.2 |
+| Schema v2 | ✅ Done | `baseline_assessment_schema.json` v2 — platform-agnostic, CCM chains |
+| SSCF→CCM bridge | ✅ Done | 14 SSCF controls mapped to CCM v4.1; automatic regulatory crosswalk |
+| Workday Blueprint | ✅ Done | 30-control WSCC catalog, SSCF mapping, connector blueprint (Phase C) |
+| Workday Connector | 🔜 Phase E | `skills/workday_connect/workday_connect.py` — OAuth 2.0 + WireMock dev |

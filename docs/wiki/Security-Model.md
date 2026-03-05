@@ -41,7 +41,8 @@ The security model for this system is defined in `mission.md` and enforced at mu
 | Data type | Where it lives | What to never do |
 |---|---|---|
 | Salesforce credentials | `.env` (gitignored) | Put in code, commit, log |
-| ANTHROPIC_API_KEY | `.env` (gitignored) | Put in code, commit, log to stdout |
+| OPENAI_API_KEY | `.env` (gitignored) | Put in code, commit, log to stdout |
+| WD_CLIENT_SECRET | `.env` (gitignored) | Put in code, commit, log |
 | Salesforce config data | `docs/oscal-salesforce-poc/generated/<org>/` | Write to `/tmp`, commit, put in /tmp |
 | Assessment findings | `docs/oscal-salesforce-poc/generated/<org>/` | Write to external systems without approval |
 
