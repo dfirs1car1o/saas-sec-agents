@@ -46,6 +46,10 @@ This session completed:
 | Docker MCP Gateway | ✅ Done | Brave Search running on localhost:8000/sse |
 | API compat fixes | ✅ Done | max_completion_tokens, max_retries, loop stop |
 | --mock-llm | ✅ Done | Offline test mode for report-gen |
+| finish() tool | ✅ Done | Orchestrator calls finish() to cleanly exit loop; _MAX_TURNS→14 |
+| RemoteProxy Tooling API | ✅ Done | collect_integrations tries Tooling API before SOQL fallback |
+| PDF confusion | ✅ Done | orchestrator.md routing table corrected; .pdf removed |
+| CODEOWNERS | ✅ Done | @compliance-rehab added to skills/** and config/** |
 
 ---
 
@@ -90,7 +94,7 @@ docker run -d --name mcp-gateway \
 ## Current State
 
 - **Branch:** `main` (clean — all committed)
-- **Last commit:** `5b5b456` — CorpIS → Security Team scrub across all files
+- **Last commit:** `48bc739` — finish() tool, RemoteProxy Tooling API, PDF fix, CODEOWNERS
 - **Tests:** 12/12 passing
 - **Local path:** `/Users/jerijuar/saas-sec-agents`
 - **Org:** cyber-coach-dev (`orgfarm-7ecec127cc-dev-ed.develop.my.salesforce.com`)
@@ -170,9 +174,11 @@ MEMORY_ENABLED=0
 ## Known Issues / Potential Next Steps
 
 - **SBS-AUTH-001** — MFA not enforced on cyber-coach-dev; requires manual Salesforce org remediation
-- **Orchestrator still hits max_turns=12** on live runs — LLM makes 1-2 extra tool calls after the pipeline; consider bumping to 14 or adding explicit `finish()` tool
-- **`RemoteProxy` SOQL** not supported in API v59 — graceful fallback exists; Tooling API fix pending
 - **`OrganizationSettings` MFA fields** inaccessible on dev orgs via API — manual check note in reports
-- **PDF output** — orchestrator requests `.pdf` extension even though PDF is dropped; report_gen writes markdown to a `.pdf`-named file. Harmless but confusing
-- **Colleague GitHub username** needed for CODEOWNERS + enforce_admins flip
 - **Docker MCP servers** — could enable more: filesystem, obsidian, playwright via `--servers` flag
+
+### ✅ Resolved (2026-03-07, commit 48bc739)
+- **Orchestrator max_turns** — `finish()` tool added; loop breaks on sentinel; `_MAX_TURNS` bumped to 14
+- **RemoteProxy SOQL** — `collect_integrations` now tries Tooling API first; fallback includes real error
+- **PDF output confusion** — removed `.pdf` from `orchestrator.md` routing table
+- **CODEOWNERS** — `@compliance-rehab` added to `skills/**` and `config/**`
