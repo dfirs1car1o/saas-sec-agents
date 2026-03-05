@@ -28,3 +28,7 @@ docs/oscal-salesforce-poc/deliverables/
 
 # Claude Code session state
 .claude/
+
+# Internal session docs — contain local paths and personal info; stored in Obsidian vault
+NEXT_SESSION.md
+NEXT_SESSION_PROMPTS.md
