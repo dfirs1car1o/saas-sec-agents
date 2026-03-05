@@ -197,19 +197,28 @@ MEMORY_ENABLED=0
 
 When resuming Workday work, Phase D (CCM regulatory table in report-gen) is deferred. Phase E implements `skills/workday_connect/workday_connect.py`:
 
-1. **Install:** `pip install zeep requests jsonschema python-dotenv`
-2. **Parse OSCAL catalog** (`workday_catalog.json`) to drive collection loop — do not hardcode control IDs
-3. **Auth:** `zeep` SOAP WS-Security BasicAuth using `WD_TENANT`, `WD_USERNAME`, `WD_PASSWORD`, `WD_API_VERSION`
-4. **Per-control dispatch:** read `collection-method`, `soap-service`, `soap-operation`, `raas-report` props from OSCAL control
+1. **Install:** `pip install requests lxml jsonschema python-dotenv` — no `zeep` needed
+2. **Auth:** OAuth 2.0 Client Credentials only — no WS-Security BasicAuth anywhere. `get_oauth_token(client_id, secret, token_url)` returns a Bearer token used for REST, SOAP, and RaaS calls
+3. **Parse OSCAL catalog** (`workday_catalog.json`) to drive collection loop — do not hardcode control IDs
+4. **Per-control dispatch** by `collection-method` prop: `rest` → GET with Bearer; `soap` → POST raw SOAP XML with `Authorization: Bearer`; `raas` → GET with Bearer; `manual` → immediate `not_applicable`
 5. **Graceful degradation:** RaaS 404 → `not_applicable + raas_available: false`; SOAP permission denied → `partial`; manual → always `not_applicable`
 6. **Output:** `docs/oscal-salesforce-poc/generated/workday_raw.json` (schema v2, platform=workday)
 7. **Validate output** against `schemas/baseline_assessment_schema.json` before writing
-8. **`--dry-run`** flag: print collection plan without any API calls (see BLUEPRINT.md for exact output format)
+8. **`--dry-run`** flag: print collection plan without any API calls
+
+**No Workday paid tenant needed for Phase E development** — use WireMock Docker stub server:
+```bash
+docker run -d --name workday-mock -p 8080:8080 \
+  -v ./tests/workday_mocks:/home/wiremock/mappings wiremock/wiremock:latest
+# then set WD_BASE_URL=http://localhost:8080
+```
+Stub files go in `tests/workday_mocks/` (one per SOAP operation + RaaS report + OAuth token).
 
 New env vars needed in `.env`:
 ```
 WD_TENANT=
-WD_USERNAME=
-WD_PASSWORD=
+WD_CLIENT_ID=
+WD_CLIENT_SECRET=
+WD_TOKEN_URL=   # https://{tenant}.workday.com/ccx/oauth2/{tenant}/token
 WD_API_VERSION=v40.0
 ```

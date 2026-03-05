@@ -4,9 +4,9 @@
     "metadata": {
       "title": "Workday Security Control Catalog (WSCC)",
       "last-modified": "2026-03-07T00:00:00Z",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "oscal-version": "1.1.2",
-      "remarks": "OSCAL 1.1.2 catalog of Workday HCM/Financials security controls mapped to SSCF domains. Controls link to parent SSCF controls in config/sscf/sscf_catalog.json. collection_method prop classifies how each control is collected: 'soap' (Workday Web Services SOAP API), 'raas' (Reports-as-a-Service custom report endpoint), or 'manual' (questionnaire only). Version 0.1.0 is the blueprint phase — audit procedures are complete but the collector (workday-connect) is not yet implemented.",
+      "remarks": "OSCAL 1.1.2 catalog of Workday HCM/Financials security controls mapped to SSCF domains. Controls link to parent SSCF controls in config/sscf/sscf_catalog.json. collection_method prop classifies how each control is collected: 'rest' (Workday REST API v1, OAuth 2.0 Bearer), 'soap' (Workday Web Services SOAP API, OAuth 2.0 Bearer — no WS-Security BasicAuth), 'raas' (Reports-as-a-Service custom report endpoint, OAuth 2.0 Bearer), or 'manual' (questionnaire only). ALL authenticated calls use OAuth 2.0 Client Credentials — no password credentials are transmitted. Version 0.2.0 updates collection methods and tightens auth to OAuth 2.0 throughout.",
       "roles": [
         { "id": "creator", "title": "Catalog Author" },
         { "id": "maintainer", "title": "Control Framework Maintainer" }
@@ -292,9 +292,9 @@
               { "name": "sort-id", "value": "iam-07" },
               { "name": "severity", "value": "moderate" },
               { "name": "sscf-control", "value": "SSCF-IAM-002" },
-              { "name": "collection-method", "value": "soap" },
-              { "name": "soap-service", "value": "Human_Resources" },
-              { "name": "soap-operation", "value": "Get_Workers" }
+              { "name": "collection-method", "value": "rest" },
+              { "name": "rest-endpoint", "value": "GET /staffing/v6/workers?includeTerminated=false" },
+              { "name": "rest-auth", "value": "oauth2-client-credentials" }
             ],
             "parts": [
               {

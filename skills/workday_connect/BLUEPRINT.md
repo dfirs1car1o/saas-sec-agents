@@ -75,35 +75,47 @@ Several controls are collected via pre-built Custom Reports configured as RaaS e
 
 ---
 
-## Authentication Methods
+## Authentication — OAuth 2.0 Client Credentials (Universal)
 
-### Primary: SOAP WS-Security BasicAuth
-
-Used for all WWS SOAP API calls (configuration reads, security group queries, system data).
+**No password credentials are used.** All calls — REST, SOAP, and RaaS — authenticate exclusively via OAuth 2.0 Client Credentials (machine-to-machine). Tokens expire in 3600 seconds and are scoped to the ISU's registered functional areas. This eliminates long-lived password credential exposure and enables token revocation without ISU password rotation.
 
 ```
-WSDL base: https://{tenant}.workday.com/ccx/service/{tenant}/{service}/{version}
-Auth:       WS-Security UsernameToken (BasicAuth over TLS)
-TLS:        Required. TLS 1.2+ enforced on Workday side.
+Token URL:  https://{tenant}.workday.com/ccx/oauth2/{tenant}/token
+Grant type: client_credentials
+Scope:      Workday REST API (functional areas matching ISU ISSG permissions)
+TLS:        1.2+ required. Enforced by Workday. All endpoints HTTPS-only.
 ```
 
-Environment variables:
-```
-WD_TENANT          — Workday tenant ID (e.g., acme_dpt1)
-WD_USERNAME        — ISU username (e.g., svc_security_assessor@acme_dpt1)
-WD_PASSWORD        — ISU password (never logged, never written to disk)
-WD_API_VERSION     — WWS version, e.g. v40.0 (default: v40.0)
-WD_BASE_URL        — optional override; defaults to https://{tenant}.workday.com
-```
+### Transport by endpoint type
 
-### Secondary: OAuth 2.0 (Client Credentials)
+| Transport | Auth mechanism | Used for |
+|---|---|---|
+| **REST API v1** | OAuth 2.0 Bearer (`Authorization: Bearer {token}`) | Worker data, REST-native endpoints |
+| **SOAP WWS** | OAuth 2.0 Bearer in HTTP header (`Authorization: Bearer {token}`) | Security config endpoints (auth policies, password rules, lockout, SAML) |
+| **RaaS** | OAuth 2.0 Bearer (`Authorization: Bearer {token}`) | Pre-configured custom reports |
 
-Used for REST API calls when a Workday REST API Client is registered. Not required for baseline collection — all 30 controls are accessible via SOAP or RaaS.
+> Workday SOAP API accepts `Authorization: Bearer` as an alternative to WS-Security XML. This means `zeep` is not required — use `requests` with a Bearer header for all calls, including SOAP. Raw SOAP XML is simpler and avoids WS-Security token construction entirely.
+
+### Why not WS-Security BasicAuth?
+
+WS-Security UsernameToken (BasicAuth) embeds credentials in every SOAP envelope. This means:
+- Long-lived ISU password transmitted on every request
+- Credentials must be stored in `.env` or secrets manager but rotated manually
+- No token revocation — password change required to revoke access
+- SOAP envelope credential exposure in logs if envelope logging is enabled
+
+OAuth 2.0 Client Credentials eliminates all of these: one client secret generates short-lived tokens; secret rotation does not require re-deployment; tokens can be revoked instantly without changing credentials.
+
+### Environment variables
 
 ```
-WD_OAUTH_CLIENT_ID
-WD_OAUTH_CLIENT_SECRET
-WD_OAUTH_TOKEN_URL
+WD_TENANT              — Workday tenant ID (e.g., acme_dpt1)
+WD_USERNAME            — ISU username for context (logging only; not used in auth)
+WD_CLIENT_ID           — OAuth 2.0 API client ID (from Workday API Client registration)
+WD_CLIENT_SECRET       — OAuth 2.0 client secret (never logged, never written to disk)
+WD_TOKEN_URL           — OAuth token endpoint (default: https://{tenant}.workday.com/ccx/oauth2/{tenant}/token)
+WD_API_VERSION         — WWS SOAP version, e.g. v40.0 (default: v40.0)
+WD_BASE_URL            — optional override; defaults to https://{tenant}.workday.com
 ```
 
 ---
@@ -112,11 +124,12 @@ WD_OAUTH_TOKEN_URL
 
 Each control in `workday_catalog.json` declares its `collection-method` prop:
 
-| Method | Meaning | Collector behavior |
-|---|---|---|
-| `soap` | Readable via WWS SOAP API | Call `soap_service` + `soap_operation`; parse response |
-| `raas` | Readable via pre-configured RaaS endpoint | GET `{base_url}/ccx/service/customreport2/{tenant}/{report}?format=json` |
-| `manual` | Requires manual questionnaire | Return `not_applicable` with `collection_method_note` |
+| Method | Auth | Transport | Collector behavior |
+|---|---|---|---|
+| `rest` | OAuth 2.0 Bearer | HTTPS JSON | GET `{base_url}/ccx/api/{rest-endpoint}`; parse JSON response |
+| `soap` | OAuth 2.0 Bearer | HTTPS XML | POST raw SOAP envelope with `Authorization: Bearer {token}` header; no WS-Security XML |
+| `raas` | OAuth 2.0 Bearer | HTTPS JSON | GET `{base_url}/ccx/service/customreport2/{tenant}/{report}?format=json` |
+| `manual` | N/A | N/A | Return `not_applicable` with `collection_method_note` |
 
 ---
 
@@ -124,68 +137,70 @@ Each control in `workday_catalog.json` declares its `collection-method` prop:
 
 ### IAM Controls
 
-| Control | Method | WWS Service | Operation / Report | Key Fields |
+| Control | Method | Service / Endpoint | Operation / Report | Key Fields |
 |---|---|---|---|---|
-| WD-IAM-001 | soap | Human_Resources | Get_Security_Groups | Domain assignments per group; check overprivilege |
-| WD-IAM-002 | soap | Human_Resources | Get_Integration_System_Users | `Disallow_UI_Sessions` field |
-| WD-IAM-003 | soap | Human_Resources | Get_Authentication_Policies | `Multi_Factor_Authentication_Required` |
-| WD-IAM-004 | soap | Human_Resources | Get_Authentication_Policies | `Authentication_Policy_Type` = `SSO` |
-| WD-IAM-005 | soap | Human_Resources | Get_Security_Groups | `Security_Group_Administrators`; verify non-empty |
-| WD-IAM-006 | soap | Human_Resources | Get_Business_Process_Security_Policies | SOD separation per business process |
-| WD-IAM-007 | raas | — | `RPT_Inactive_Workday_Accounts` | Accounts with last login > 90 days |
-| WD-IAM-008 | soap | Human_Resources | Get_API_Client_Scopes | OAuth client `Scope` list; flag overpermissive |
+| WD-IAM-001 | raas | — | `Security_Group_Domain_Access_Audit` | Domain assignments per group; flag sensitive-domain access |
+| WD-IAM-002 | soap+oauth | Security_Configuration | Get_Workday_Account | `Disallow_UI_Sessions` per ISU |
+| WD-IAM-003 | soap+oauth | Security_Configuration | Get_Authentication_Policies | `Multi_Factor_Authentication_Required` per policy |
+| WD-IAM-004 | soap+oauth | Security_Configuration | Get_SAML_Setup | SSO active; `Require_Signed_Assertions` |
+| WD-IAM-005 | raas | — | `Privileged_Role_Assignments_Audit` | Privileged group members; last recertification date |
+| WD-IAM-006 | raas | — | `Business_Process_Security_Policy_Audit` | SOD check: initiator vs. approver group overlap |
+| WD-IAM-007 | **rest** | `/staffing/v6/workers` | — | Active workers; filter `lastLogin` > 90d |
+| WD-IAM-008 | soap+oauth | Security_Configuration | Get_API_Clients | OAuth client scope list; flag over-permissive |
 
 ### Configuration Hardening Controls
 
-| Control | Method | WWS Service | Operation | Key Fields |
-|---|---|---|---|---|
-| WD-CON-001 | soap | Human_Resources | Get_Password_Rules | `Minimum_Password_Length`, `Complexity_Requirements` |
-| WD-CON-002 | soap | Human_Resources | Get_Password_Rules | `Password_Expiration_Days`, `Password_History_Count` |
-| WD-CON-003 | soap | Human_Resources | Get_Session_Timeout_Settings | `Session_Timeout_Minutes` |
-| WD-CON-004 | soap | Human_Resources | Get_Account_Lockout_Settings | `Lockout_Threshold`, `Lockout_Duration_Minutes` |
-| WD-CON-005 | soap | Human_Resources | Get_IP_Range_Settings | `Allowed_IP_Ranges` list; empty = no restriction |
-| WD-CON-006 | soap | Human_Resources | Get_Authentication_Policies | Coverage: count policies, verify `Apply_To_All_Users` |
+All CON controls use SOAP with OAuth 2.0 Bearer. Workday security config endpoints (password rules, lockout, session timeout, auth policies) have no REST API equivalent.
+
+| Control | Service | Operation | Key Fields |
+|---|---|---|---|
+| WD-CON-001 | Security_Configuration | Get_Password_Rules | `Minimum_Password_Length`, complexity flags |
+| WD-CON-002 | Security_Configuration | Get_Password_Rules | `Password_Expiration_Days`, `Password_History_Count` |
+| WD-CON-003 | Security_Configuration | Get_Workday_Account (sample) | `Session_Timeout_Minutes` per account type |
+| WD-CON-004 | Security_Configuration | Get_Password_Rules | `Lockout_Threshold`, `Lockout_Duration_Minutes` |
+| WD-CON-005 | Security_Configuration | Get_IP_Range_Settings | `Allowed_IP_Ranges` list; empty = no restriction |
+| WD-CON-006 | Security_Configuration | Get_Authentication_Policies | Policy count; verify all-user coverage |
 
 ### Logging and Monitoring Controls
 
-| Control | Method | WWS Service | Operation / Report | Key Fields |
+| Control | Method | Service / Endpoint | Operation / Report | Key Fields |
 |---|---|---|---|---|
-| WD-LOG-001 | soap | Human_Resources | Get_Workday_Account | `User_Activity_Logging_Enabled` |
-| WD-LOG-002 | soap | Human_Resources | Get_SignOn_Events | Query last 30d sign-on audit data; verify accessible |
-| WD-LOG-003 | raas | — | `RPT_Failed_Signon_Events` | Count failed events by user in last 30d |
-| WD-LOG-004 | soap | Human_Resources | Get_Audit_Logs | Administrative action log availability check |
-| WD-LOG-005 | soap | Human_Resources | Get_Audit_Retention_Settings | `Audit_Log_Retention_Days`; pass if >= 365 |
+| WD-LOG-001 | soap+oauth | Security_Configuration | Get_Workday_Account | `User_Activity_Logging_Enabled` tenant-wide flag |
+| WD-LOG-002 | soap+oauth | Security_Configuration | Get_SignOn_Events | Last 30d sign-on audit; verify accessibility |
+| WD-LOG-003 | raas | — | `RPT_Failed_Signon_Events` | Failed events by user in last 30d |
+| WD-LOG-004 | soap+oauth | Security_Configuration | Get_Audit_Logs | Admin action log availability check |
+| WD-LOG-005 | soap+oauth | Security_Configuration | Get_Audit_Retention_Settings | `Audit_Log_Retention_Days`; pass if ≥ 365 |
 
 ### Cryptography and Key Management Controls
 
-| Control | Method | WWS Service | Operation | Key Fields |
+| Control | Method | Service | Operation | Key Fields |
 |---|---|---|---|---|
-| WD-CKM-001 | soap | Human_Resources | Get_Tenant_Setup_Security | `Require_TLS_For_API`, `WS_Security_Required` |
+| WD-CKM-001 | soap+oauth | Security_Configuration | Get_Tenant_Setup_Security | `Require_TLS_For_API`; TLS version enforced |
 | WD-CKM-002 | manual | — | — | BYOK requires manual tenant admin confirmation |
-| WD-CKM-003 | soap | Human_Resources | Get_Integration_System_Users | ISU `Password_Last_Changed_Date`; flag if > 365d |
+| WD-CKM-003 | soap+oauth | Security_Configuration | Get_Integration_System_Users | ISU `Password_Last_Changed_Date`; flag if > 90d |
 
 ### Data Security and Privacy Controls
 
-| Control | Method | WWS Service | Operation | Key Fields |
+| Control | Method | Service / Endpoint | Operation | Key Fields |
 |---|---|---|---|---|
-| WD-DSP-001 | soap | Human_Resources | Get_Security_Groups | Sensitive domain (Compensation, SSN, Benefits) members |
-| WD-DSP-002 | soap | Human_Resources | Get_Workday_Account | `Allow_Data_Export`, export permission flags |
-| WD-DSP-003 | soap | Human_Resources | Get_API_Client_Scopes | Integration scope breadth; flag if `All_Workday_Data` |
-| WD-DSP-004 | soap | Human_Resources | Get_Security_Groups | PII field access domains; group membership count |
+| WD-DSP-001 | soap+oauth | Security_Configuration | Get_Security_Groups | Sensitive domain members (Compensation, SSN, Benefits) |
+| WD-DSP-002 | soap+oauth | Security_Configuration | Get_Workday_Account | `Allow_Data_Export`, export permission flags |
+| WD-DSP-003 | soap+oauth | Security_Configuration | Get_API_Clients | Integration scope breadth; flag `All_Workday_Data` |
+| WD-DSP-004 | soap+oauth | Security_Configuration | Get_Security_Groups | PII domain access; group membership count |
 
 ### Threat Detection and Response Controls
 
-| Control | Method | WWS Service | Operation | Key Fields |
+| Control | Method | Service | Operation | Key Fields |
 |---|---|---|---|---|
-| WD-TDR-001 | soap | Human_Resources | Get_Authentication_Policies | `Failed_Login_Alert_Threshold`, alert routing configured |
-| WD-TDR-002 | soap | Human_Resources | Get_Business_Process_Definitions | Approval step count per process; flag single-approver |
+| WD-TDR-001 | soap+oauth | Security_Configuration | Get_Authentication_Policies | `Failed_Login_Alert_Threshold`, alert routing |
+| WD-TDR-002 | soap+oauth | Security_Configuration | Get_Business_Process_Definitions | Approval step count; flag single-approver chains |
 
 ### Governance and Compliance Controls
 
-| Control | Method | WWS Service | Operation / Report | Key Fields |
+| Control | Method | Service / Endpoint | Operation / Report | Key Fields |
 |---|---|---|---|---|
-| WD-GOV-001 | soap | Human_Resources | Get_Security_Policies | `Pending_Security_Policies` list; pass if empty |
-| WD-GOV-002 | raas | — | `RPT_Security_Config_Changes` | Changes in last 90d with approver; flag no-approver |
+| WD-GOV-001 | soap+oauth | Security_Configuration | Get_Security_Policies | `Pending_Security_Policies`; pass if empty |
+| WD-GOV-002 | raas | — | `RPT_Security_Config_Changes` | Changes in last 90d; flag entries with no approver |
 
 ---
 
@@ -320,18 +335,88 @@ The gap map step reads `workday_to_sscf_mapping.yaml` to enrich each finding wit
 
 When implementing `workday_connect.py`:
 
-1. Use `zeep` (Python SOAP library) for WWS calls. Do not hand-roll SOAP XML.
-2. Parse the OSCAL catalog (`workday_catalog.json`) to drive the collection loop — do not hardcode control IDs.
-3. Read `collection-method`, `soap-service`, `soap-operation`, `raas-report` props from each OSCAL control.
-4. Validate output against `schemas/baseline_assessment_schema.json` before writing.
-5. Honor `--dry-run` flag by short-circuiting before any network call.
-6. Never log `WD_PASSWORD` or `WD_OAUTH_CLIENT_SECRET`.
+1. **Auth first:** implement `get_oauth_token(client_id, client_secret, token_url) -> str` as the single entry point for all auth. Cache the token and refresh when it expires (check `expires_in`). Never log the token or secret.
+2. **No `zeep`.** Use `requests` for all transports:
+   - REST: `requests.get(url, headers={"Authorization": f"Bearer {token}"})`
+   - SOAP: `requests.post(url, data=soap_xml_str, headers={"Authorization": f"Bearer {token}", "Content-Type": "text/xml"})` — no WS-Security XML in the envelope
+   - RaaS: same as REST GET with Bearer header
+3. **OSCAL-catalog-driven loop:** parse `workday_catalog.json` to enumerate controls. Read `collection-method`, `rest-endpoint`, `soap-service`, `soap-operation`, `raas-report` props. Do not hardcode control IDs.
+4. **Dispatch by collection-method:** `rest` → REST handler; `soap` → SOAP handler with raw XML template; `raas` → RaaS handler; `manual` → immediate `not_applicable`.
+5. Validate output against `schemas/baseline_assessment_schema.json` before writing.
+6. Honor `--dry-run` flag by short-circuiting before any network call.
+7. Never log `WD_CLIENT_SECRET`.
 
 Key pip dependencies:
 ```
-zeep          # SOAP client
+requests      # all HTTP (REST + SOAP + RaaS)
 pyyaml        # mapping file parsing
 jsonschema    # output validation
-requests      # RaaS HTTP GET
 python-dotenv # env loading
+lxml          # SOAP XML response parsing
 ```
+
+### OAuth 2.0 token acquisition (pseudocode)
+
+```python
+import requests, time
+
+_token_cache: dict = {}
+
+def get_oauth_token(client_id: str, client_secret: str, token_url: str) -> str:
+    now = time.time()
+    if _token_cache.get("expires_at", 0) > now + 60:
+        return _token_cache["access_token"]
+    resp = requests.post(token_url, data={
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    })
+    resp.raise_for_status()
+    data = resp.json()
+    _token_cache["access_token"] = data["access_token"]
+    _token_cache["expires_at"] = now + data.get("expires_in", 3600)
+    return _token_cache["access_token"]
+```
+
+### Mock server for development (no paid tenant needed)
+
+See "Workday Dev Environment" section below — use WireMock or `pytest-responses` to stub SOAP/REST/RaaS endpoints without a live tenant.
+
+---
+
+## Workday Dev Environment (No Paid Tenant Required)
+
+Workday **does not offer a free developer org** equivalent to Salesforce Developer Edition. Options for building and testing `workday_connect` without a paid tenant:
+
+### Option 1: WireMock stub server (recommended for Phase E)
+
+Run a local WireMock container that mimics Workday SOAP/REST/RaaS responses:
+
+```bash
+docker run -d --name workday-mock \
+  -p 8080:8080 \
+  -v ./tests/workday_mocks:/home/wiremock/mappings \
+  wiremock/wiremock:latest
+```
+
+Create stub files in `tests/workday_mocks/` that return realistic Workday XML/JSON responses. The OAuth token endpoint, SOAP operations, and RaaS endpoints each get a stub mapping. The collector code is identical for real and mock — just set `WD_BASE_URL=http://localhost:8080`.
+
+### Option 2: pytest-responses (unit tests only)
+
+Use `responses` library to intercept HTTP calls at the test level. Good for per-function unit tests; not sufficient for full end-to-end dry-run.
+
+### Option 3: Workday Learning / Community tenant
+
+Workday provides a free **Workday Learning** tenant at `wd5.myworkday.com` for training. API access is severely restricted — useful for exploring the UI but not for SOAP/REST testing.
+
+### Option 4: Implementation partner sandbox
+
+If your organization uses a Workday implementation partner (Deloitte, Accenture, Alight), they typically have sandbox tenants with full API access. Request a time-boxed ISU/ISSG setup for integration testing.
+
+### Recommended test approach for Phase E
+
+1. Build against WireMock stubs (all 30 controls covered by stub XML/JSON files)
+2. Add `pytest` tests that assert correct `status`, `observed_value`, `sscf_mappings` for each control
+3. When a real Workday tenant becomes available: run `--dry-run` first, then live
+
+Stub files go in: `tests/workday_mocks/` (create dir; add to `.gitignore` if stubs contain realistic-looking data)
