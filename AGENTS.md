@@ -6,22 +6,27 @@ This file is the canonical reference for all agents in this system. Each agent h
 
 | Agent | File | Model | Primary Role |
 |---|---|---|---|
-| orchestrator | agents/orchestrator.md | claude-opus-4-6 | Routes tasks, assembles final output, manages agent loop |
-| collector | agents/collector.md | claude-sonnet-4-6 | Extracts Salesforce org config via API and CLI |
-| assessor | agents/assessor.md | claude-sonnet-4-6 | Maps findings to OSCAL/SBS/SSCF controls |
-| reporter | agents/reporter.md | claude-haiku-4-5 | Generates DOCX/MD/JSON outputs for app owners |
-| nist-reviewer | agents/nist-reviewer.md | claude-sonnet-4-6 | Validates all outputs against NIST AI RMF |
-| security-reviewer | agents/security-reviewer.md | claude-sonnet-4-6 | AppSec + DevSecOps review of CI/CD, workflows, and skill CLIs |
-| sfdc-expert | agents/sfdc-expert.md | claude-sonnet-4-6 | Apex + deep admin specialist (on-call) |
+| orchestrator | agents/orchestrator.md | gpt-5.2 | Routes tasks, manages 14-turn ReAct loop, calls finish() to exit |
+| collector | agents/collector.md | gpt-5.2 | Extracts SaaS org config via API and CLI |
+| assessor | agents/assessor.md | gpt-5.2 | Maps findings to OSCAL/SBS/SSCF controls |
+| reporter | agents/reporter.md | gpt-5.2 | Generates DOCX/MD governance outputs |
+| nist-reviewer | agents/nist-reviewer.md | gpt-5.2 | Validates all outputs against NIST AI RMF 1.0 |
+| security-reviewer | agents/security-reviewer.md | gpt-5.2 | AppSec + DevSecOps review of CI/CD, workflows, and skill CLIs |
+| sfdc-expert | agents/sfdc-expert.md | gpt-5.2 | Apex + deep Salesforce admin specialist (on-call) |
+| repo-reviewer | agents/repo-reviewer.md | gpt-5.2 | Periodic audit: personal data, stale docs, strategic alignment |
+
+> Models are set by env vars: `LLM_MODEL_ORCHESTRATOR`, `LLM_MODEL_ANALYST`, `LLM_MODEL_REPORTER` (default: `gpt-5.2`). Azure OpenAI Government supported via `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT`.
 
 ## Skill Roster
 
 | Skill | Directory | What It Does |
 |---|---|---|
-| sfdc-connect | skills/sfdc-connect/ | Authenticates and queries a Salesforce org via REST/Metadata API |
-| oscal-assess | skills/oscal-assess/ | Runs OSCAL gap mapping against SBS control catalog |
-| sscf-benchmark | skills/sscf-benchmark/ | Benchmarks findings against CSA SSCF control index |
-| report-gen | skills/report-gen/ | Generates DOCX, Markdown, and JSON governance outputs |
+| sfdc-connect | skills/sfdc_connect/ | Authenticates and queries a Salesforce org via REST/Tooling API (JWT or SOAP) |
+| oscal-assess | skills/oscal_assess/ | Evaluates 45 SBS controls against collected org config |
+| sscf-benchmark | skills/sscf_benchmark/ | Scores findings by CSA SSCF domain (RED/AMBER/GREEN) |
+| nist-review | skills/nist_review/ | NIST AI RMF 1.0 gate (govern/map/measure/manage); issues block/flag/pass |
+| report-gen | skills/report_gen/ | Generates audience-specific Markdown + DOCX governance reports |
+| workday-connect | skills/workday_connect/ | Workday HCM/Finance collector — blueprint complete, implementation Phase E |
 
 ## Context Modes
 

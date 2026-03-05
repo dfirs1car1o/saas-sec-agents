@@ -6,8 +6,8 @@ These are the prompting patterns that work well for this system. They apply Pete
 
 ### Session Start (Standard)
 ```
-Resume from /Users/jerijuar/multiagent-azure/NEXT_SESSION_PROMPTS.md.
-Read mission.md and AGENTS.md first, then tell me the current state.
+Continue work on saas-sec-agents. Read mission.md and AGENTS.md first, then tell me the current state.
+(Session notes are in Obsidian vault — saas-sec-agents/Next Session.md)
 ```
 
 ### Session Start (Live Assessment)

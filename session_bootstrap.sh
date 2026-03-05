@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="/Users/jerijuar/multiagent-azure"
+REPO="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 echo "== Session Bootstrap =="
 echo "Repo: $REPO"
@@ -34,4 +34,4 @@ echo
 
 echo "== Suggested next commands =="
 echo "git -C $REPO push"
-echo "open $REPO/NEXT_SESSION_PROMPTS.md"
+echo "# Session notes are in Obsidian vault — saas-sec-agents/Next Session.md"

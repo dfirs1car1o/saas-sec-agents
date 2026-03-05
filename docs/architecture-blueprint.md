@@ -294,7 +294,7 @@ For orgs that block password-based (SOAP) login (Spring '24+ default):
 ```dotenv
 SF_AUTH_METHOD=jwt
 SF_CONSUMER_KEY=<Consumer Key from Connected App>
-SF_PRIVATE_KEY_PATH=/Users/jerijuar/salesforce_jwt_private.pem
+SF_PRIVATE_KEY_PATH=/path/to/salesforce_jwt_private.pem
 ```
 
 **Test:**

@@ -45,7 +45,7 @@ Stand up an OSCAL-aligned Salesforce baseline pipeline under the SaaS Risk Progr
 
 ## Runbook (Phase 1)
 ```bash
-cd /Users/jerijuar/multiagent-azure
+cd /path/to/saas-sec-agents
 
 python3 scripts/oscal_import_sbs.py \
   --source-config config/oscal-salesforce/sbs_source.yaml \
@@ -65,7 +65,7 @@ Resulting mapped items also include `mapping_confidence` with aggregate `mapping
 
 ## One-Command Smoke Test
 ```bash
-cd /Users/jerijuar/multiagent-azure
+cd /path/to/saas-sec-agents
 ./scripts/oscal_smoke_test.sh
 ```
 
