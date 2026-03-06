@@ -11,6 +11,24 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ## [Unreleased]
 
+### 2026-03-07 — Phase G/H: SSCF v1.0 catalog, OSCAL profiles, component definitions
+
+#### Added
+- `config/sscf/sscf_v1_catalog.json` — Full SSCF v1.0 OSCAL 1.1.2 catalog: 36 controls across 6 standard CCM-aligned domains (CON, DSP, IAM, IPY, LOG, SEF). IPY (Interoperability & Portability) domain added for first time. SEF (Security Incident Management) replaces non-standard TDR/GOV. Each control references authoritative CCM v4.1 control IDs via `ccm-controls` prop. `sscf-v0-equivalent` prop traces 14 existing controls to their v0 IDs for backward compatibility.
+- `config/sscf/sscf_v1_profile.json` — OSCAL profile selecting all 36 SSCF v1.0 controls; base for platform sub-profiles.
+- `config/salesforce/sbs_v1_profile.json` — SBS as OSCAL sub-profile of SSCF v1.0 (35 controls). Adds Salesforce-specific platform notes for Event Monitoring, JWT Bearer, Security Health Check.
+- `config/workday/wscc_v1_profile.json` — WSCC as OSCAL sub-profile of SSCF v1.0 (30 controls). Adds Workday-specific notes for ISSG permissions, SOAP/RaaS/REST collection, OAuth 2.0 Client Credentials.
+- `config/component-definitions/salesforce_component.json` — OSCAL component definition for Salesforce: 18 implemented-requirements with SOQL/Tooling/Metadata API evidence specifications, pass/fail criteria, and collection method metadata.
+- `config/component-definitions/workday_component.json` — OSCAL component definition for Workday: 16 implemented-requirements with SOAP/RaaS/REST evidence specs, ISSG permission per control, and WSCC catalog cross-references.
+
+#### Changed
+- `config/sscf_control_index.yaml` → v2: 36 controls, all 6 SSCF v1.0 domains, severity ratings, owner teams, v0-equivalent mapping.
+
+#### Architecture Note
+- No CCM v4.1 OSCAL registration required: SSCF v1.0 is built as a standalone OSCAL catalog with CCM control IDs embedded as properties. This is the correct approach for frameworks without a public OSCAL download URL — interoperability is maintained via CCM ID cross-references in `ccm-controls` props and `back-matter` resource links.
+
+---
+
 ### 2026-03-07 — NIST AI RMF platform fix, CWE-312 remediation, workday-expert agent
 
 #### Added
