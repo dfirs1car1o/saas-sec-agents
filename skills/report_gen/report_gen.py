@@ -3,14 +3,16 @@ report-gen — LLM-driven governance output skill.
 
 Document structure (all sections except LLM narrative are Python-rendered):
 
-  [Gate banner]           — ⛔/🚩 if NIST verdict is block/flag
-  Executive Scorecard     — overall score + severity × status matrix   [HARNESS]
-  Domain Posture          — ASCII bar chart of SSCF domain scores      [HARNESS]
-  Immediate Actions       — top-10 critical/fail findings              [HARNESS]
-  Executive Summary       — LLM narrative: what it means, business risk [LLM]
-  Remediation Roadmap     — LLM narrative: priorities, owners, timeline [LLM]
-  Full Control Matrix     — sorted findings table                      [HARNESS]
-  NIST AI RMF Review      — governance gate, function table, recs      [HARNESS]
+  [Gate banner]                 — ⛔/🚩 if NIST verdict is block/flag
+  Executive Scorecard           — overall score + severity × status matrix   [HARNESS]
+  OSCAL Framework Provenance    — catalog → profile → component → CCM chain  [HARNESS]
+  Domain Posture                — ASCII bar chart of SSCF domain scores      [HARNESS]
+  Immediate Actions             — top-10 critical/fail findings              [HARNESS]
+  Executive Summary + Analysis  — LLM narrative                              [LLM]
+  Full Control Matrix           — sorted findings table (all controls)       [HARNESS]
+  Plan of Action & Milestones   — open items: POAM-IDs, owners, due dates   [HARNESS]
+  Not Assessed Controls         — out-of-scope appendix for auditors         [HARNESS]
+  NIST AI RMF Review            — governance gate, function table, recs      [HARNESS]
 
 Usage:
     report-gen generate --backlog <path> --audience app-owner|security --out <path>
@@ -416,6 +418,82 @@ def _render_priority_findings(backlog: dict, n: int = 10) -> str:
     return "\n".join(lines)
 
 
+def _render_poam(backlog: dict) -> str:
+    """Formal Plan of Action & Milestones table — open (fail) and in-progress (partial) findings only."""
+    items = backlog.get("mapped_items", [])
+    open_items = _sorted_findings([i for i in items if i.get("status") in ("fail", "partial")])
+
+    if not open_items:
+        return (
+            "## Plan of Action & Milestones (POA&M)\n\n"
+            "*No open items — all assessed controls passed.*\n"
+        )
+
+    assessment_id = backlog.get("assessment_id", "unknown")
+    generated = backlog.get("generated_at_utc", datetime.now(UTC).isoformat())[:10]
+
+    lines = [
+        "## Plan of Action & Milestones (POA&M)",
+        "",
+        f"**Assessment ID:** `{assessment_id}` &nbsp;|&nbsp; "
+        f"**Generated:** {generated} &nbsp;|&nbsp; "
+        f"**Open items:** {len(open_items)}",
+        "",
+        "| POA&M ID | Control | Description | Risk | Owner | Due Date | Milestones | Status |",
+        "|----------|---------|-------------|------|-------|----------|------------|--------|",
+    ]
+    for idx, item in enumerate(open_items, 1):
+        poam_id = f"POAM-{idx:03d}"
+        cid = item.get("sbs_control_id", "?")
+        desc = item.get("sbs_title", "—")
+        sev = item.get("severity", "?")
+        sta = item.get("status", "?")
+        owner = item.get("owner", "—")
+        due = item.get("due_date") or "—"
+        milestone = item.get("remediation") or "Remediate per control guidance"
+        milestone = milestone[:80] + "…" if len(milestone) > 80 else milestone
+        sev_icon = _SEV_ICON.get(sev, "")
+        open_status = "Open" if sta == "fail" else "In Progress"
+        lines.append(
+            f"| `{poam_id}` | `{cid}` | {desc} | {sev_icon} {sev.capitalize()} "
+            f"| {owner} | {due} | {milestone} | {open_status} |"
+        )
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_not_assessed(backlog: dict) -> str:
+    """Appendix: controls not assessable via API — auditor disclosure."""
+    items = backlog.get("mapped_items", [])
+    na_items = [i for i in items if i.get("status") == "not_applicable"]
+    unmapped = backlog.get("unmapped_items", [])
+
+    if not na_items and not unmapped:
+        return ""
+
+    lines = [
+        "## Appendix: Controls Not Assessed via API",
+        "",
+        "The following controls could not be automatically assessed through platform APIs. "
+        "Manual review, vendor attestation, or process interviews are required.",
+        "",
+        "| Control | Description | Reason |",
+        "|---------|-------------|--------|",
+    ]
+    for item in na_items:
+        cid = item.get("sbs_control_id", "?")
+        desc = item.get("sbs_title", "—")
+        notes = item.get("mapping_notes", "Outside automated collector scope")
+        lines.append(f"| `{cid}` | {desc} | {notes} |")
+    for item in unmapped:
+        cid = item.get("legacy_control_id", "?")
+        lines.append(f"| `{cid}` | — | No catalog mapping — manual review required |")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _render_full_matrix(backlog: dict) -> str:
     """Complete sorted findings table — critical/fail first."""
     items = backlog.get("mapped_items", [])
@@ -705,6 +783,8 @@ def generate(
     domain_chart = _render_domain_chart(sscf_data) if sscf_data else ""
     priority = _render_priority_findings(backlog_data)
     full_matrix = _render_full_matrix(backlog_data)
+    poam = _render_poam(backlog_data) if audience == "security" else ""
+    not_assessed = _render_not_assessed(backlog_data) if audience == "security" else ""
 
     # ── LLM narrative ────────────────────────────────────────────────────────
     system_prompt = _SYSTEM_PROMPTS[audience]
@@ -713,7 +793,11 @@ def generate(
 
     # ── Assemble document ────────────────────────────────────────────────────
     parts = [
-        p for p in [banner, scorecard, provenance, domain_chart, priority, llm_narrative, full_matrix, nist_section]
+        p
+        for p in [
+            banner, scorecard, provenance, domain_chart, priority,
+            llm_narrative, full_matrix, poam, not_assessed, nist_section,
+        ]
         if p
     ]
     markdown = "\n\n".join(parts)
