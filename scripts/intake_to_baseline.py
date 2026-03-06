@@ -61,8 +61,8 @@ def build_profile(data: dict[str, Any]) -> dict[str, Any]:
         "profile_id": "SF-BASELINE-EM-TSP-V1-GENERATED",
         "title": "Salesforce Event Monitoring and Transaction Security Baseline v1 (Generated)",
         "platform": "salesforce",
-        "owner_team": data.get("security_owner") or "business_security_services",
-        "approver_team": "global_information_security",
+        "owner_team": data.get("security_owner") or "security_engineering",
+        "approver_team": "information_security",
         "effective_date": generated,
         "intake_source": {
             "generated_at_utc": data.get("generated_at_utc"),

@@ -1,7 +1,7 @@
 version: 1
 mapping_policy:
   strategy: exact_legacy_control_id
-  owner: business_security_services
+  owner: security_engineering
   status: draft
 
 mappings:

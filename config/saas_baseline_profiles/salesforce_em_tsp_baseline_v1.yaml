@@ -2,8 +2,8 @@ version: 1
 profile_id: SF-BASELINE-EM-TSP-V1
 title: Salesforce Event Monitoring and Transaction Security Baseline v1
 platform: salesforce
-owner_team: business_security_services
-approver_team: global_information_security
+owner_team: security_engineering
+approver_team: information_security
 effective_date: 2026-02-24
 
 scope:
@@ -93,7 +93,7 @@ transaction_security_policies:
       action: notify
       notify:
         - security_operations
-        - global_information_security
+        - information_security
       sscf_control_id: SSCF-IAM-002
 
 exception_policy:

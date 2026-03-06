@@ -52,7 +52,7 @@
               { "name": "label", "value": "SSCF-CON-001" },
               { "name": "sort-id", "value": "con-01" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "CCC-01,CCC-07" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-CON-001" }
             ],
@@ -69,7 +69,7 @@
               { "name": "label", "value": "SSCF-CON-002" },
               { "name": "sort-id", "value": "con-02" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "CCC-04,CCC-06" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-CON-002" }
             ],
@@ -103,7 +103,7 @@
               { "name": "label", "value": "SSCF-CON-004" },
               { "name": "sort-id", "value": "con-04" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "CCC-02,CCC-03" }
             ],
             "parts": [
@@ -135,7 +135,7 @@
               { "name": "label", "value": "SSCF-CON-006" },
               { "name": "sort-id", "value": "con-06" },
               { "name": "severity", "value": "moderate" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "CCC-08,TVM-06" }
             ],
             "parts": [
@@ -271,7 +271,7 @@
               { "name": "label", "value": "SSCF-IAM-001" },
               { "name": "sort-id", "value": "iam-01" },
               { "name": "severity", "value": "critical" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-02" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-IAM-001" }
             ],
@@ -288,7 +288,7 @@
               { "name": "label", "value": "SSCF-IAM-002" },
               { "name": "sort-id", "value": "iam-02" },
               { "name": "severity", "value": "critical" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-04,IAM-05" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-IAM-002" }
             ],
@@ -305,7 +305,7 @@
               { "name": "label", "value": "SSCF-IAM-003" },
               { "name": "sort-id", "value": "iam-03" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-01,IAM-07" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-IAM-003" }
             ],
@@ -322,7 +322,7 @@
               { "name": "label", "value": "SSCF-IAM-004" },
               { "name": "sort-id", "value": "iam-04" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-08,IAM-09" }
             ],
             "parts": [
@@ -354,7 +354,7 @@
               { "name": "label", "value": "SSCF-IAM-006" },
               { "name": "sort-id", "value": "iam-06" },
               { "name": "severity", "value": "moderate" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-06,IAM-11" }
             ],
             "parts": [
@@ -370,7 +370,7 @@
               { "name": "label", "value": "SSCF-IAM-007" },
               { "name": "sort-id", "value": "iam-07" },
               { "name": "severity", "value": "moderate" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-13,IAM-14" }
             ],
             "parts": [
@@ -386,7 +386,7 @@
               { "name": "label", "value": "SSCF-IAM-008" },
               { "name": "sort-id", "value": "iam-08" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-15,IAM-09" }
             ],
             "parts": [
@@ -504,7 +504,7 @@
               { "name": "label", "value": "SSCF-LOG-001" },
               { "name": "sort-id", "value": "log-01" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "LOG-06,LOG-07" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-LOG-001" }
             ],
@@ -521,7 +521,7 @@
               { "name": "label", "value": "SSCF-LOG-002" },
               { "name": "sort-id", "value": "log-02" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "LOG-01,LOG-02" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-LOG-002" }
             ],
@@ -538,7 +538,7 @@
               { "name": "label", "value": "SSCF-LOG-003" },
               { "name": "sort-id", "value": "log-03" },
               { "name": "severity", "value": "moderate" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "LOG-08,LOG-09" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-LOG-003" }
             ],
@@ -680,7 +680,7 @@
               { "name": "label", "value": "SSCF-SEF-005" },
               { "name": "sort-id", "value": "sef-05" },
               { "name": "severity", "value": "moderate" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "GRC-01,GRC-04" },
               { "name": "sscf-v0-equivalent", "value": "SSCF-GOV-001" }
             ],

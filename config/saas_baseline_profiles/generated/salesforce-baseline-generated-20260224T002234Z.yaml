@@ -4,7 +4,7 @@
   "title": "Salesforce Event Monitoring and Transaction Security Baseline v1 (Generated)",
   "platform": "salesforce",
   "owner_team": "Corporate Information Security",
-  "approver_team": "global_information_security",
+  "approver_team": "information_security",
   "effective_date": "2026-02-24",
   "intake_source": {
     "generated_at_utc": "2026-02-24T00:22:16.754966+00:00",

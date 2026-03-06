@@ -18,7 +18,7 @@ controls:
     domain: configuration_hardening
     title: SaaS Security Baseline Enforcement
     description: Apply and continuously assess approved secure configuration baselines.
-    owner_team: business_security_services
+    owner_team: security_engineering
     severity: high
     sscf_v0_equivalent: SSCF-CON-001
 
@@ -26,7 +26,7 @@ controls:
     domain: configuration_hardening
     title: Drift Detection and Baseline Deviation Management
     description: Detect unauthorized configuration drift and enforce remediation workflow.
-    owner_team: business_security_services
+    owner_team: security_engineering
     severity: high
     sscf_v0_equivalent: SSCF-CON-002
 
@@ -42,7 +42,7 @@ controls:
     domain: configuration_hardening
     title: Platform Hardening and Security Settings Verification
     description: Apply vendor hardening guidance; disable insecure defaults; enable security features.
-    owner_team: business_security_services
+    owner_team: security_engineering
     severity: high
 
   - sscf_control_id: SSCF-CON-005
@@ -56,7 +56,7 @@ controls:
     domain: configuration_hardening
     title: Patch and Version Management Assurance
     description: Track and assure application of security-relevant vendor patches and EOL deprecation.
-    owner_team: business_security_services
+    owner_team: security_engineering
     severity: moderate
 
   # DSP — Data Security and Privacy
@@ -109,7 +109,7 @@ controls:
     domain: identity_access_management
     title: Multi-Factor Authentication Enforcement
     description: Require MFA for privileged and workforce accounts.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: critical
     sscf_v0_equivalent: SSCF-IAM-001
 
@@ -117,7 +117,7 @@ controls:
     domain: identity_access_management
     title: Privileged Access Governance and Review
     description: Enforce approval, least privilege, and periodic recertification for privileged roles.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: critical
     sscf_v0_equivalent: SSCF-IAM-002
 
@@ -125,7 +125,7 @@ controls:
     domain: identity_access_management
     title: Federation and SSO Assurance
     description: Enforce enterprise IdP federation and hardened SSO policy posture.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: high
     sscf_v0_equivalent: SSCF-IAM-003
 
@@ -133,7 +133,7 @@ controls:
     domain: identity_access_management
     title: User Lifecycle and Offboarding Controls
     description: Timely revocation of access on termination or role change; stale account detection.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: high
 
   - sscf_control_id: SSCF-IAM-005
@@ -147,21 +147,21 @@ controls:
     domain: identity_access_management
     title: Session Security and Timeout Controls
     description: Enforce idle timeout, concurrent session limits, and session token invalidation.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: moderate
 
   - sscf_control_id: SSCF-IAM-007
     domain: identity_access_management
     title: Just-in-Time Access and Temporary Privilege Elevation
     description: Govern temporary privilege via request-approve-expire workflow.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: moderate
 
   - sscf_control_id: SSCF-IAM-008
     domain: identity_access_management
     title: External and Guest Access Controls
     description: Govern external/contractor access: scoped, time-bound, MFA-enforced, recertified quarterly.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: high
 
   # IPY — Interoperability and Portability
@@ -205,7 +205,7 @@ controls:
     domain: logging_monitoring
     title: Security Telemetry Enablement
     description: Enable required audit/security logs for detection and forensics.
-    owner_team: business_security_services
+    owner_team: security_engineering
     severity: high
     sscf_v0_equivalent: SSCF-LOG-001
 
@@ -213,7 +213,7 @@ controls:
     domain: logging_monitoring
     title: Administrative and Configuration Audit Logging
     description: Capture and monitor administrative and configuration change events.
-    owner_team: business_security_services
+    owner_team: security_engineering
     severity: high
     sscf_v0_equivalent: SSCF-LOG-002
 
@@ -221,7 +221,7 @@ controls:
     domain: logging_monitoring
     title: Audit Retention and Integrity
     description: Retain logs per policy and preserve integrity for investigations.
-    owner_team: business_security_services
+    owner_team: security_engineering
     severity: moderate
     sscf_v0_equivalent: SSCF-LOG-003
 
@@ -281,6 +281,6 @@ controls:
     domain: security_incident_management
     title: Exception Governance and Risk Acceptance
     description: Enforce time-bound exceptions with compensating controls and approvals.
-    owner_team: global_information_security
+    owner_team: information_security
     severity: moderate
     sscf_v0_equivalent: SSCF-GOV-001

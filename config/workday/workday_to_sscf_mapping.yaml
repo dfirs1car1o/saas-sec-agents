@@ -14,7 +14,7 @@ version: 1
 framework: CSA_SSCF
 platform: workday
 catalog_ref: config/workday/workday_catalog.json
-owner: business_security_services
+owner: security_engineering
 status: draft
 
 defaults_by_domain:

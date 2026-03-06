@@ -36,7 +36,7 @@
               { "name": "label", "value": "SSCF-IAM-001" },
               { "name": "sort-id", "value": "iam-01" },
               { "name": "severity", "value": "critical" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-02" }
             ],
             "parts": [
@@ -64,7 +64,7 @@
               { "name": "label", "value": "SSCF-IAM-002" },
               { "name": "sort-id", "value": "iam-02" },
               { "name": "severity", "value": "critical" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-04,IAM-05" }
             ],
             "parts": [
@@ -92,7 +92,7 @@
               { "name": "label", "value": "SSCF-IAM-003" },
               { "name": "sort-id", "value": "iam-03" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "IAM-01,IAM-07" }
             ],
             "parts": [
@@ -127,7 +127,7 @@
               { "name": "label", "value": "SSCF-LOG-001" },
               { "name": "sort-id", "value": "log-01" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "LOG-06,LOG-07" }
             ],
             "parts": [
@@ -155,7 +155,7 @@
               { "name": "label", "value": "SSCF-LOG-002" },
               { "name": "sort-id", "value": "log-02" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "LOG-01,LOG-02" }
             ],
             "parts": [
@@ -183,7 +183,7 @@
               { "name": "label", "value": "SSCF-LOG-003" },
               { "name": "sort-id", "value": "log-03" },
               { "name": "severity", "value": "moderate" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "LOG-08,LOG-09" }
             ],
             "parts": [
@@ -379,7 +379,7 @@
               { "name": "label", "value": "SSCF-CON-001" },
               { "name": "sort-id", "value": "con-01" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "CCC-01,CCC-07" }
             ],
             "parts": [
@@ -407,7 +407,7 @@
               { "name": "label", "value": "SSCF-CON-002" },
               { "name": "sort-id", "value": "con-02" },
               { "name": "severity", "value": "high" },
-              { "name": "owner-team", "value": "business_security_services" },
+              { "name": "owner-team", "value": "security_engineering" },
               { "name": "ccm-controls", "value": "CCC-04,CCC-06" }
             ],
             "parts": [
@@ -442,7 +442,7 @@
               { "name": "label", "value": "SSCF-GOV-001" },
               { "name": "sort-id", "value": "gov-01" },
               { "name": "severity", "value": "moderate" },
-              { "name": "owner-team", "value": "global_information_security" },
+              { "name": "owner-team", "value": "information_security" },
               { "name": "ccm-controls", "value": "GRC-01,GRC-04" }
             ],
             "parts": [
