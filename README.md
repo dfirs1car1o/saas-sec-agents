@@ -68,13 +68,14 @@ All agents are OpenAI models. The orchestrator dispatches numbered tool calls to
 
 | Agent | Model | Role |
 |---|---|---|
-| Orchestrator | `gpt-5.3-chat-latest` | Plans and dispatches all 7 pipeline steps |
-| Collector | `gpt-5.3-chat-latest` | Interprets Salesforce raw data |
+| Orchestrator | `gpt-5.3-chat-latest` | Plans and dispatches all pipeline steps |
+| Collector | `gpt-5.3-chat-latest` | Interprets platform raw evidence data |
 | Assessor | `gpt-5.3-chat-latest` | Runs OSCAL gap analysis and benchmarks |
 | NIST Reviewer | `gpt-5.3-chat-latest` | Validates outputs; issues block/flag/pass verdicts |
 | Reporter | `gpt-4o-mini` | Writes LLM narrative for governance reports |
 | Security Reviewer | `gpt-5.3-chat-latest` | DevSecOps audit on CI/CD skill changes |
-| SFDC Expert | `gpt-5.3-chat-latest` | On-call specialist for complex Apex/API questions |
+| SFDC Expert | `gpt-5.3-chat-latest` | On-call specialist for complex Salesforce/Apex/API questions |
+| Workday Expert | `gpt-5.3-chat-latest` | On-call specialist for Workday HCM/Finance SOAP/RaaS/REST |
 
 ## Skills (CLIs)
 

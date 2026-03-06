@@ -13,6 +13,7 @@ Welcome to the **SaaS Security Multi-Agent System** wiki. Fully automated AI pip
 | [Linux Setup](Linux-Setup) | Ubuntu, Debian, RHEL, WSL2 — step by step |
 | [Windows Setup](Windows-Setup) | Corporate Windows machine with VS Code — step by step |
 | [Architecture Overview](Architecture-Overview) | How the system is designed |
+| [OSCAL Guide](OSCAL-Guide) | What OSCAL is and how we use it — catalogs, profiles, component definitions, diagrams |
 | [Agent Reference](Agent-Reference) | All 7 agents — roles, models, triggers |
 | [Skill Reference](Skill-Reference) | All 5 CLI tools — usage, inputs, outputs |
 | [Pipeline Walkthrough](Pipeline-Walkthrough) | Step-by-step: from org → report |
