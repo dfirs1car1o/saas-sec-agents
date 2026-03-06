@@ -11,6 +11,30 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ## [Unreleased]
 
+### 2026-03-06 — Phase F/G: Workday agent-loop wiring, report improvements, CDW scrub
+
+#### Added
+- `harness/tools.py` — `workday_connect_collect` tool schema and dispatcher; `platform` param added to `oscal_assess_assess`, `nist_review_assess`, `report_gen_generate` schemas and dispatchers
+- `harness/loop.py` — `--platform salesforce|workday` CLI flag; Workday-specific task prompt (step 1 = `workday_connect_collect`); `workday_connect_collect` added to `_CRITICAL_TOOLS`; platform-aware Mem0 session ID
+- `agents/orchestrator.md` — Workday routing row: `workday_connect_collect → oscal_assess_assess → oscal_gap_map → sscf_benchmark → nist_review_assess (platform=workday) → report_gen_generate × 2 → finish()`
+- `scripts/validate_env.py` — `--platform salesforce|workday` flag; Workday env vars (`WD_TENANT`, `WD_CLIENT_ID`, `WD_CLIENT_SECRET`, `WD_TOKEN_URL`, `WD_BASE_URL`, `WD_API_VERSION`) added as optional checks
+- `skills/oscal_assess/oscal_assess.py` — `--platform salesforce|workday` flag; `run_workday_assessment()` produces 30 findings with SSCF-* control IDs using `_WSCC_CONTROL_IDS` list and `_load_sscf_index()`; `_WD_DRY_RUN_OVERRIDES` with Workday-specific evidence (ISU, SOAP, RaaS, ISSG)
+- `skills/report_gen/report_gen.py` — `Description` column (`sbs_title`) added to Priority Findings and Full Control Matrix tables; `_apply_table_borders()` post-processes DOCX via python-docx for full single-line borders on all table cells; `_OSCAL_CHAIN` dict with 6-row provenance per platform; `_render_oscal_provenance()` renders OSCAL Framework Provenance table (Catalog → Profile → Component Definition → Control Framework → Regulatory Crosswalk → POA&M); `_detect_platform()` infers platform from control ID prefix
+- `pyproject.toml` — `python-docx>=1.1.0` added to dependencies (required for table border post-processing)
+
+#### Fixed
+- `scripts/oscal_gap_map.py` — SSCF-* direct path: findings with `SSCF-*` control IDs bypass SBS catalog lookup; title/domain/severity resolved from `config/sscf_control_index.yaml` directly (enables Workday WSCC backlog items)
+- `config/sscf_control_index.yaml` — YAML parse error at IAM-008: colon in description value now quoted
+
+#### Removed (CDW attribution scrub)
+- `docs/saas-baseline/` — entire directory deleted (25 files, 1322 deletions); contained `CDW_Salesforce_EventMonitoring_TSP_Baseline_v1.0.docx` and CDW-attributable baseline deliverables
+- `config/saas_baseline_controls/` — `salesforce.yaml`, `servicenow.yaml`, `workday.yaml` deleted
+- `config/saas_baseline_profiles/` — generated YAML and `salesforce_em_tsp_baseline_v1.yaml` deleted
+- `docs/oscal-salesforce-poc/SESSION_HANDOFF_2026-02-24.md`, `SESSION_HANDOFF_2026-02-25.md` — session handoff files deleted
+- `docs/agents/brutal-critic-agent.md`, `docs/agents/tasks/brutal-critic-audit-task.md` — internal debug agent docs deleted
+
+---
+
 ### 2026-03-07 — Phase G/H: SSCF v1.0 catalog, OSCAL profiles, component definitions
 
 #### Added
