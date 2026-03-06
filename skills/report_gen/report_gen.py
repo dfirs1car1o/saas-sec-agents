@@ -271,11 +271,12 @@ def _render_priority_findings(backlog: dict, n: int = 10) -> str:
     lines = [
         f"## Immediate Actions — Top {len(sorted_items)} Priority Findings",
         "",
-        "| # | Control | Severity | Status | Required Action | Due Date |",
-        "|---|---------|----------|--------|----------------|----------|",
+        "| # | Control | Description | Severity | Status | Required Action | Due Date |",
+        "|---|---------|-------------|----------|--------|----------------|----------|",
     ]
     for idx, item in enumerate(sorted_items, 1):
         cid = item.get("sbs_control_id", "?")
+        desc = item.get("sbs_title", "—")
         sev = item.get("severity", "?")
         sta = item.get("status", "?")
         sev_icon = _SEV_ICON.get(sev, "")
@@ -284,7 +285,7 @@ def _render_priority_findings(backlog: dict, n: int = 10) -> str:
         action = action[:70] + "…" if len(action) > 70 else action
         due = item.get("due_date") or "—"
         lines.append(
-            f"| {idx} | `{cid}` | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {action} | {due} |"
+            f"| {idx} | `{cid}` | {desc} | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {action} | {due} |"
         )
 
     lines.append("")
@@ -299,11 +300,12 @@ def _render_full_matrix(backlog: dict) -> str:
     lines = [
         "## Full Control Matrix",
         "",
-        "| Control | Severity | Status | Confidence | Due Date | Owner |",
-        "|---------|----------|--------|------------|----------|-------|",
+        "| Control | Description | Severity | Status | Confidence | Due Date | Owner |",
+        "|---------|-------------|----------|--------|------------|----------|-------|",
     ]
     for item in sorted_items:
         cid = item.get("sbs_control_id", "?")
+        desc = item.get("sbs_title", "—")
         sev = item.get("severity", "?")
         sta = item.get("status", "?")
         sev_icon = _SEV_ICON.get(sev, "")
@@ -312,7 +314,7 @@ def _render_full_matrix(backlog: dict) -> str:
         due = item.get("due_date") or "—"
         owner = item.get("owner", "—")
         lines.append(
-            f"| `{cid}` | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {conf} | {due} | {owner} |"
+            f"| `{cid}` | {desc} | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {conf} | {due} | {owner} |"
         )
 
     lines.append("")
