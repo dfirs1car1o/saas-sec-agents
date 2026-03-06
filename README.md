@@ -87,7 +87,7 @@ All tools are CLI-based Python scripts. Each supports `--help` and `--dry-run`.
 | `sscf-benchmark` | `skills/sscf_benchmark/` | Scores findings by CSA SSCF domain (red/amber/green) |
 | `nist-review` | `skills/nist_review/` | NIST AI RMF 1.0 governance gate (govern/map/measure/manage) |
 | `report-gen` | `skills/report_gen/` | Generates executive Markdown + DOCX reports |
-| `workday-connect` | `skills/workday_connect/` | **Blueprint complete** — Workday HCM/Finance collector (Phase E, implementation pending) |
+| `workday-connect` | `skills/workday_connect/` | Workday HCM/Finance collector — OAuth 2.0, 30 controls, SOAP/RaaS/REST, 21 tests |
 
 ### Report Structure
 
@@ -109,10 +109,10 @@ All platform controls chain through SSCF → CCM v4.1 → regulatory crosswalk (
 
 | Framework | Version | Config File |
 |---|---|---|
-| Security Benchmark for Salesforce (SBS) | v0.4.1 | `config/oscal-salesforce/sbs_catalog.json` (OSCAL 1.1.2) |
-| Workday Security Control Catalog (WSCC) | v0.2.0 | `config/workday/workday_catalog.json` (OSCAL 1.1.2, 30 controls) |
-| CSA SSCF | current | `config/sscf/sscf_catalog.json` (OSCAL 1.1.2, 14 controls) |
-| CSA CCM | v4.1 | `config/ccm/ccm_v4.1_oscal_ref.yaml` (reference; 197 controls) |
+| CSA SSCF | v1.0 | `config/sscf/sscf_v1_catalog.json` (OSCAL 1.1.2, 36 controls, 6 domains) |
+| Security Benchmark for Salesforce (SBS) | v1.0 | `config/salesforce/sbs_v1_profile.json` (OSCAL sub-profile of SSCF, 35 controls) |
+| Workday Security Control Catalog (WSCC) | v1.0 | `config/workday/wscc_v1_profile.json` (OSCAL sub-profile of SSCF, 30 controls) |
+| CSA CCM | v4.1 | `config/ccm/ccm_v4.1_oscal_ref.yaml` (reference; CCM control IDs embedded in SSCF catalog) |
 | NIST AI RMF | 1.0 | Applied by `nist-review` skill |
 
 ## Repository Layout
@@ -120,10 +120,12 @@ All platform controls chain through SSCF → CCM v4.1 → regulatory crosswalk (
 ```
 agents/                   ← Agent definitions (YAML frontmatter + role docs)
 config/
-  oscal-salesforce/       ← SBS OSCAL catalog (45 controls) + SSCF mapping
-  sscf/                   ← SSCF OSCAL catalog (14 controls) + CCM bridge
-  ccm/                    ← CCM v4.1 reference pointer
-  workday/                ← Workday OSCAL catalog (30 controls) + SSCF mapping
+  sscf/                   ← SSCF v1.0 OSCAL catalog (36 controls, 6 domains) + profile + CCM bridge
+  salesforce/             ← SBS v1.0 OSCAL sub-profile (35 controls) + Salesforce platform notes
+  workday/                ← WSCC v1.0 OSCAL sub-profile (30 controls) + Workday/ISSG notes
+  component-definitions/  ← OSCAL component definitions: evidence specs per control (Salesforce + Workday)
+  oscal-salesforce/       ← Legacy SBS OSCAL catalog (45 controls) + SSCF mapping
+  ccm/                    ← CCM v4.1 reference pointer (CCM IDs embedded in SSCF catalog)
 contexts/                 ← System prompts for assess/review/research modes
 docs/
   architecture.png        ← Auto-generated reference architecture diagram
@@ -136,13 +138,13 @@ schemas/
   baseline_assessment_schema.json  ← v2 platform-agnostic assessment schema
 scripts/                  ← oscal_gap_map.py, generate_sbs_oscal_catalog.py, validate_env.py
 skills/
-  sfdc_connect/           ← Salesforce collector
+  sfdc_connect/           ← Salesforce collector (REST + Tooling + Metadata API)
   oscal_assess/           ← OSCAL gap assessor
   sscf_benchmark/         ← SSCF domain scorer
-  nist_review/            ← NIST AI RMF gate
-  report_gen/             ← Governance report generator
-  workday_connect/        ← Workday collector (blueprint; Phase E)
-tests/                    ← pytest suite (12 tests, fully offline with --mock-llm)
+  nist_review/            ← NIST AI RMF gate (--platform salesforce|workday)
+  report_gen/             ← Governance report generator (MD + DOCX)
+  workday_connect/        ← Workday HCM/Finance collector (OAuth 2.0, 30 controls, 21 tests)
+tests/                    ← pytest suite (33 tests, fully offline with --mock-llm)
 ```
 
 ## Authentication
@@ -191,7 +193,7 @@ source .venv/bin/activate
 ruff check skills/ harness/    # lint
 bandit -r skills/ harness/     # SAST
 pip-audit                      # dependency CVEs
-pytest tests/ -v               # 12 tests (offline, no API key needed)
+pytest tests/ -v               # 33 tests (offline, no API key needed)
 ```
 
 CI stack: ruff · bandit · pip-audit · gitleaks · pytest · CodeQL · CodeRabbit Pro · dependency-review.
