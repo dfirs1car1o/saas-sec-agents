@@ -155,7 +155,7 @@ This project follows a simple changelog format and semantic versioning intent:
 - `harness/agents.py` — ORCHESTRATOR AgentConfig (claude-opus-4-6, mission.md + orchestrator.md system prompt)
 - `tests/test_harness_dry_run.py` — 3 harness smoke tests (tool dispatch order, error handler, API key plumbing)
 - `docs/CONTRIBUTING.md` — full contributor wiki (setup, Docker deps, env vars, pipeline, CI docs)
-- Corporate data scrub: CDW → Acme Corp, BSS → SaaS Security Team, GIS → Security Team across 33 files
+- Internal team name scrub: replaced org-specific team codes with generic industry terms across 33 files
 
 ### Added
 - OpenClaw agent framework: mission.md, AGENTS.md, 5 agent definitions, 4 skill SKILL.md files
