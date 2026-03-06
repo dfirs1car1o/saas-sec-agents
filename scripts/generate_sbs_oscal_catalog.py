@@ -18,7 +18,6 @@ import argparse
 import json
 import re
 import sys
-import uuid
 from pathlib import Path
 
 import yaml
@@ -179,7 +178,6 @@ def _load_sscf_map(path: Path) -> dict[str, str]:
 
     data = yaml.safe_load(path.read_text())
     overrides = data.get("control_overrides", {})
-    defaults_by_cat = data.get("defaults_by_category", {})
 
     result: dict[str, str] = {}
     for ctrl_id, mappings in overrides.items():

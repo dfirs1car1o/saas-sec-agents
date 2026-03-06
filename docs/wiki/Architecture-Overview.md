@@ -99,10 +99,13 @@ Reports are assembled from deterministic Python-rendered sections plus a focused
 ```
 [Gate banner]                  ← ⛔ block / 🚩 flag if NIST verdict requires it
 Executive Scorecard            ← overall score + severity × status matrix  [HARNESS]
+OSCAL Framework Provenance     ← catalog → profile → component → CCM chain [HARNESS]
 Domain Posture (ASCII chart)   ← bar chart of all SSCF domain scores       [HARNESS]
 Immediate Actions              ← top-10 critical/fail findings sorted       [HARNESS]
 Executive Summary + Analysis   ← LLM narrative (2 sections only)           [LLM]
 Full Control Matrix            ← complete sorted findings table             [HARNESS]
+Plan of Action & Milestones    ← POAM-IDs, owners, due dates, status       [HARNESS]
+Not Assessed Controls          ← out-of-scope appendix for auditors        [HARNESS]
 NIST AI RMF Governance Review  ← function table + blockers + recs          [HARNESS]
 ```
 

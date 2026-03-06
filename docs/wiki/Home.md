@@ -81,4 +81,8 @@ agent-loop run --dry-run --env dev --org test-org
 | Schema v2 | ✅ Done | `baseline_assessment_schema.json` v2 — platform-agnostic, CCM chains |
 | SSCF→CCM bridge | ✅ Done | 14 SSCF controls mapped to CCM v4.1; automatic regulatory crosswalk |
 | Workday Blueprint | ✅ Done | 30-control WSCC catalog, SSCF mapping, connector blueprint (Phase C) |
-| Workday Connector | 🔜 Phase E | `skills/workday_connect/workday_connect.py` — OAuth 2.0 + WireMock dev |
+| Workday Connector | ✅ Done | `skills/workday_connect/workday_connect.py` — OAuth 2.0, 30 controls, 21 tests (Phase E) |
+| Workday Agent-Loop | ✅ Done | `--platform workday` flag, workday_connect_collect tool, Workday task prompt (Phase F) |
+| Report: POA&M + Not Assessed | ✅ Done | POA&M (POAM-IDs, owners, milestones) + auditor appendix in security DOCX (Phase G) |
+| Report: OSCAL Provenance | ✅ Done | Catalog → Profile → Component Def → CCM chain table in every report |
+| Report: Table borders + Description | ✅ Done | Full single-line borders on all DOCX tables; Description column added |

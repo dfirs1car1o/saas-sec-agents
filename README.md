@@ -8,7 +8,7 @@ SaaS Security multi-agent AI system for OSCAL and CSA SSCF assessments across Sa
 
 A read-only, fully automated assessment pipeline that:
 
-1. Connects to SaaS platforms (Salesforce now; Workday blueprint complete) and extracts security-relevant configuration
+1. Connects to SaaS platforms (Salesforce and Workday) and extracts security-relevant configuration
 2. Maps findings to platform OSCAL catalogs → CSA SSCF domains → CCM v4.1 → SOX/HIPAA/SOC2 regulatory crosswalk
 3. Generates structured evidence artifacts (JSON, Markdown, DOCX) for governance review
 4. Validates AI-assisted outputs against NIST AI RMF 1.0 with blocking gate logic before delivery
@@ -32,17 +32,23 @@ cp .env.example .env   # fill in credentials
 python3 scripts/validate_env.py
 ```
 
-**Run the full pipeline (all 7 steps, live org):**
+**Run the full pipeline (Salesforce, live org):**
 ```bash
 agent-loop run --env dev --org <org-alias> --approve-critical
 ```
 
-**Run individual skills:**
+**Run the full pipeline (Workday, live tenant):**
 ```bash
-# Collect Salesforce security configuration
-python3 -m skills.sfdc_connect.sfdc_connect collect --scope all --env dev --out /tmp/sfdc_raw.json
+agent-loop run --platform workday --env dev --org <tenant-alias> --approve-critical
+```
 
-# Generate an assessment report without an API key (mock mode)
+**Workday dry-run (no credentials needed):**
+```bash
+python3 scripts/workday_dry_run_demo.py --org acme-workday --env dev
+```
+
+**Generate a report without an API key (mock mode):**
+```bash
 python3 -m skills.report_gen.report_gen generate \
   --backlog docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json \
   --audience security --out /tmp/report.md --mock-llm
@@ -97,10 +103,13 @@ Reports are assembled from deterministic Python-rendered sections (no hallucinat
 ```
 [Gate banner]                  ← ⛔ block / 🚩 flag if NIST verdict requires it
 Executive Scorecard            ← overall score + severity × status matrix
+OSCAL Framework Provenance     ← catalog → profile → component → CCM chain
 Domain Posture (ASCII chart)   ← bar chart of all SSCF domain scores
 Immediate Actions              ← top-10 critical/fail findings, sorted by severity
 Executive Summary + Analysis   ← LLM narrative (2 sections only)
 Full Control Matrix            ← complete sorted findings table
+Plan of Action & Milestones    ← POAM-IDs, owners, due dates, Open/In Progress
+Not Assessed Controls          ← out-of-scope appendix for auditors
 NIST AI RMF Governance Review  ← govern/map/measure/manage function table + blockers
 ```
 

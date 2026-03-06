@@ -11,6 +11,24 @@ This project follows a simple changelog format and semantic versioning intent:
 
 ## [Unreleased]
 
+### 2026-03-06 — POA&M, Not Assessed appendix, CI fix, docs update
+
+#### Added
+- `skills/report_gen/report_gen.py` — `_render_poam()`: POA&M table (security DOCX only) with sequential POAM-001 IDs, fail=Open/partial=In Progress, owner, due date, milestone text
+- `skills/report_gen/report_gen.py` — `_render_not_assessed()`: auditor appendix listing `not_applicable` and unmapped controls with reason column
+- Document assembly updated: `full_matrix → poam → not_assessed → nist_section`
+
+#### Fixed
+- `tests/test_pipeline_smoke.py` — domain count assertion updated 7→6 (SSCF v1.0 has 6 domains; v0 TDR/GOV merged into SEF)
+- `scripts/generate_sbs_oscal_catalog.py` — removed unused `import uuid` and unused `defaults_by_cat` variable (ruff F401/F841)
+
+#### Changed
+- `README.md` — Workday "blueprint complete" → "Salesforce and Workday"; added Workday pipeline and dry-run commands; report structure updated with POA&M, Not Assessed, OSCAL Provenance
+- `docs/wiki/Architecture-Overview.md`, `docs/wiki/Skill-Reference.md` — report structure blocks updated with new sections
+- `docs/wiki/Home.md` — Phase E/F/G status rows added; Workday Connector marked done
+
+---
+
 ### 2026-03-06 — Phase F/G: Workday agent-loop wiring, report improvements, CDW scrub
 
 #### Added

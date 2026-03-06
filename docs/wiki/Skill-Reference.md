@@ -190,17 +190,20 @@ report-gen generate --backlog backlog.json --audience security --out report.md -
 | Audience | Formats | Contents |
 |---|---|---|
 | `app-owner` | Markdown | Executive Scorecard, Immediate Actions, plain-language narrative, Full Control Matrix |
-| `security` | Markdown + DOCX | All of the above + Domain Posture chart + NIST AI RMF Governance Review |
+| `security` | Markdown + DOCX | All of the above + OSCAL Provenance + Domain Posture + POA&M + Not Assessed appendix + NIST AI RMF Governance Review |
 
 ### Report Structure
 
 ```
 [Gate banner]                  ← ⛔ block / 🚩 flag if NIST verdict requires it
 Executive Scorecard            ← overall score + severity × status matrix  [HARNESS]
+OSCAL Framework Provenance     ← catalog → profile → component → CCM chain [HARNESS]
 Domain Posture (ASCII chart)   ← bar chart of SSCF domain scores           [HARNESS]
 Immediate Actions (Top 10)     ← sorted critical/fail findings             [HARNESS]
 Executive Summary + Analysis   ← LLM narrative only                        [LLM]
 Full Control Matrix            ← complete sorted findings table             [HARNESS]
+Plan of Action & Milestones    ← POAM-IDs, owners, due dates, status       [HARNESS]
+Not Assessed Controls          ← out-of-scope appendix for auditors        [HARNESS]
 NIST AI RMF Governance Review  ← function table + blockers + recs          [HARNESS]
 ```
 

@@ -205,7 +205,8 @@ def test_sscf_benchmark_produces_scorecard(tmp_path: Path) -> None:
     assert "overall_status" in data
     assert "domains" in data
     assert data["overall_status"] in {"green", "amber", "red"}
-    assert len(data["domains"]) == 7, f"Expected 7 SSCF domains, got {len(data['domains'])}"
+    # SSCF v1.0 has 6 domains: CON/DSP/IAM/IPY/LOG/SEF (TDR/GOV merged into SEF in v1.0)
+    assert len(data["domains"]) == 6, f"Expected 6 SSCF domains, got {len(data['domains'])}"
 
     # Dry-run weak org should score below threshold (0.80)
     assert data["overall_score"] < 0.80, f"Expected weak-org score < 0.80, got {data['overall_score']}"
