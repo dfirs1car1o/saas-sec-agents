@@ -45,6 +45,30 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "workday_connect_collect",
+        "description": (
+            "Collect security-relevant configuration from a Workday tenant (read-only). "
+            "Uses OAuth 2.0 and calls SOAP/RaaS/REST APIs against the WSCC catalog (30 controls). "
+            "Returns path to collector output JSON."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "org": {"type": "string", "description": "Org alias for output dir naming (overrides WD_ORG_ALIAS)"},
+                "env": {
+                    "type": "string",
+                    "enum": ["dev", "test", "prod"],
+                    "description": "Environment label for evidence tagging",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Print collection plan without making Workday API calls",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "sfdc_connect_collect",
         "description": (
             "Collect security-relevant configuration from a Salesforce org (read-only). "
@@ -177,6 +201,11 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "org": {"type": "string", "description": "Org alias for output dir naming"},
+                "platform": {
+                    "type": "string",
+                    "enum": ["salesforce", "workday"],
+                    "description": "Platform being assessed (determines stub verdicts in dry-run)",
+                },
                 "gap_analysis": {
                     "type": "string",
                     "description": "Path to gap_analysis.json produced by oscal_assess_assess",
@@ -283,6 +312,35 @@ def _run(args: list[str]) -> str:
 # ---------------------------------------------------------------------------
 # Per-tool dispatchers
 # ---------------------------------------------------------------------------
+
+
+def _dispatch_workday_connect(inp: dict[str, Any], out_dir: Path) -> str:
+    out_path = inp.get("out") or str(out_dir / "workday_raw.json")
+    args = [
+        _PYTHON,
+        "-m",
+        "skills.workday_connect.workday_connect",
+        "collect",
+        "--org",
+        inp.get("org", "unknown-org"),
+        "--env",
+        inp.get("env", "dev"),
+        "--out",
+        out_path,
+    ]
+    if inp.get("dry_run"):
+        args.append("--dry-run")
+        _run(args)
+        return json.dumps(
+            {
+                "status": "ok",
+                "dry_run": True,
+                "output_file": out_path,
+                "note": "dry-run: Workday tenant not contacted; pass dry_run=true to oscal_assess_assess",
+            }
+        )
+    _run(args)
+    return json.dumps({"status": "ok", "output_file": out_path})
 
 
 def _dispatch_sfdc_connect(inp: dict[str, Any], out_dir: Path) -> str:
@@ -416,6 +474,8 @@ def _dispatch_nist_review(inp: dict[str, Any], out_dir: Path) -> str:
         "--out",
         out_path,
     ]
+    if inp.get("platform"):
+        args += ["--platform", inp["platform"]]
     if inp.get("gap_analysis"):
         args += ["--gap-analysis", inp["gap_analysis"]]
     if inp.get("backlog"):
@@ -509,6 +569,7 @@ def _dispatch_sscf_benchmark(inp: dict[str, Any], out_dir: Path) -> str:
 
 _DISPATCHERS = {
     "finish": _dispatch_finish,
+    "workday_connect_collect": _dispatch_workday_connect,
     "sfdc_connect_collect": _dispatch_sfdc_connect,
     "oscal_assess_assess": _dispatch_oscal_assess,
     "oscal_gap_map": _dispatch_gap_map,

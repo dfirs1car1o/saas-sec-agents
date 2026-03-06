@@ -191,6 +191,13 @@ def check_env_vars(suite: CheckSuite) -> None:
         ("LLM_MODEL_ORCHESTRATOR", "LLM orchestrator model override (optional)", False),
         ("LLM_MODEL_ANALYST", "LLM analyst model override (optional)", False),
         ("LLM_MODEL_REPORTER", "LLM reporter model override (optional)", False),
+        # Workday (optional — only required for --platform workday)
+        ("WD_TENANT", "Workday tenant ID (required for workday platform)", False),
+        ("WD_CLIENT_ID", "Workday OAuth 2.0 client ID (required for workday platform)", False),
+        ("WD_CLIENT_SECRET", "Workday OAuth 2.0 client secret (required for workday platform)", False),
+        ("WD_TOKEN_URL", "Workday OAuth 2.0 token URL (required for workday platform)", False),
+        ("WD_BASE_URL", "Workday REST/SOAP base URL (required for workday platform)", False),
+        ("WD_API_VERSION", "Workday API version (optional, default v42.0)", False),
     ]
 
     for key, description, hard in checks:
@@ -486,6 +493,12 @@ Examples:
     parser.add_argument("--ci", action="store_true", help="Non-interactive mode (no color, strict exit)")
     parser.add_argument("--fix", action="store_true", help="Attempt to auto-install missing Python packages")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
+    parser.add_argument(
+        "--platform",
+        choices=["salesforce", "workday"],
+        default=None,
+        help="Show platform-specific env var guidance (salesforce or workday)",
+    )
     args = parser.parse_args()
 
     global USE_COLOR

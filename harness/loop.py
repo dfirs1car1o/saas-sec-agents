@@ -145,7 +145,7 @@ def _handle_tool_error(
     """
     # Critical pipeline stages: halt immediately.
     # A hidden collector or assessor failure produces zero findings → false-pass assessment.
-    _CRITICAL_TOOLS = {"sfdc_connect_collect", "oscal_assess_assess"}
+    _CRITICAL_TOOLS = {"sfdc_connect_collect", "workday_connect_collect", "oscal_assess_assess"}
     if tool_name in _CRITICAL_TOOLS:
         raise RuntimeError(f"Critical tool '{tool_name}' failed — aborting to prevent false-pass assessment.\n{error}")
     # Downstream stages (gap_map, benchmark): return structured error payload.
@@ -162,6 +162,7 @@ def _run_loop(
     task: str,
     env: str,
     org: str,
+    platform: str,
     dry_run: bool,
     approve_critical: bool,
     api_key: str | None,
@@ -316,7 +317,7 @@ def _run_loop(
 
     # --- Persist to memory ---
     if mem_client is not None:
-        assessment_id = f"sfdc-assess-{org}-{env}-loop"
+        assessment_id = f"{platform}-assess-{org}-{env}-loop"
         save_assessment(mem_client, org, assessment_id, score, critical_fails)
 
     state["score"] = score
@@ -362,28 +363,46 @@ def cli() -> None:
 )
 @click.option("--task", default=None, help="Override the default assessment task prompt sent to the orchestrator.")
 @click.option(
+    "--platform",
+    default="salesforce",
+    type=click.Choice(["salesforce", "workday"]),
+    show_default=True,
+    envvar="ASSESSMENT_PLATFORM",
+    help="Platform to assess (salesforce or workday).",
+)
+@click.option(
     "--api-key",
     default=None,
     envvar="OPENAI_API_KEY",
     help="OpenAI API key (defaults to OPENAI_API_KEY env var).",
 )
-def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | None, api_key: str | None) -> None:
-    """Run the agentic assessment loop against a Salesforce org.
+def run(
+    env: str,
+    org: str,
+    dry_run: bool,
+    approve_critical: bool,
+    task: str | None,
+    platform: str,
+    api_key: str | None,
+) -> None:
+    """Run the agentic assessment loop against a Salesforce or Workday org.
 
-    Orchestrates: sfdc-connect → oscal-assess → oscal_gap_map → sscf-benchmark
-    via gpt-4o tool_calls, with Mem0+Qdrant session memory.
+    Orchestrates the full assessment pipeline via gpt tool_calls, with Mem0+Qdrant session memory.
 
-    Example (dry-run, no real org or API credits):
-        agent-loop run --dry-run --env dev --org weak-org-dry-run
+    Examples:
+        agent-loop run --dry-run --env dev --org demo-org
+        agent-loop run --platform workday --dry-run --env dev --org acme-workday
     """
     dry_tag = " [DRY-RUN]" if dry_run else ""
-    click.echo(f"\nagent-loop{dry_tag}: org={org} env={env}")
+    click.echo(f"\nagent-loop{dry_tag}: platform={platform} org={org} env={env}")
 
-    governance_title = os.getenv("REPORT_GOVERNANCE_TITLE", "Salesforce Security Governance Assessment")
+    platform_label = "Salesforce" if platform == "salesforce" else "Workday"
+    default_title = f"{platform_label} Security Governance Assessment"
+    governance_title = os.getenv("REPORT_GOVERNANCE_TITLE", default_title)
     org_display = os.getenv("REPORT_ORG_DISPLAY_NAME", org)
 
     if task is None:
-        dry_note = " Use dry_run=true for all tool calls (no real Salesforce connection)." if dry_run else ""
+        dry_note = f" Use dry_run=true for all tool calls (no real {platform_label} connection)." if dry_run else ""
         dry_gate_note = (
             (
                 " This is a dry run — proceed through all pipeline stages including report generation "
@@ -392,27 +411,50 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
             if dry_run
             else ""
         )
-        task = (
-            f"Run a full OSCAL/SSCF security assessment for Salesforce org '{org}' "
-            f"in environment '{env}'.{dry_note}{dry_gate_note}\n\n"
-            f"IMPORTANT: Pass org='{org}' to every tool call so all outputs land in the same directory.\n\n"
-            "Pipeline:\n"
-            f"1. Call sfdc_connect_collect (org='{org}', scope='all') to gather org configuration.\n"
-            f"2. Call oscal_assess_assess (org='{org}') to produce gap_analysis.json.\n"
-            f"3. Call oscal_gap_map (org='{org}') with the gap_analysis output to produce backlog.json.\n"
-            f"4. Call sscf_benchmark_benchmark (org='{org}') with the backlog to produce the SSCF scorecard.\n"
-            f"5. Call nist_review_assess (org='{org}') with gap_analysis from step 2 and backlog from step 3 "
-            f"to produce nist_review.json.\n"
-            f"6. Call report_gen_generate twice:\n"
-            f"   a. audience='app-owner', out='{org}_remediation_report.md', sscf_benchmark from step 4.\n"
-            f"   b. audience='security', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
-            f"nist_review from step 5, "
-            f"title='{governance_title} - {org_display}'. "
-            f"The security call automatically also writes .docx to the same directory.\n\n"
-            "After step 6b completes, call finish() with a one-sentence summary of what was done. "
-            "The finish() tool signals the harness to stop the loop. "
-            "Do NOT call any further tools after finish()."
-        )
+        if platform == "workday":
+            task = (
+                f"Run a full OSCAL/SSCF security assessment for Workday tenant '{org}' "
+                f"in environment '{env}'.{dry_note}{dry_gate_note}\n\n"
+                f"IMPORTANT: Pass org='{org}' to every tool call so all outputs land in the same directory.\n\n"
+                "Pipeline:\n"
+                f"1. Call workday_connect_collect (org='{org}') to gather Workday tenant configuration.\n"
+                f"2. Call oscal_assess_assess (org='{org}') to produce gap_analysis.json.\n"
+                f"3. Call oscal_gap_map (org='{org}') with the gap_analysis output to produce backlog.json.\n"
+                f"4. Call sscf_benchmark_benchmark (org='{org}') with the backlog to produce the SSCF scorecard.\n"
+                f"5. Call nist_review_assess (org='{org}', platform='workday') with gap_analysis from step 2 "
+                f"and backlog from step 3 to produce nist_review.json.\n"
+                f"6. Call report_gen_generate twice:\n"
+                f"   a. audience='app-owner', out='{org}_remediation_report.md', sscf_benchmark from step 4.\n"
+                f"   b. audience='security', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
+                f"nist_review from step 5, "
+                f"title='{governance_title} - {org_display}'. "
+                f"The security call automatically also writes .docx to the same directory.\n\n"
+                "After step 6b completes, call finish() with a one-sentence summary of what was done. "
+                "The finish() tool signals the harness to stop the loop. "
+                "Do NOT call any further tools after finish()."
+            )
+        else:
+            task = (
+                f"Run a full OSCAL/SSCF security assessment for Salesforce org '{org}' "
+                f"in environment '{env}'.{dry_note}{dry_gate_note}\n\n"
+                f"IMPORTANT: Pass org='{org}' to every tool call so all outputs land in the same directory.\n\n"
+                "Pipeline:\n"
+                f"1. Call sfdc_connect_collect (org='{org}', scope='all') to gather org configuration.\n"
+                f"2. Call oscal_assess_assess (org='{org}') to produce gap_analysis.json.\n"
+                f"3. Call oscal_gap_map (org='{org}') with the gap_analysis output to produce backlog.json.\n"
+                f"4. Call sscf_benchmark_benchmark (org='{org}') with the backlog to produce the SSCF scorecard.\n"
+                f"5. Call nist_review_assess (org='{org}', platform='salesforce') with gap_analysis from step 2 "
+                f"and backlog from step 3 to produce nist_review.json.\n"
+                f"6. Call report_gen_generate twice:\n"
+                f"   a. audience='app-owner', out='{org}_remediation_report.md', sscf_benchmark from step 4.\n"
+                f"   b. audience='security', out='{org}_security_assessment.md', sscf_benchmark from step 4, "
+                f"nist_review from step 5, "
+                f"title='{governance_title} - {org_display}'. "
+                f"The security call automatically also writes .docx to the same directory.\n\n"
+                "After step 6b completes, call finish() with a one-sentence summary of what was done. "
+                "The finish() tool signals the harness to stop the loop. "
+                "Do NOT call any further tools after finish()."
+            )
 
     click.echo(f"  task: {task[:120]}{'...' if len(task) > 120 else ''}", err=True)
 
@@ -420,6 +462,7 @@ def run(env: str, org: str, dry_run: bool, approve_critical: bool, task: str | N
         task=task,
         env=env,
         org=org,
+        platform=platform,
         dry_run=dry_run,
         approve_critical=approve_critical,
         api_key=api_key,

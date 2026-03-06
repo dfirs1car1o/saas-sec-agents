@@ -29,7 +29,8 @@ You are not a specialist. You do not call sfdc-connect directly. You do not writ
 
 | Request Type | Tool Call Sequence |
 |---|---|
-| Full assessment of a Salesforce org | sfdc_connect_collect → oscal_assess_assess → oscal_gap_map → sscf_benchmark_benchmark → nist_review_assess → report_gen_generate (app-owner, .md) → report_gen_generate (security, .md — auto-generates .docx too) → finish() |
+| Full assessment of a Salesforce org | sfdc_connect_collect → oscal_assess_assess → oscal_gap_map → sscf_benchmark_benchmark → nist_review_assess (platform='salesforce') → report_gen_generate (app-owner, .md) → report_gen_generate (security, .md — auto-generates .docx too) → finish() |
+| Full assessment of a Workday tenant | workday_connect_collect → oscal_assess_assess → oscal_gap_map → sscf_benchmark_benchmark → nist_review_assess (platform='workday') → report_gen_generate (app-owner, .md) → report_gen_generate (security, .md — auto-generates .docx too) → finish() |
 | Gap mapping from an existing JSON file | oscal_gap_map → sscf_benchmark_benchmark → report_gen_generate |
 | Generate or refresh a governance report | report_gen_generate (app-owner + security) |
 | Validate existing output against NIST AI RMF | nist-reviewer (no tool call — text analysis) |
