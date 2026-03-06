@@ -480,7 +480,8 @@ def to_backlog(raw: dict) -> dict:
             "remediation": (
                 MOCK_FINDINGS[
                     next((i for i, m in enumerate(MOCK_FINDINGS) if m["control_id"] == f["control_id"]), 0)
-                ].get("remediation") or ""
+                ].get("remediation")
+                or ""
             ),
             "evidence_ref": f.get("evidence_source", ""),
             "mapping_notes": "Direct Workday catalog mapping.",
@@ -559,47 +560,87 @@ def main() -> None:
 
     # Step 3: sscf-benchmark
     _run(
-        [python, "-m", "skills.sscf_benchmark.sscf_benchmark", "benchmark",
-         "--backlog", str(backlog_path), "--out", str(sscf_path)],
+        [
+            python,
+            "-m",
+            "skills.sscf_benchmark.sscf_benchmark",
+            "benchmark",
+            "--backlog",
+            str(backlog_path),
+            "--out",
+            str(sscf_path),
+        ],
         "sscf-benchmark",
     )
     print(f"  [sscf]        written: {sscf_path}")
 
     # Step 4: nist-review (--dry-run to avoid real API spend on demo)
     _run(
-        [python, "-m", "skills.nist_review.nist_review", "assess",
-         "--gap-analysis", str(raw_path),
-         "--backlog", str(backlog_path),
-         "--out", str(nist_path),
-         "--dry-run",
-         "--platform", "workday"],
+        [
+            python,
+            "-m",
+            "skills.nist_review.nist_review",
+            "assess",
+            "--gap-analysis",
+            str(raw_path),
+            "--backlog",
+            str(backlog_path),
+            "--out",
+            str(nist_path),
+            "--dry-run",
+            "--platform",
+            "workday",
+        ],
         "nist-review",
     )
     print(f"  [nist]        written: {nist_path}")
 
     # Step 5a: report-gen app-owner
     _run(
-        [python, "-m", "skills.report_gen.report_gen", "generate",
-         "--org-alias", args.org,
-         "--backlog", str(backlog_path),
-         "--sscf-benchmark", str(sscf_path),
-         "--audience", "app-owner",
-         "--title", f"Workday Security Governance Assessment — {args.org}",
-         "--out", str(app_owner_md)],
+        [
+            python,
+            "-m",
+            "skills.report_gen.report_gen",
+            "generate",
+            "--org-alias",
+            args.org,
+            "--backlog",
+            str(backlog_path),
+            "--sscf-benchmark",
+            str(sscf_path),
+            "--audience",
+            "app-owner",
+            "--title",
+            f"Workday Security Governance Assessment — {args.org}",
+            "--out",
+            str(app_owner_md),
+        ],
         "report-gen(app-owner)",
     )
     print(f"  [app-owner]   written: {app_owner_md}")
 
     # Step 5b: report-gen security (also writes .docx via pandoc)
     _run(
-        [python, "-m", "skills.report_gen.report_gen", "generate",
-         "--org-alias", args.org,
-         "--backlog", str(backlog_path),
-         "--sscf-benchmark", str(sscf_path),
-         "--nist-review", str(nist_path),
-         "--audience", "security",
-         "--title", f"Workday Security Governance Assessment — {args.org}",
-         "--out", str(security_md)],
+        [
+            python,
+            "-m",
+            "skills.report_gen.report_gen",
+            "generate",
+            "--org-alias",
+            args.org,
+            "--backlog",
+            str(backlog_path),
+            "--sscf-benchmark",
+            str(sscf_path),
+            "--nist-review",
+            str(nist_path),
+            "--audience",
+            "security",
+            "--title",
+            f"Workday Security Governance Assessment — {args.org}",
+            "--out",
+            str(security_md),
+        ],
         "report-gen(security)",
     )
     print(f"  [security-md] written: {security_md}")
@@ -614,14 +655,14 @@ def main() -> None:
     counts = backlog["summary"]
     total = sum(counts.values())
     fail_pct = counts["fail"] / total if total > 0 else 0
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Workday Dry-Run Complete — org={args.org}")
     print(
         f"Controls: {total}  pass={counts['pass']}  fail={counts['fail']}"
         f"  partial={counts['partial']}  n/a={counts['not_applicable']}"
     )
     print(f"Fail rate: {fail_pct:.0%}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     if docx_path.exists():
         print(f"\nDOCX: {docx_path}")
     print(f"MD:   {security_md}")

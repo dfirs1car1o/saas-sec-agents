@@ -142,7 +142,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install -e . && pip install pytest pytest-mock PyYAML click qdrant-client mem0ai
+      - run: pip install -e . && pip install pytest pytest-mock PyYAML click qdrant-client mem0ai responses
       - name: Run tests (if any exist)
         env:
           QDRANT_IN_MEMORY: "1"

@@ -284,9 +284,7 @@ def _render_oscal_provenance(backlog: dict, platform: str | None = None) -> str:
         "|-------|----------|---------|-------|-------------|",
     ]
     for row in chain:
-        lines.append(
-            f"| {row['layer']} | {row['document']} | {row['version']} | {row['scope']} | {row['file']} |"
-        )
+        lines.append(f"| {row['layer']} | {row['document']} | {row['version']} | {row['scope']} | {row['file']} |")
     lines.append("")
     return "\n".join(lines)
 
@@ -424,10 +422,7 @@ def _render_poam(backlog: dict) -> str:
     open_items = _sorted_findings([i for i in items if i.get("status") in ("fail", "partial")])
 
     if not open_items:
-        return (
-            "## Plan of Action & Milestones (POA&M)\n\n"
-            "*No open items — all assessed controls passed.*\n"
-        )
+        return "## Plan of Action & Milestones (POA&M)\n\n*No open items — all assessed controls passed.*\n"
 
     assessment_id = backlog.get("assessment_id", "unknown")
     generated = backlog.get("generated_at_utc", datetime.now(UTC).isoformat())[:10]
@@ -795,8 +790,16 @@ def generate(
     parts = [
         p
         for p in [
-            banner, scorecard, provenance, domain_chart, priority,
-            llm_narrative, full_matrix, poam, not_assessed, nist_section,
+            banner,
+            scorecard,
+            provenance,
+            domain_chart,
+            priority,
+            llm_narrative,
+            full_matrix,
+            poam,
+            not_assessed,
+            nist_section,
         ]
         if p
     ]

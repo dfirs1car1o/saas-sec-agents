@@ -175,9 +175,7 @@ def cli() -> None:
     type=click.Choice(["salesforce", "workday"]),
     help="Platform being assessed — selects the correct dry-run stub language.",
 )
-def assess(
-    gap_analysis: str | None, backlog: str | None, out: str, dry_run: bool, platform: str
-) -> None:
+def assess(gap_analysis: str | None, backlog: str | None, out: str, dry_run: bool, platform: str) -> None:
     """Run NIST AI RMF review against assessment outputs."""
     out_path = Path(out)
 

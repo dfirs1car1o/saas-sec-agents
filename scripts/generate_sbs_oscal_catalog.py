@@ -89,32 +89,40 @@ def _build_control(ctrl: dict, sscf_map: dict) -> dict:
     ]
 
     if ctrl.get("description"):
-        parts.append({
-            "id": f"{oscal_id}_gdn",
-            "name": "guidance",
-            "prose": ctrl["description"],
-        })
+        parts.append(
+            {
+                "id": f"{oscal_id}_gdn",
+                "name": "guidance",
+                "prose": ctrl["description"],
+            }
+        )
 
     if ctrl.get("audit_procedure"):
-        parts.append({
-            "id": f"{oscal_id}_obj",
-            "name": "objective",
-            "prose": ctrl["audit_procedure"],
-        })
+        parts.append(
+            {
+                "id": f"{oscal_id}_obj",
+                "name": "objective",
+                "prose": ctrl["audit_procedure"],
+            }
+        )
 
     if ctrl.get("remediation"):
-        parts.append({
-            "id": f"{oscal_id}_imp",
-            "name": "implementation-guidance",
-            "prose": ctrl["remediation"],
-        })
+        parts.append(
+            {
+                "id": f"{oscal_id}_imp",
+                "name": "implementation-guidance",
+                "prose": ctrl["remediation"],
+            }
+        )
 
     if ctrl.get("default_value"):
-        parts.append({
-            "id": f"{oscal_id}_def",
-            "name": "default-value",
-            "prose": ctrl["default_value"],
-        })
+        parts.append(
+            {
+                "id": f"{oscal_id}_def",
+                "name": "default-value",
+                "prose": ctrl["default_value"],
+            }
+        )
 
     props = [
         {"name": "label", "value": raw_id},
