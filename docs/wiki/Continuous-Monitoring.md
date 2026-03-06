@@ -1,17 +1,61 @@
-# Continuous Monitoring with OpenSearch
+# Continuous Monitoring
 
-Run saas-sec-agents on a cadence, push results to OpenSearch, and watch remediation progress in a dashboard over time.
+> **This is optional.** The core pipeline (`agent-loop run`) produces JSON, Markdown, and DOCX
+> artifacts that work standalone — no visualization platform required.
+>
+> This guide covers two things:
+> 1. **Exporting results** to a time-series store so you can track improvements over time
+> 2. **OpenSearch + Dashboards** as the bundled open-source option (Apache 2.0, runs in Docker)
+>
+> Most organizations already have a preferred visualization platform.
+> The export script outputs standard JSON — adapt the sink to feed **Splunk**, **Elastic/Kibana**,
+> **Grafana**, **Power BI**, **ServiceNow**, or any GRC tool your team uses.
 
 ---
 
-## Prerequisites
+## The Core Idea
+
+Every assessment run produces structured JSON in `docs/oscal-salesforce-poc/generated/<org>/<date>/`.
+`export_to_opensearch.py` reads those files and writes two document types:
+
+| Index | One doc per | What it enables |
+|-------|------------|-----------------|
+| `sscf-runs-*` | Assessment run | Overall score trend, NIST verdict history |
+| `sscf-findings-*` | Finding per run | Per-control status history, POA&M aging, remediation velocity |
+
+Run this after every formal assessment and you get a full audit trail over time.
+
+---
+
+## Option A — Bring Your Own Platform
+
+Skip Docker entirely. Just run the export script after each assessment and pipe the data to your existing tooling:
+
+```bash
+pip install -e ".[monitoring]"   # installs opensearch-py — only needed for OpenSearch sink
+
+python scripts/export_to_opensearch.py \
+  --backlog <path/to/backlog.json> \
+  --sscf    <path/to/sscf_report.json> \
+  --opensearch-url https://your-opensearch-or-elastic-endpoint
+```
+
+To adapt for a different sink (Splunk, InfluxDB, etc.), modify the `export()` function in
+`scripts/export_to_opensearch.py` — the `_build_run_doc()` and `_build_finding_docs()` functions
+produce clean dicts you can route anywhere.
+
+---
+
+## Option B — Bundled OpenSearch Stack (Docker)
+
+### Prerequisites
 
 - Docker Desktop (or Docker Engine + Compose plugin)
 - `.env` file populated with platform credentials
 
 ---
 
-## Quick Start
+### Quick Start
 
 ```bash
 # 1. Start OpenSearch + Dashboards
@@ -33,7 +77,7 @@ docker compose run --rm agent \
 
 ---
 
-## Running a Live Assessment
+### Running a Live Assessment
 
 ```bash
 # Salesforce

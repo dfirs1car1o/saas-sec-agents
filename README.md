@@ -17,7 +17,7 @@ This system **never writes to any SaaS org**. All evidence stays in `docs/oscal-
 
 ## Quick Start
 
-**Prerequisites:** Python 3.11+, `pip`
+No Docker required. Runs fully from the command line with Python 3.11+.
 
 ```bash
 git clone git@github.com:dfirs1car1o/saas-sec-agents.git
@@ -25,19 +25,15 @@ cd saas-sec-agents
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
 cp .env.example .env   # fill in credentials
-```
-
-**Validate environment:**
-```bash
 python3 scripts/validate_env.py
 ```
 
-**Run the full pipeline (Salesforce, live org):**
+**Run the full pipeline — Salesforce (live org):**
 ```bash
 agent-loop run --env dev --org <org-alias> --approve-critical
 ```
 
-**Run the full pipeline (Workday, live tenant):**
+**Run the full pipeline — Workday (live tenant):**
 ```bash
 agent-loop run --platform workday --env dev --org <tenant-alias> --approve-critical
 ```
@@ -47,12 +43,36 @@ agent-loop run --platform workday --env dev --org <tenant-alias> --approve-criti
 python3 scripts/workday_dry_run_demo.py --org acme-workday --env dev
 ```
 
-**Generate a report without an API key (mock mode):**
+**Generate a report without an API key (mock/test mode):**
 ```bash
 python3 -m skills.report_gen.report_gen generate \
-  --backlog docs/oscal-salesforce-poc/generated/salesforce_oscal_backlog_latest.json \
+  --backlog docs/oscal-salesforce-poc/generated/<org>/<date>/workday_backlog.json \
   --audience security --out /tmp/report.md --mock-llm
 ```
+
+## Optional: Containerized Stack + Continuous Monitoring
+
+> **Not required for standard use.** The pipeline runs fine as plain Python.
+> This is for teams who want continuous monitoring with trending dashboards over time.
+
+If you want the full containerized platform (OpenSearch + Dashboards + agent in Docker):
+
+```bash
+docker compose up -d        # starts OpenSearch + OpenSearch Dashboards
+open http://localhost:5601  # visualize results
+
+# Run assessment in container
+docker compose run --rm agent \
+  agent-loop run --platform workday --org acme --approve-critical
+
+# Export results to OpenSearch (then view in dashboards)
+python scripts/export_to_opensearch.py --auto --org acme --date <YYYY-MM-DD>
+```
+
+`export_to_opensearch.py` is included in the standard install. The **Docker stack and
+dashboards are optional** — if your organization already uses Splunk, Elastic, Grafana,
+or a GRC tool, adapt the sink in that script to match. See
+`docs/wiki/Continuous-Monitoring.md` for the full guide.
 
 ## Multi-Agent Architecture
 
