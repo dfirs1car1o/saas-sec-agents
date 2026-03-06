@@ -165,6 +165,130 @@ def _build_user_message(
 # ---------------------------------------------------------------------------
 
 
+_OSCAL_CHAIN: dict[str, list[dict[str, str]]] = {
+    "salesforce": [
+        {
+            "layer": "Catalog",
+            "document": "CSA SSCF v1.0",
+            "version": "1.0",
+            "scope": "36 controls · 6 domains (CON, DSP, IAM, IPY, LOG, SEF)",
+            "file": "`config/sscf/sscf_v1_catalog.json`",
+        },
+        {
+            "layer": "Profile",
+            "document": "Security Baseline for Salesforce (SBS) v1.0",
+            "version": "1.0",
+            "scope": "35 controls (SSCF subset)",
+            "file": "`config/salesforce/sbs_v1_profile.json`",
+        },
+        {
+            "layer": "Component Definition",
+            "document": "Salesforce Component",
+            "version": "1.0",
+            "scope": "18 automated requirements (SOQL / Tooling / Metadata / Manual)",
+            "file": "`config/component-definitions/salesforce_component.json`",
+        },
+        {
+            "layer": "Control Framework",
+            "document": "CSA CCM v4.1",
+            "version": "4.1",
+            "scope": "207 controls · cross-reference only (IDs embedded as props in catalog)",
+            "file": "`config/ccm/ccm_v4.1_oscal_ref.yaml`",
+        },
+        {
+            "layer": "Regulatory Crosswalk",
+            "document": "SOX · HIPAA · SOC 2 TSC · ISO 27001 · NIST 800-53 · PCI DSS · GDPR",
+            "version": "—",
+            "scope": "Via CCM v4.1 domain mappings",
+            "file": "Embedded in CCM reference",
+        },
+        {
+            "layer": "POA&M",
+            "document": "Plan of Action & Milestones",
+            "version": "—",
+            "scope": "Generated from fail/partial findings — remediation backlog with due dates and owners",
+            "file": "`docs/oscal-salesforce-poc/generated/<org>/<date>/backlog.json`",
+        },
+    ],
+    "workday": [
+        {
+            "layer": "Catalog",
+            "document": "CSA SSCF v1.0",
+            "version": "1.0",
+            "scope": "36 controls · 6 domains (CON, DSP, IAM, IPY, LOG, SEF)",
+            "file": "`config/sscf/sscf_v1_catalog.json`",
+        },
+        {
+            "layer": "Profile",
+            "document": "Workday Security Control Catalog (WSCC) v1.0",
+            "version": "1.0",
+            "scope": "30 controls (SSCF subset)",
+            "file": "`config/workday/wscc_v1_profile.json`",
+        },
+        {
+            "layer": "Component Definition",
+            "document": "Workday Component",
+            "version": "1.0",
+            "scope": "16 automated requirements (SOAP / RaaS / REST / Manual)",
+            "file": "`config/component-definitions/workday_component.json`",
+        },
+        {
+            "layer": "Control Framework",
+            "document": "CSA CCM v4.1",
+            "version": "4.1",
+            "scope": "207 controls · cross-reference only (IDs embedded as props in catalog)",
+            "file": "`config/ccm/ccm_v4.1_oscal_ref.yaml`",
+        },
+        {
+            "layer": "Regulatory Crosswalk",
+            "document": "SOX · HIPAA · SOC 2 TSC · ISO 27001 · NIST 800-53 · PCI DSS · GDPR",
+            "version": "—",
+            "scope": "Via CCM v4.1 domain mappings",
+            "file": "Embedded in CCM reference",
+        },
+        {
+            "layer": "POA&M",
+            "document": "Plan of Action & Milestones",
+            "version": "—",
+            "scope": "Generated from fail/partial findings — remediation backlog with due dates and owners",
+            "file": "`docs/oscal-salesforce-poc/generated/<org>/<date>/backlog.json`",
+        },
+    ],
+}
+
+
+def _detect_platform(backlog: dict) -> str:
+    """Infer platform from control ID prefix in mapped_items."""
+    for item in backlog.get("mapped_items", []):
+        cid = item.get("sbs_control_id", "")
+        if cid.startswith("WSCC-") or cid.startswith("WD-"):
+            return "workday"
+    return "salesforce"
+
+
+def _render_oscal_provenance(backlog: dict, platform: str | None = None) -> str:
+    """Render OSCAL framework chain table (Catalog → Profile → Component Def → CCM → Regulatory)."""
+    resolved = platform or _detect_platform(backlog)
+    chain = _OSCAL_CHAIN.get(resolved, _OSCAL_CHAIN["salesforce"])
+    framework = backlog.get("framework", "CSA_SSCF").replace("_", " ")
+
+    lines = [
+        "## OSCAL Framework Provenance",
+        "",
+        f"This assessment is governed by the **{framework}** framework. "
+        "The table below shows the full OSCAL control chain from catalog to regulatory crosswalk.",
+        "",
+        "| Layer | Document | Version | Scope | Config File |",
+        "|-------|----------|---------|-------|-------------|",
+    ]
+    for row in chain:
+        lines.append(
+            f"| {row['layer']} | {row['document']} | {row['version']} | {row['scope']} | {row['file']} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _render_executive_scorecard(backlog: dict, sscf: dict | None, org: str, title: str) -> str:
     """Overall score badge + severity × status matrix."""
     items = backlog.get("mapped_items", [])
@@ -516,6 +640,12 @@ def cli() -> None:
 @click.option("--nist-review", "nist_review", default=None, help="Path to nist_review.json.")
 @click.option("--org-alias", "org_alias", default=None, help="Org alias for report header.")
 @click.option("--title", default=None, help="Custom report title.")
+@click.option(
+    "--platform",
+    type=click.Choice(["salesforce", "workday"]),
+    default=None,
+    help="Platform being assessed — drives OSCAL provenance table (auto-detected if omitted).",
+)
 @click.option("--dry-run", is_flag=True, help="Print plan without writing files.")
 @click.option("--mock-llm", is_flag=True, help="Use deterministic template output (no API call). For testing.")
 def generate(
@@ -526,6 +656,7 @@ def generate(
     nist_review: str | None,
     org_alias: str | None,
     title: str | None,
+    platform: str | None,
     dry_run: bool,
     mock_llm: bool,
 ) -> None:
@@ -570,6 +701,7 @@ def generate(
 
     # ── Python-rendered structural sections ──────────────────────────────────
     scorecard = _render_executive_scorecard(backlog_data, sscf_data, org, report_title)
+    provenance = _render_oscal_provenance(backlog_data, platform)
     domain_chart = _render_domain_chart(sscf_data) if sscf_data else ""
     priority = _render_priority_findings(backlog_data)
     full_matrix = _render_full_matrix(backlog_data)
@@ -580,7 +712,10 @@ def generate(
     llm_narrative = _call_llm(system_prompt, user_msg, model, mock=mock_llm)
 
     # ── Assemble document ────────────────────────────────────────────────────
-    parts = [p for p in [banner, scorecard, domain_chart, priority, llm_narrative, full_matrix, nist_section] if p]
+    parts = [
+        p for p in [banner, scorecard, provenance, domain_chart, priority, llm_narrative, full_matrix, nist_section]
+        if p
+    ]
     markdown = "\n\n".join(parts)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)

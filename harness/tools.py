@@ -185,6 +185,11 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 },
                 "org_alias": {"type": "string", "description": "Org alias for report header"},
                 "title": {"type": "string", "description": "Custom report title (overrides auto-generated title)"},
+                "platform": {
+                    "type": "string",
+                    "enum": ["salesforce", "workday"],
+                    "description": "Platform being assessed — drives OSCAL provenance table",
+                },
                 "dry_run": {"type": "boolean", "description": "Print plan without writing files"},
             },
             "required": ["backlog", "audience", "out"],
@@ -458,6 +463,8 @@ def _dispatch_report_gen(inp: dict[str, Any], out_dir: Path) -> str:
         args += ["--org-alias", inp["org_alias"]]
     if inp.get("title"):
         args += ["--title", inp["title"]]
+    if inp.get("platform"):
+        args += ["--platform", inp["platform"]]
     if inp.get("dry_run"):
         args.append("--dry-run")
     _run(args)
