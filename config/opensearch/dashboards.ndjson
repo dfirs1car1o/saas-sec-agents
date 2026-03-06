@@ -1,0 +1,2 @@
+{"type":"index-pattern","id":"sscf-runs-*","attributes":{"title":"sscf-runs-*","timeFieldName":"generated_at_utc"}}
+{"type":"index-pattern","id":"sscf-findings-*","attributes":{"title":"sscf-findings-*","timeFieldName":"generated_at_utc"}}
