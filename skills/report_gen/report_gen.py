@@ -284,9 +284,9 @@ def _render_priority_findings(backlog: dict, n: int = 10) -> str:
         action = item.get("remediation") or item.get("sbs_title") or "See control catalog"
         action = action[:70] + "…" if len(action) > 70 else action
         due = item.get("due_date") or "—"
-        lines.append(
-            f"| {idx} | `{cid}` | {desc} | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {action} | {due} |"
-        )
+        sev_str = f"{sev_icon} {sev.capitalize()}"
+        sta_str = f"{sta_icon} {sta.capitalize()}"
+        lines.append(f"| {idx} | `{cid}` | {desc} | {sev_str} | {sta_str} | {action} | {due} |")
 
     lines.append("")
     return "\n".join(lines)
@@ -313,9 +313,9 @@ def _render_full_matrix(backlog: dict) -> str:
         conf = item.get("mapping_confidence", "—")
         due = item.get("due_date") or "—"
         owner = item.get("owner", "—")
-        lines.append(
-            f"| `{cid}` | {desc} | {sev_icon} {sev.capitalize()} | {sta_icon} {sta.capitalize()} | {conf} | {due} | {owner} |"
-        )
+        sev_str = f"{sev_icon} {sev.capitalize()}"
+        sta_str = f"{sta_icon} {sta.capitalize()}"
+        lines.append(f"| `{cid}` | {desc} | {sev_str} | {sta_str} | {conf} | {due} | {owner} |")
 
     lines.append("")
     return "\n".join(lines)
@@ -442,6 +442,41 @@ def _call_llm(system_prompt: str, user_msg: str, model: str, mock: bool = False)
     return response.choices[0].message.content.strip()
 
 
+def _apply_table_borders(docx_path: Path) -> None:
+    """Post-process DOCX: apply full single-line borders to every table cell."""
+    try:
+        from copy import deepcopy
+
+        from docx import Document
+        from docx.oxml.ns import qn
+        from lxml import etree
+    except ImportError:
+        return  # python-docx not installed; skip silently
+
+    _BORDER_XML = (
+        '<w:tcBorders xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+        "</w:tcBorders>"
+    )
+    border_proto = etree.fromstring(_BORDER_XML)
+
+    doc = Document(docx_path)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                tcp = cell._tc.get_or_add_tcPr()  # noqa: SLF001
+                existing = tcp.find(qn("w:tcBorders"))
+                if existing is not None:
+                    tcp.remove(existing)
+                tcp.append(deepcopy(border_proto))
+    doc.save(docx_path)
+
+
 def _run_pandoc(md_path: Path, docx_path: Path) -> None:
     template = Path(__file__).parent / "report_template.docx"
     cmd = ["pandoc", str(md_path), "-o", str(docx_path)]
@@ -451,8 +486,11 @@ def _run_pandoc(md_path: Path, docx_path: Path) -> None:
         subprocess.run(cmd, check=True, capture_output=True)  # noqa: S603
     except FileNotFoundError:
         click.echo("WARNING: pandoc not found — DOCX not generated. Install pandoc to enable.", err=True)
+        return
     except subprocess.CalledProcessError as exc:
         click.echo(f"WARNING: pandoc failed: {exc.stderr.decode()}", err=True)
+        return
+    _apply_table_borders(docx_path)
 
 
 # ---------------------------------------------------------------------------
