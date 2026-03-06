@@ -168,8 +168,46 @@ def main() -> int:
     unmapped_items: list[dict[str, Any]] = []
     invalid_mapping_entries: list[str] = []
 
+    # Load SSCF index once for SSCF-* direct mappings (Workday / WSCC path)
+    sscf_index: dict[str, dict[str, Any]] = {}
+    sscf_index_path = repo_root / "config" / "sscf_control_index.yaml"
+    if sscf_index_path.exists():
+        sscf_raw = _load_yaml(sscf_index_path)
+        sscf_index = {c["sscf_control_id"]: c for c in sscf_raw.get("controls", []) if isinstance(c, dict)}
+
     for finding in findings:
         legacy_control_id = str(finding.get("control_id", "")).strip()
+
+        # ── SSCF-* direct path (Workday / WSCC) ─────────────────────────────
+        if legacy_control_id.startswith("SSCF-"):
+            ctrl = sscf_index.get(legacy_control_id, {})
+            domain = ctrl.get("domain", "unknown")
+            mapped_items.append(
+                {
+                    "legacy_control_id": legacy_control_id,
+                    "sbs_control_id": legacy_control_id,
+                    "sbs_title": ctrl.get("title", legacy_control_id),
+                    "status": finding.get("status", ""),
+                    "severity": finding.get("severity", ctrl.get("severity", "moderate")),
+                    "owner": finding.get("owner", ctrl.get("owner_team", "").replace("_", " ").title()),
+                    "due_date": finding.get("due_date", ""),
+                    "remediation": finding.get("remediation", ""),
+                    "evidence_ref": finding.get("evidence_ref", ""),
+                    "mapping_notes": "Direct SSCF mapping (WSCC control ID emitted by workday assessor).",
+                    "mapping_confidence": _confidence_from_status(finding.get("status", "")),
+                    "sscf_mappings": [
+                        {
+                            "sscf_domain": domain,
+                            "sscf_control_id": legacy_control_id,
+                            "mapping_strength": "direct",
+                            "rationale": "WSCC control is a direct SSCF subset — no translation required.",
+                        }
+                    ],
+                    "sscf_control_ids": [legacy_control_id],
+                }
+            )
+            continue
+
         if legacy_control_id.startswith("SBS-"):
             sbs_control_id = legacy_control_id
             sbs = controls_by_id.get(sbs_control_id)

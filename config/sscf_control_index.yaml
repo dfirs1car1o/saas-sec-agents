@@ -160,7 +160,7 @@ controls:
   - sscf_control_id: SSCF-IAM-008
     domain: identity_access_management
     title: External and Guest Access Controls
-    description: Govern external/contractor access: scoped, time-bound, MFA-enforced, recertified quarterly.
+    description: "Govern external/contractor access: scoped, time-bound, MFA-enforced, recertified quarterly."
     owner_team: information_security
     severity: high
 

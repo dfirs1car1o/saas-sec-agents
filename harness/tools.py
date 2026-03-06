@@ -108,17 +108,22 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "name": "oscal_assess_assess",
         "description": (
-            "Run deterministic SBS OSCAL gap assessment. "
-            "Takes sfdc-connect collector output and produces gap_analysis.json. "
-            "Use dry_run=true to emit realistic weak-org stub findings without a live org."
+            "Run deterministic OSCAL gap assessment against SBS (Salesforce) or WSCC (Workday) controls. "
+            "Takes platform collector output and produces gap_analysis.json. "
+            "Use dry_run=true to emit realistic weak-org stub findings without a live connection."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "org": {"type": "string", "description": "Org alias for output dir naming"},
+                "platform": {
+                    "type": "string",
+                    "enum": ["salesforce", "workday"],
+                    "description": "Platform to assess — determines control catalog (SBS vs WSCC)",
+                },
                 "collector_output": {
                     "type": "string",
-                    "description": "Path to sfdc-connect collect output JSON (omit if dry_run=true)",
+                    "description": "Path to collector output JSON (omit if dry_run=true)",
                 },
                 "env": {
                     "type": "string",
@@ -127,7 +132,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 },
                 "dry_run": {
                     "type": "boolean",
-                    "description": "Emit realistic stub findings (weak-org scenario) without a real org",
+                    "description": "Emit realistic stub findings without a real org connection",
                 },
                 "assessment_owner": {
                     "type": "string",
@@ -388,6 +393,8 @@ def _dispatch_oscal_assess(inp: dict[str, Any], out_dir: Path) -> str:
         "assess",
         "--env",
         inp.get("env", "dev"),
+        "--platform",
+        inp.get("platform", "salesforce"),
         "--out",
         out_path,
     ]

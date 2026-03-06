@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+import yaml
 
 # ---------------------------------------------------------------------------
 # Finding model
@@ -952,6 +953,233 @@ _EXPERT_ELIGIBLE: frozenset[str] = frozenset(
 
 
 # ---------------------------------------------------------------------------
+# Workday (WSCC / SSCF) dry-run stubs
+# ---------------------------------------------------------------------------
+
+_WD_DRY_RUN_OVERRIDES: dict[str, tuple[str, str, str]] = {
+    # (status, observed_value, remediation)
+    "SSCF-CON-001": (
+        "partial",
+        "Workday security baseline partially applied [dry-run]",
+        "Complete baseline enforcement per ISSG hardening guide.",
+    ),
+    "SSCF-CON-002": (
+        "partial",
+        "No automated drift detection configured [dry-run]",
+        "Implement scheduled SOAP audit comparison against approved baseline.",
+    ),
+    "SSCF-CON-003": (
+        "fail",
+        "Service account tokens lack rotation policy [dry-run]",
+        "Enforce 90-day ISU credential rotation via Workday security policy.",
+    ),
+    "SSCF-CON-004": (
+        "partial",
+        "ISU hardening partially complete — 4 ISUs lack domain restrictions [dry-run]",
+        "Apply domain restrictions and constrained ISSG permissions to all ISUs.",
+    ),
+    "SSCF-CON-005": (
+        "partial",
+        "17 integrations found; 8 lack documented security review [dry-run]",
+        "Complete vendor security review for all active integrations.",
+    ),
+    "SSCF-DSP-001": (
+        "fail",
+        "HR sensitive data accessible to 34 non-HR security groups [dry-run]",
+        "Restrict domain data access policies to HR-only security groups.",
+    ),
+    "SSCF-DSP-002": (
+        "fail",
+        "RaaS reports allow unrestricted data export without approval [dry-run]",
+        "Apply report sharing restrictions; require approval for sensitive RaaS exports.",
+    ),
+    "SSCF-DSP-003": (
+        "partial",
+        "Data classification schema defined; field mapping 60% complete [dry-run]",
+        "Complete classification mapping for remaining worker and payroll data objects.",
+    ),
+    "SSCF-DSP-004": (
+        "partial",
+        "GDPR data residency configuration incomplete for EU tenant [dry-run]",
+        "Configure data residency controls and validate cross-border transfer agreements.",
+    ),
+    "SSCF-DSP-005": (
+        "partial",
+        "Retention schedules defined; purge automation not configured [dry-run]",
+        "Implement automated data purge for expired retention periods.",
+    ),
+    "SSCF-IAM-001": (
+        "fail",
+        "SSO configured but MFA bypass allowed for 6 service accounts [dry-run]",
+        "Enforce MFA for all accounts including ISUs via Workday authentication policy.",
+    ),
+    "SSCF-IAM-002": (
+        "fail",
+        "22 ISU accounts provisioned without formal approval workflow [dry-run]",
+        "Implement request-approve workflow for all ISU provisioning in ServiceNow.",
+    ),
+    "SSCF-IAM-003": (
+        "partial",
+        "SSO enforced for workforce; 3 integration users bypass federation [dry-run]",
+        "Migrate remaining integration users to OAuth 2.0 with IdP federation.",
+    ),
+    "SSCF-IAM-004": (
+        "partial",
+        "Automated deprovisioning configured; 14 stale accounts detected [dry-run]",
+        "Remediate stale accounts; validate termination trigger from HRIS.",
+    ),
+    "SSCF-IAM-005": (
+        "fail",
+        "ISU inventory incomplete; 9 ISUs have no documented owner [dry-run]",
+        "Complete ISU inventory; assign named business owner to each ISU.",
+    ),
+    "SSCF-IAM-006": (
+        "partial",
+        "Session timeout set to 8 hours — policy requires ≤4 hours [dry-run]",
+        "Update Workday session timeout policy to 4-hour maximum.",
+    ),
+    "SSCF-IAM-007": (
+        "partial",
+        "No JIT workflow configured for temporary privileged role elevation [dry-run]",
+        "Implement time-bound role assignment via PAM tool integration.",
+    ),
+    "SSCF-IAM-008": (
+        "partial",
+        "Contractor access active; no quarterly recertification cycle enforced [dry-run]",
+        "Enable quarterly access review campaign for all external user accounts.",
+    ),
+    "SSCF-IPY-001": ("pass", "PRISM reports and RaaS exports confirm open data portability [dry-run]", ""),
+    "SSCF-IPY-002": (
+        "partial",
+        "REST API enabled; no rate limiting or throttle policy configured [dry-run]",
+        "Configure Workday REST API rate limiting and input validation policies.",
+    ),
+    "SSCF-IPY-003": (
+        "partial",
+        "Integration inventory 70% complete; 5 undocumented integrations found [dry-run]",
+        "Complete integration registry and assign risk classification to each connector.",
+    ),
+    "SSCF-LOG-001": (
+        "fail",
+        "Workday audit logs not forwarded to SIEM [dry-run]",
+        "Configure Workday audit log streaming to SIEM via syslog or API forwarder.",
+    ),
+    "SSCF-LOG-002": (
+        "partial",
+        "Admin activity logged; configuration change events not captured [dry-run]",
+        "Enable configuration change audit trail in Workday tenant settings.",
+    ),
+    "SSCF-LOG-003": (
+        "partial",
+        "90-day log retention in Workday; policy requires 365 days [dry-run]",
+        "Export logs to long-term storage to meet 365-day retention requirement.",
+    ),
+    "SSCF-LOG-004": (
+        "fail",
+        "No real-time alerting configured for high-risk Workday events [dry-run]",
+        "Define and deploy Workday notification rules for privileged access and bulk exports.",
+    ),
+    "SSCF-LOG-005": (
+        "fail",
+        "Workday not integrated with SIEM for cross-platform correlation [dry-run]",
+        "Integrate Workday audit logs with SIEM using REST API or syslog connector.",
+    ),
+    "SSCF-SEF-001": (
+        "partial",
+        "No Workday-specific threat detection policies defined [dry-run]",
+        "Define automated security policies for bulk data export and off-hours access events.",
+    ),
+    "SSCF-SEF-002": (
+        "partial",
+        "Alerting SLA not documented for Workday security events [dry-run]",
+        "Document triage SLA for Workday-sourced alerts in SOC runbook.",
+    ),
+    "SSCF-SEF-003": (
+        "partial",
+        "IR plan exists but lacks Workday-specific runbooks [dry-run]",
+        "Add Workday incident scenarios to IR plan and conduct annual tabletop.",
+    ),
+    "SSCF-SEF-005": (
+        "partial",
+        "Exception process not documented for Workday control deviations [dry-run]",
+        "Define exception governance procedure and register active Workday exceptions.",
+    ),
+}
+
+# WSCC profile control IDs (30 controls — SSCF subset)
+_WSCC_CONTROL_IDS: list[str] = [
+    "SSCF-CON-001",
+    "SSCF-CON-002",
+    "SSCF-CON-003",
+    "SSCF-CON-004",
+    "SSCF-CON-005",
+    "SSCF-DSP-001",
+    "SSCF-DSP-002",
+    "SSCF-DSP-003",
+    "SSCF-DSP-004",
+    "SSCF-DSP-005",
+    "SSCF-IAM-001",
+    "SSCF-IAM-002",
+    "SSCF-IAM-003",
+    "SSCF-IAM-004",
+    "SSCF-IAM-005",
+    "SSCF-IAM-006",
+    "SSCF-IAM-007",
+    "SSCF-IAM-008",
+    "SSCF-IPY-001",
+    "SSCF-IPY-002",
+    "SSCF-IPY-003",
+    "SSCF-LOG-001",
+    "SSCF-LOG-002",
+    "SSCF-LOG-003",
+    "SSCF-LOG-004",
+    "SSCF-LOG-005",
+    "SSCF-SEF-001",
+    "SSCF-SEF-002",
+    "SSCF-SEF-003",
+    "SSCF-SEF-005",
+]
+
+
+def _load_sscf_index(repo_root: Path) -> dict[str, dict[str, Any]]:
+    """Load sscf_control_index.yaml; return dict keyed by sscf_control_id."""
+    index_path = repo_root / "config" / "sscf_control_index.yaml"
+    with index_path.open() as fh:
+        data = yaml.safe_load(fh)
+    return {c["sscf_control_id"]: c for c in data.get("controls", [])}
+
+
+def run_workday_assessment(org: str, env: str, sscf_index: dict[str, Any]) -> list[dict[str, Any]]:
+    """Produce Workday (WSCC) dry-run findings using SSCF control IDs."""
+    assessed_dt = datetime.now(UTC)
+    date_str = assessed_dt.strftime("%Y-%m-%d")
+    findings = []
+
+    for cid in _WSCC_CONTROL_IDS:
+        ctrl = sscf_index.get(cid, {})
+        severity = ctrl.get("severity", "moderate").lower()
+        override = _WD_DRY_RUN_OVERRIDES.get(cid)
+        if override:
+            status, observed, remediation = override
+        else:
+            status, observed, remediation = "not_applicable", "Not collected in dry-run", ""
+
+        d = {
+            "control_id": cid,
+            "status": status,
+            "severity": severity,
+            "owner": ctrl.get("owner_team", "security_engineering").replace("_", " ").title(),
+            "observed_value": observed,
+            "remediation": remediation,
+            "evidence_ref": f"collector://workday/{env}/{cid}/snapshot-{date_str}",
+            "due_date": _auto_due_date(severity, status, assessed_dt),
+        }
+        findings.append(d)
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Core assessment logic
 # ---------------------------------------------------------------------------
 
@@ -1042,7 +1270,14 @@ def cli() -> None:
 @click.option(
     "--dry-run",
     is_flag=True,
-    help="Emit realistic stub findings (weak-org scenario) without connecting to Salesforce.",
+    help="Emit realistic stub findings (weak-org scenario) without connecting to the platform.",
+)
+@click.option(
+    "--platform",
+    type=click.Choice(["salesforce", "workday"]),
+    default="salesforce",
+    show_default=True,
+    help="Platform to assess — determines control catalog and rule set.",
 )
 @click.option(
     "--assessment-owner",
@@ -1057,52 +1292,68 @@ def assess(
     out: str | None,
     env: str,
     dry_run: bool,
+    platform: str,
     assessment_owner: str | None,
 ) -> None:
-    """Assess Salesforce org configuration against SBS controls.
+    """Assess org configuration against SBS (Salesforce) or WSCC (Workday) controls.
 
-    Input: sfdc-connect collector output JSON (--scope all recommended).
+    Input: platform collector output JSON (--scope all / workday-connect output).
     Output: gap-analysis JSON for scripts/oscal_gap_map.py.
     """
     repo_root = Path(__file__).resolve().parents[2]
-
-    resolved_controls = (repo_root / controls_path).resolve()
-    if not resolved_controls.exists():
-        click.echo(f"ERROR: controls file not found: {resolved_controls}", err=True)
-        sys.exit(1)
-
-    raw: dict[str, Any] | None = None
     org_label = "dry-run"
 
-    if dry_run:
-        click.echo("DRY RUN — emitting weak-org stub findings.", err=True)
-    else:
-        if not collector_output:
+    # ── Workday path ─────────────────────────────────────────────────────────
+    if platform == "workday":
+        click.echo(f"  platform=workday {'[DRY RUN]' if dry_run else ''}", err=True)
+        if not dry_run and not collector_output:
             click.echo("ERROR: --collector-output is required unless --dry-run is set.", err=True)
             sys.exit(1)
-        collector_path = (repo_root / collector_output).resolve()
-        if not collector_path.exists():
-            click.echo(f"ERROR: collector output not found: {collector_path}", err=True)
+        if not dry_run and collector_output:
+            collector_path = (repo_root / collector_output).resolve()
+            collector_data = json.loads(collector_path.read_text())
+            org_label = collector_data.get("org", "unknown")
+        sscf_index = _load_sscf_index(repo_root)
+        findings = run_workday_assessment(org_label, env, sscf_index)
+        platform_prefix = "wd"
+    else:
+        # ── Salesforce path ───────────────────────────────────────────────────
+        resolved_controls = (repo_root / controls_path).resolve()
+        if not resolved_controls.exists():
+            click.echo(f"ERROR: controls file not found: {resolved_controls}", err=True)
             sys.exit(1)
-        collector_data = json.loads(collector_path.read_text())
-        raw = collector_data.get("raw", collector_data)
-        org_label = collector_data.get("org", "unknown")
-        click.echo(f"  assessing org: {org_label} env: {env}", err=True)
 
-    controls = _load_controls(resolved_controls)
-    click.echo(f"  loaded {len(controls)} SBS controls from catalog", err=True)
+        raw: dict[str, Any] | None = None
 
-    findings = run_assessment(raw, controls, dry_run, org_label, env)
+        if dry_run:
+            click.echo("DRY RUN — emitting weak-org stub findings.", err=True)
+        else:
+            if not collector_output:
+                click.echo("ERROR: --collector-output is required unless --dry-run is set.", err=True)
+                sys.exit(1)
+            collector_path = (repo_root / collector_output).resolve()
+            if not collector_path.exists():
+                click.echo(f"ERROR: collector output not found: {collector_path}", err=True)
+                sys.exit(1)
+            collector_data = json.loads(collector_path.read_text())
+            raw = collector_data.get("raw", collector_data)
+            org_label = collector_data.get("org", "unknown")
+            click.echo(f"  assessing org: {org_label} env: {env}", err=True)
 
-    status_counts = {}
+        controls = _load_controls(resolved_controls)
+        click.echo(f"  loaded {len(controls)} SBS controls from catalog", err=True)
+        findings = run_assessment(raw, controls, dry_run, org_label, env)
+        platform_prefix = "sfdc"
+
+    status_counts: dict[str, int] = {}
     for f in findings:
         status_counts[f["status"]] = status_counts.get(f["status"], 0) + 1
     click.echo(f"  assessed {len(findings)} controls: {status_counts}", err=True)
 
     assessment_id = (
-        f"sfdc-assess-dry-run-{env}-{datetime.now(UTC).strftime('%Y%m%d')}"
+        f"{platform_prefix}-assess-dry-run-{env}-{datetime.now(UTC).strftime('%Y%m%d')}"
         if dry_run
-        else f"sfdc-assess-{org_label.split('.')[0]}-{env}-{datetime.now(UTC).strftime('%Y%m%d')}"
+        else f"{platform_prefix}-assess-{org_label.split('.')[0]}-{env}-{datetime.now(UTC).strftime('%Y%m%d')}"
     )
 
     payload = {
